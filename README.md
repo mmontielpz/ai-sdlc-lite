@@ -8,7 +8,7 @@ Use your existing agent, project tools, and checks. Start with a short request, 
 
 [Getting Started](#quickstart) · [Workflow](WORKFLOW.md) · [Examples](#examples) · [Qualification](QUALIFICATION.md#ai-sdlc-lite-012a-current-evidence-addendum) · [Limitations](#supported-agent-approach-and-limitations) · [Contributing](CONTRIBUTING.md)
 
-**Status: EXPERIMENTAL — Pre-release.** AI-SDLC Lite is under active validation. Static checks and installer-level tests pass (68 tests), but live GitHub Copilot task qualification has NOT RUN. No production-readiness or token-efficiency claims are established. Human release acceptance is PENDING. Private vulnerability reporting must be enabled and verified before declaring publication readiness.
+**Status: EXPERIMENTAL V1 — publicly available, no release.** Installer-level tests pass (68 tests). Private vulnerability reporting is enabled and API-verified (see [SECURITY.md](SECURITY.md)). Native GitHub Copilot CLI Skill installation from the raw URL below was verified (PASS, Copilot CLI 1.0.109). Live Copilot task qualification has **NOT RUN**. Desktop-app installation is NOT TESTED. No production-readiness or measured token-savings claims are established. Human release acceptance is PENDING.
 
 ## Quickstart
 
@@ -64,7 +64,7 @@ A passing check does not grant human acceptance. Acceptance does not authorize a
 
 ### Native Copilot Skill install (no Python)
 
-`copilot skill add` takes a file, directory, or a URL to a **single SKILL.md** over HTTPS; a GitHub `/tree/...` page URL is not a SKILL.md and is not supported. Once this repository is public, from the target repository:
+`copilot skill add` takes a file, directory, or a URL to a **single SKILL.md** over HTTPS; a GitHub `/tree/...` page URL is not a SKILL.md and is not supported. From the target repository:
 
 ```bash
 copilot skill add --project https://raw.githubusercontent.com/mmontielpz/ai-sdlc-lite/master/.agents/skills/ai-sdlc-lite/SKILL.md
@@ -72,7 +72,7 @@ copilot skill add --project https://raw.githubusercontent.com/mmontielpz/ai-sdlc
 
 `--project` writes `.github/skills/ai-sdlc-lite/SKILL.md` in the current project; omit it for `~/.copilot/skills/`. Verify with `copilot skill list` (expect `ai-sdlc-lite`, enabled). Remove with `copilot skill remove ai-sdlc-lite`.
 
-**Evidence and limits:** installing the local file with `--project` into a disposable repository was observed to create only that one file, which `copilot skill list` reported as an enabled project Skill (Copilot CLI 1.0.109). Installing from the public raw URL was **not tested** because the repository is not yet public. A single-file install does not include `framework/`; the Skill points to the canonical documents by URL. For a self-contained offline bundle, use the Python installer below (optional fallback). Native installation does not grant permissions; Copilot may still prompt for tool use, and live Copilot task qualification is **NOT RUN**.
+**Evidence and limits:** installing the local file with `--project` into a disposable repository was observed to create only that one file, which `copilot skill list` reported as an enabled project Skill (Copilot CLI 1.0.109). Installing from the public raw URL was then observed to create only that same file, byte-identical to the repository file, listed as enabled (2026-11-12). A single-file install does not include `framework/`; the Skill points to the canonical documents by URL. For a self-contained offline bundle, use the Python installer below (optional fallback). Native installation does not grant permissions; Copilot may still prompt for tool use, and live Copilot task qualification is **NOT RUN**.
 
 ### Install for Copilot CLI
 
