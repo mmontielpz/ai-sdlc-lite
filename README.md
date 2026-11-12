@@ -8,7 +8,7 @@ Use your existing agent, project tools, and checks. Start with a short request, 
 
 [Getting Started](#quickstart) · [Workflow](WORKFLOW.md) · [Examples](#examples) · [Qualification](QUALIFICATION.md#ai-sdlc-lite-012a-current-evidence-addendum) · [Limitations](#supported-agent-approach-and-limitations) · [Contributing](CONTRIBUTING.md)
 
-**Status: EXPERIMENTAL V1 — publicly available, no release.** Installer-level tests pass (68 tests). Private vulnerability reporting is enabled and API-verified (see [SECURITY.md](SECURITY.md)). Native GitHub Copilot CLI Skill installation from the raw URL below was verified (PASS, Copilot CLI 1.0.109). Live Copilot task qualification has **NOT RUN**. Desktop-app installation is NOT TESTED. No production-readiness or measured token-savings claims are established. Human release acceptance is PENDING.
+**Status: EXPERIMENTAL V1 — publicly available, no release.** Installer-level tests pass (68 tests). Private vulnerability reporting is enabled and API-verified (see [SECURITY.md](SECURITY.md)). Native GitHub Copilot CLI Skill installation from the raw URL below was verified (PASS, Copilot CLI 1.0.109). One live Copilot CLI task was observed to PASS (6/6 tests of the [workshop starter](https://github.com/mmontielpz/ai-sdlc-lite-workshop-starter) task; a single operator-observed run, not a benchmark), but this is **not** full qualification. Desktop-app installation is NOT TESTED. No production-readiness or measured token-savings claims are established. Human release acceptance is PENDING.
 
 ## Quickstart
 
@@ -72,7 +72,7 @@ copilot skill add --project https://raw.githubusercontent.com/mmontielpz/ai-sdlc
 
 `--project` writes `.github/skills/ai-sdlc-lite/SKILL.md` in the current project; omit it for `~/.copilot/skills/`. Verify with `copilot skill list` (expect `ai-sdlc-lite`, enabled). Remove with `copilot skill remove ai-sdlc-lite`.
 
-**Evidence and limits:** installing the local file with `--project` into a disposable repository was observed to create only that one file, which `copilot skill list` reported as an enabled project Skill (Copilot CLI 1.0.109). Installing from the public raw URL was then observed to create only that same file, byte-identical to the repository file, listed as enabled (2026-11-12). A single-file install does not include `framework/`; the Skill points to the canonical documents by URL. For a self-contained offline bundle, use the Python installer below (optional fallback). Native installation does not grant permissions; Copilot may still prompt for tool use, and live Copilot task qualification is **NOT RUN**.
+**Evidence and limits:** installing the local file with `--project` into a disposable repository was observed to create only that one file, which `copilot skill list` reported as an enabled project Skill (Copilot CLI 1.0.109). Installing from the public raw URL was then observed to create only that same file, byte-identical to the repository file, listed as enabled (2026-11-12). A single-file install does not include `framework/`; the Skill points to the canonical documents by URL. For a self-contained offline bundle, use the Python installer below (optional fallback). Native installation does not grant permissions; Copilot may still prompt for tool use, and full live Copilot qualification is **not established** (one observed task run only).
 
 ### Install for Copilot CLI
 
