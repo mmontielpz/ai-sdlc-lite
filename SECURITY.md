@@ -4,11 +4,11 @@ AI-SDLC Lite contains process documents and a small example. It does not enforce
 
 ## Reporting a vulnerability
 
-**Private reporting route: UNVERIFIED. Release readiness: BLOCKED.** No target GitHub repository is configured in this candidate checkout, and no working private route has been established. This policy alone does not enable private reporting.
+**Private reporting route: ENABLED for `mmontielpz/ai-sdlc-lite`.** Observed 2026-11-12T21:31:53Z via `gh api repos/mmontielpz/ai-sdlc-lite/private-vulnerability-reporting`, which returned `{"enabled":true}` immediately after enabling it with the same endpoint. The **Report a vulnerability** button was not independently checked in the web interface, and no test report was sent. No release has been made; this project is experimental.
 
 If GitHub Private Vulnerability Reporting is verified enabled for the intended repository, use its **Report a vulnerability** action. Availability depends on repository configuration; follow [GitHub's private reporting guidance](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/report-privately).
 
-Until a private route is verified, retain sensitive details privately. You may make a public request for a private reporting channel without describing the vulnerability or affected private systems. Do not include exploit instructions, credentials, personal data, or private project content in public issues or pull requests. No security contact address is currently published.
+If the **Report a vulnerability** action is unavailable, retain sensitive details privately. You may make a public request for a private reporting channel without describing the vulnerability or affected private systems. Do not include exploit instructions, credentials, personal data, or private project content in public issues or pull requests. No security contact address is currently published.
 
 When a verified private route is available, provide the affected version or snapshot, impact, and minimal sanitized reproduction information. Coordinate disclosure with the maintainer privately. There is no promised response or remediation time, bounty, or security guarantee. For flaws in an agent product or another project's dependency, use that vendor's reporting process.
 
