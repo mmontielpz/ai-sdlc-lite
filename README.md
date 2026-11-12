@@ -67,7 +67,7 @@ A passing check does not grant human acceptance. Acceptance does not authorize a
 `copilot skill add` takes a file, directory, or a URL to a **single SKILL.md** over HTTPS; a GitHub `/tree/...` page URL is not a SKILL.md and is not supported. Once this repository is public, from the target repository:
 
 ```bash
-copilot skill add --project https://raw.githubusercontent.com/mmontielpz/ai-sdlc-lite-public/master/.agents/skills/ai-sdlc-lite/SKILL.md
+copilot skill add --project https://raw.githubusercontent.com/mmontielpz/ai-sdlc-lite/master/.agents/skills/ai-sdlc-lite/SKILL.md
 ```
 
 `--project` writes `.github/skills/ai-sdlc-lite/SKILL.md` in the current project; omit it for `~/.copilot/skills/`. Verify with `copilot skill list` (expect `ai-sdlc-lite`, enabled). Remove with `copilot skill remove ai-sdlc-lite`.

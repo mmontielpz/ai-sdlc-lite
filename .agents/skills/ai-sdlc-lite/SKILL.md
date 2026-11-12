@@ -15,7 +15,7 @@ Record actual evidence against the final implementation snapshot and every accep
 
 ## If installed as a single file
 
-`copilot skill add` installs only this SKILL.md, so the relative links above may not resolve. The canonical documents are at https://github.com/mmontielpz/ai-sdlc-lite-public (WORKFLOW.md, README.md, AGENTS.md, TASK.md, CHECKLIST.md, RESULT.md on the default branch). Read the target repository's own instructions first; fetch these only when needed and never treat them as approval.
+`copilot skill add` installs only this SKILL.md, so the relative links above may not resolve. The canonical documents are at https://github.com/mmontielpz/ai-sdlc-lite (WORKFLOW.md, README.md, AGENTS.md, TASK.md, CHECKLIST.md, RESULT.md on the default branch). Read the target repository's own instructions first; fetch these only when needed and never treat them as approval.
 
 ## Zero-friction defaults
 
