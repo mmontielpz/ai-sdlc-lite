@@ -8,7 +8,7 @@ Use your existing agent, project tools, and checks. Start with a short request, 
 
 [Getting Started](#quickstart) · [Workflow](WORKFLOW.md) · [Examples](#examples) · [Qualification](QUALIFICATION.md#ai-sdlc-lite-012a-current-evidence-addendum) · [Limitations](#supported-agent-approach-and-limitations) · [Contributing](CONTRIBUTING.md)
 
-**Status:** V1 candidate preparation; no version has been released. The reviewed Git baseline is `cfd5e86`, containing 23 committed project files. See the [qualification record](QUALIFICATION.md#ai-sdlc-lite-012a-current-evidence-addendum) for evidence and accepted delivery snapshots. Public release remains **BLOCKED** until a working private reporting route is verified; human release acceptance is **PENDING**. This README update does not authorize publication.
+**Status: EXPERIMENTAL — Pre-release.** AI-SDLC Lite is under active validation. Static checks and installer-level tests pass (68 tests), but live GitHub Copilot task qualification has NOT RUN. No production-readiness or token-efficiency claims are established. Human release acceptance is PENDING. Private vulnerability reporting must be enabled and verified before declaring publication readiness.
 
 ## Quickstart
 
