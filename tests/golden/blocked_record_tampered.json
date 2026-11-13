@@ -1,0 +1,25 @@
+{
+  "computed_status": "BLOCKED",
+  "failure_reasons": [
+    {
+      "code": "record_tampered",
+      "detail": "baseline record digest mismatch; the record was altered or is malformed (code: record_tampered)",
+      "severity": "BLOCKED"
+    }
+  ],
+  "limitations": [
+    "Post-execution detection only; does not prevent or sandbox any action.",
+    "New ignored files are compared with a baseline set; content changes to already-ignored files and changes outside the repository are not seen.",
+    "Without an operator-supplied baseline record, a contract that wrongly records a clean baseline cannot be disproved; the record itself is not authenticated.",
+    "Commands are never run, so exit codes are agent-reported; a sha256 pin or manifest shows byte-identity only and does not authenticate evidence or prove execution."
+  ],
+  "recovery": {
+    "automatic_recovery": "none",
+    "guidance": [
+      "Owner-controlled recovery: this tool never resets, cleans, deletes, checks out or overwrites anything. Review `git status` and `git diff <baseline_sha>`, then decide to keep, revert or archive the work yourself, preserving any changes you want. Re-verify with a new contract afterwards."
+    ]
+  },
+  "registry_version": 1,
+  "schema": "ai-sdlc-lite-verification/1",
+  "status": "BLOCKED"
+}

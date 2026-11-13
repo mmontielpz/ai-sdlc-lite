@@ -24,6 +24,7 @@ CONFIG_BACKUP = '.ai-sdlc-lite-settings-backup.json'
 PERMISSION_BACKUP = '.ai-sdlc-lite-permission-backup.json'
 DOCUMENTS = ('WORKFLOW.md', 'README.md', 'AGENTS.md', 'TASK.md',
              'CHECKLIST.md', 'RESULT.md')
+RESULT_TEMPLATE = Path('templates/RESULT.md')
 LINK = re.compile(r'\[[^\]\n]*\]\(([^)\s]+)\)')
 
 
@@ -312,6 +313,22 @@ def local_path(root, value):
     return path
 
 
+def reference_bytes(name):
+    """Read reusable references, never the mutable root result report.
+
+    Preserve the root-relative RESULT.md bundle and initialization interface.
+    Rebase the template's shared README link into that legacy namespace.
+    """
+    source = SOURCE / (RESULT_TEMPLATE if name == 'RESULT.md' else name)
+    no_symlinks(SOURCE, source)
+    if not source.is_file():
+        raise Blocked(f'Missing framework dependency: {source}')
+    content = source.read_bytes()
+    if name == 'RESULT.md':
+        content = content.replace(b'](../README.md', b'](README.md')
+    return content
+
+
 def initialize_task(root, task_id, contract, dry_run):
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,79}', task_id):
         raise Blocked('Task ID must contain only letters, digits, underscores or hyphens.')
@@ -339,7 +356,7 @@ def initialize_task(root, task_id, contract, dry_run):
         path = directory / name
         if path.exists():
             raise Blocked(f'Existing task record refused: {path}')
-        text = (SOURCE / name).read_text(encoding='utf-8')
+        text = reference_bytes(name).decode('utf-8')
         # Rebase only the shared README link; task records link to each other locally.
         readme = os.path.relpath(root / SKILL / 'framework/README.md', directory).replace(os.sep, '/')
         text = text.replace('](README.md)', f']({readme})').replace('<unique ID>', task_id)
@@ -445,20 +462,17 @@ def configure_copilot(root, home_value, files, dry_run, rollback=False):
 
 
 def payload():
-    """Copy the local Markdown link closure without changing canonical bytes."""
+    """Bundle reference link closure; map root RESULT.md to its reusable template."""
     pending = [SOURCE / name for name in (*DOCUMENTS, 'LICENSE')]
     bundled = {}
     while pending:
         path = pending.pop()
         if not path.is_relative_to(SOURCE):
             raise Blocked(f'Framework link escapes source: {path}')
-        no_symlinks(SOURCE, path)
         relative = path.relative_to(SOURCE).as_posix()
         if relative in bundled:
             continue
-        if not path.is_file():
-            raise Blocked(f'Missing framework dependency: {relative}')
-        content = path.read_bytes()
+        content = reference_bytes(relative)
         bundled[relative] = content
         if path.suffix == '.md':
             for link in LINK.findall(content.decode('utf-8')):
@@ -472,7 +486,8 @@ def payload():
                 pending.append(Path(os.path.abspath(path.parent / linked)))
     entry = (SOURCE / SKILL / 'SKILL.md').read_text(encoding='utf-8')
     for name in DOCUMENTS:
-        old = f'](../../../{name})'
+        source_name = RESULT_TEMPLATE.as_posix() if name == 'RESULT.md' else name
+        old = f'](../../../{source_name})'
         if entry.count(old) != 1:
             raise Blocked(f'Unexpected Skill reference: {name}')
         entry = entry.replace(old, f'](framework/{name})')

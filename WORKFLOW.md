@@ -137,4 +137,6 @@ Permission to implement does not imply permission to commit, push, or create a P
 
 Preserve completed task/result records and evidence before reusing their paths. For task-specific paths, name them explicitly so the agent does not mistake root templates for the active task.
 
+The reusable result source is [templates/RESULT.md](templates/RESULT.md); root RESULT.md may contain a historical execution report. Preserve its bytes and name a task-specific result path for new work. The installer uses the template for both its backward-compatible `framework/RESULT.md` reference and new task records; it never packages the mutable root report. Existing installed bundles and historical records are not automatically migrated.
+
 The optional [ai-sdlc-lite Skill](.agents/skills/ai-sdlc-lite/SKILL.md) points agents to these documents. Explicit Codex invocation with `$ai-sdlc-lite` was demonstrated in the inspected session; [QUALIFICATION.md](QUALIFICATION.md) records the historical evidence and recovered scope incident. Use the [README Quickstart](README.md#quickstart) for native invocation or the document-reading fallback and current provider qualification limits. The Skill adds no authority or enforcement. No global configuration is required by this guide. The two human gates above remain unchanged.

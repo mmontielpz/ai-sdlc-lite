@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, develop, master]
+  push:
+    branches: [main, develop, master, experiment/consolidation-g5-ci]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deterministic:
+    name: deterministic (${{ matrix.python }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.9', '3.14']
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Deterministic suite and explicit skip policy
+        run: |
+          python -B - <<'PY'
+          import os
+          import shutil
+          import sys
+          import unittest
+
+          # No native-agent installation/authentication or inference in this job.
+          if shutil.which('copilot') or os.environ.get('UPDATE_GOLDEN'):
+              raise SystemExit('Copilot must be absent and UPDATE_GOLDEN unset')
+          expected = {
+              'test_install_skill.InstallerTests.test_native_cli_discovery_and_rollback',
+              'test_install_skill.InstallerTests.test_native_cli_recognizes_isolated_sandbox_settings',
+          }
+          suite = unittest.defaultTestLoader.discover('tests')
+          if suite.countTestCases() != 202:
+              raise SystemExit('Expected exactly 202 discovered tests; review inventory changes')
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          skipped = {test.id() for test, reason in result.skipped}
+          policy_ok = result.testsRun == 202 and skipped == expected and len(result.skipped) == 2
+          print(f'Discovered=202 Run={result.testsRun} Skipped={len(result.skipped)}')
+          print('Native runtime qualification: NOT_RUN')
+          sys.exit(0 if result.wasSuccessful() and policy_ok else 1)
+          PY
+      - name: Codex declaration validator (runtime NOT_RUN)
+        run: >-
+          python -B adapters/agents/codex/validate_adapter.py
+          --config adapters/agents/codex/examples/declaration.json --project .
+      - name: Godot declaration validator (runtime NOT_RUN)
+        run: >-
+          python -B adapters/godot/validate_adapter.py
+          --config adapters/godot/examples/disposable-sample/godot-adapter.json
+          --project adapters/godot/examples/disposable-sample
+      - name: Whitespace across event change range
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [[ -n "$BASE_SHA" && "$BASE_SHA" != 0000000000000000000000000000000000000000 ]]; then
+            git diff --check "$BASE_SHA" HEAD
+          else
+            git show --format= --check HEAD
+          fi
+      - name: Preserve checkout and golden fixtures
+        if: always()
+        run: |
+          git diff --exit-code
+          git diff --cached --exit-code
+          test -z "$(git ls-files --others --exclude-standard)"
