@@ -7,7 +7,7 @@ description: Guide a bounded AI-SDLC Lite task through its canonical repository 
 
 Locate the target repository and read its applicable instructions. Read [WORKFLOW.md](../../../WORKFLOW.md) for navigation and [README.md](../../../README.md) for BOV and outcome definitions.
 
-Use the active task and result paths named by the human. The canonical [AGENTS.md](../../../AGENTS.md), [TASK.md](../../../TASK.md), [CHECKLIST.md](../../../CHECKLIST.md), and [RESULT.md](../../../RESULT.md) define the controls; root task/result files may be templates. Preserve existing project instructions and resolve conflicts before affected work.
+Use the active task and result paths named by the human. The canonical [AGENTS.md](../../../AGENTS.md), [TASK.md](../../../TASK.md), [CHECKLIST.md](../../../CHECKLIST.md), and [reusable result template](../../../templates/RESULT.md) define the controls; root execution reports may be historical and are not reusable templates. Preserve existing project instructions and resolve conflicts before affected work.
 
 Begin with read-only inspection and a bounded plan with exact checks. Implement only an explicitly approved revision and plan; an approved mission brief may supply both. Preserve existing authorization without asking for it again. Stop affected work when the canonical stop conditions apply.
 
@@ -15,7 +15,7 @@ Record actual evidence against the final implementation snapshot and every accep
 
 ## If installed as a single file
 
-`copilot skill add` installs only this SKILL.md, so the relative links above may not resolve. The canonical documents are at https://github.com/mmontielpz/ai-sdlc-lite (WORKFLOW.md, README.md, AGENTS.md, TASK.md, CHECKLIST.md, RESULT.md on the default branch). Read the target repository's own instructions first; fetch these only when needed and never treat them as approval.
+`copilot skill add` installs only this SKILL.md, so the relative links above may not resolve. The canonical documents are at https://github.com/mmontielpz/ai-sdlc-lite (WORKFLOW.md, README.md, AGENTS.md, TASK.md, CHECKLIST.md, templates/RESULT.md on the default branch). Read the target repository's own instructions first; fetch these only when needed and never treat them as approval.
 
 ## Zero-friction defaults
 

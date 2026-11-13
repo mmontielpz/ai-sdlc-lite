@@ -1,0 +1,4 @@
+# Generated Python artifacts only. Ignored files are NOT covered by scripts/verify_scope.py
+# (see SECURITY.md), so do not add broad patterns here.
+__pycache__/
+*.py[cod]

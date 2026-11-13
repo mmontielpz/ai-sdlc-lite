@@ -1,0 +1,7 @@
+; Synthetic, disposable sample project. Never executed by AI-SDLC Lite; it only gives the adapter something to detect.
+config_version=5
+
+[application]
+
+config/name="Disposable Adapter Sample"
+config/features=PackedStringArray("4.3", "GL Compatibility")

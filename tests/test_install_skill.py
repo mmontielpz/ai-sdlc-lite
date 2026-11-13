@@ -63,7 +63,7 @@ class InstallerTests(unittest.TestCase):
             self.assertTrue((self.destination / link).is_file())
         for name in installer.DOCUMENTS:
             self.assertEqual((self.destination / 'framework' / name).read_bytes(),
-                             (SOURCE / name).read_bytes())
+                             installer.reference_bytes(name))
         for path in (self.destination / 'framework').rglob('*.md'):
             for link in installer.LINK.findall(path.read_text()):
                 url = installer.urlsplit(link)
@@ -229,6 +229,11 @@ class InstallerTests(unittest.TestCase):
     def test_skill_source_bundle_consistency(self):
         source = (SOURCE / installer.SKILL / 'SKILL.md').read_text()
         entry = installer.payload()['SKILL.md'].decode()
+        self.assertIn('](../../../templates/RESULT.md)', source)
+        self.assertNotIn('](../../../RESULT.md)', source)
+        self.assertIn('](framework/RESULT.md)', entry)
+        self.assertEqual(installer.payload()['framework/RESULT.md'],
+                         installer.reference_bytes('RESULT.md'))
         section = source[source.index('## Zero-friction defaults'):]
         self.assertEqual(entry.count('## Zero-friction defaults'), 1)
         self.assertIn(section, entry)  # single authoritative source, no installer copy
@@ -262,6 +267,18 @@ class InstallerTests(unittest.TestCase):
         checklist = self.target / context['checklist']
         self.assertIn('](../../TASK.md)', checklist.read_text())
         self.assertFalse((self.target / 'tasks/EXISTING/TASK.md').exists())
+
+    def test_initialized_result_uses_template_and_preserves_root_history(self):
+        history = self.target / 'RESULT.md'
+        history.write_bytes(b'Historical execution evidence; preserve exactly.\n')
+        before = history.read_bytes(), history.stat().st_mtime_ns
+        self.assertEqual(self.invoke()[0], 0)
+        self.assertEqual(self.invoke('--init-task', 'DELIVERY')[0], 0)
+        result = (self.target / 'tasks/DELIVERY/RESULT.md').read_text()
+        self.assertIn('**Decision:** PENDING', result)
+        self.assertIn('without an interactive acceptance prompt', result)
+        self.assertNotIn('Historical execution evidence', result)
+        self.assertEqual(before, (history.read_bytes(), history.stat().st_mtime_ns))
 
     def test_context_conflicts_and_unsafe_paths(self):
         self.assertEqual(self.invoke()[0], 0)

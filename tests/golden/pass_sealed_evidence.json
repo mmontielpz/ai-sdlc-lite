@@ -1,0 +1,42 @@
+{
+  "agent_reported_failure_reasons": [],
+  "baseline_sha": "<sha1>",
+  "claimed_status": "PASS",
+  "computed_status": "PASS",
+  "evidence": [
+    {
+      "execution": "not-verified",
+      "integrity": "sealed",
+      "origin": "agent-reported",
+      "ref": "out.txt",
+      "sha256": "<sha256>"
+    }
+  ],
+  "failure_reasons": [],
+  "head_sha": "<sha1>",
+  "ignored_paths_count": 0,
+  "limitations": [
+    "Post-execution detection only; does not prevent or sandbox any action.",
+    "New ignored files are compared with a baseline set; content changes to already-ignored files and changes outside the repository are not seen.",
+    "Without an operator-supplied baseline record, a contract that wrongly records a clean baseline cannot be disproved; the record itself is not authenticated.",
+    "Commands are never run, so exit codes are agent-reported; a sha256 pin or manifest shows byte-identity only and does not authenticate evidence or prove execution."
+  ],
+  "modified_paths": [
+    "src/app.py"
+  ],
+  "recovery": {
+    "automatic_recovery": "none",
+    "guidance": []
+  },
+  "registry_version": 1,
+  "schema": "ai-sdlc-lite-verification/1",
+  "status": "PASS",
+  "task_id": "T-1",
+  "trust": {
+    "agent_assertions": "unverified: exit codes, claimed_status, modified_paths, failure_reasons",
+    "baseline": "agent-reported",
+    "custody": "unauthenticated: an operator may supply records from a location the agent cannot write, but the verifier cannot authenticate who wrote them",
+    "hash_integrity": "all",
+    "independent_execution": "not verified: the verifier never runs or observes commands"
+  }
+}
