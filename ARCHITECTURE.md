@@ -13,7 +13,7 @@ The canonical definition is the Markdown contract set (`AGENTS.md`, `WORKFLOW.md
 | # | Component | Role | State in this checkout |
 |---|---|---|---|
 | 1 | **Universal Skill** | Bound → Observe → Verify, two human gates, controlled autonomy, honest PASS/PARTIAL/BLOCKED/UNKNOWN | *Exists* (documents plus `SKILL.md`). Instruction-only. |
-| 2 | **CLI** `ai-sdlc` | `init`, `doctor`, `verify` | `verify` ≈ `scripts/verify_scope.py` (*exists*, committed at `historical-development-snapshot`). `init` ≈ `scripts/install_skill.py` (*exists*, Copilot-oriented). `doctor`: **missing** (`install_skill.py` has a partial `preflight`/`readiness`). No single `ai-sdlc` entry point yet. |
+| 2 | **CLI** `python3 -B -m ai_sdlc` | `init`, `doctor`, `status`, `adapter`, verifier passthrough | Entry point exists. `init` previews the shared offline installer bundle by default, writes only with `--apply`, and verifies with `--check`. `doctor` and `status` are read-only; `adapter` validates declarations without provider execution. `verify`, `baseline`, `seal` and `codes` retain the existing verifier behavior. |
 | 3 | **Agent adapters** (Claude Code, Codex, Copilot, Agy) | A few lines each: where the Skill is found, which instruction file the agent reads, which native permission or sandbox features apply | Copilot: install path *exists* and was observed live. Codex: dedicated adapter **implemented** at `adapters/agents/codex/`; first targeted qualification agent under CODEX-002–004. **ADAPTER_READY** (`CODEX_ADAPTER_READY`) means declaration validation, **not RUNTIME_QUALIFIED**; smoke/deep qualification remains NOT_RUN. Historical explicit invocation is not runtime qualification. Claude Code: **none** (it has acted as an executor, not a qualified target). Agy: **identity unverified**, see below. |
 | 4 | **Project adapters** | Declarative description of one project: build, test and lint commands, data and network rules, protected paths, recovery command | Generic Godot adapter implemented and uncommitted under `adapters/godot/` (reported configuration-level ADAPTER_READY only). General project-schema loading and FOB declaration remain planned; core path fields already exist. |
 
@@ -42,6 +42,18 @@ Codex and Godot adapters independently reference the same BOV contracts and veri
 **Result contract** (`ai-sdlc-lite-result/1`, *exists*, see [RESULT_CONTRACT.md](RESULT_CONTRACT.md)): task id, baseline SHA, allowed, sensitive and protected paths, declared changes, verification commands with exit codes and evidence, claimed status. Verification output is `ai-sdlc-lite-verification/1` with exit codes 0 PASS, 1 PARTIAL, 2 BLOCKED. Both schemas carry a version string; any breaking change needs a new version and a migration note.
 
 **Project adapter** (target): one optional JSON file, `.ai-sdlc/project.json` (path is a decision, see ROADMAP), consumed by `init`, `doctor` and `verify`:
+
+This remains a future proposal. V2-04 init generates no project adapter or task
+context and consumes neither. It uses `scripts/install_skill.py` for the canonical
+payload, manifest format, manifest validation and manifest-first write ordering;
+`ai_sdlc/initializer.py` supplies provider-neutral planning and descriptor-relative
+exclusive creation. It never calls the legacy provider preflight/readiness path.
+Exact matching installations are no-ops; conflicts and partial installations are
+preserved and refused. Ordinary Git roots only are supported initially, on hosts
+with no-follow descriptor operations. No provider discovery or runtime qualification
+is established. Init offers no uninstall; the legacy guarded recovery workflow
+remains separately selected. The broader profile and project-schema plans below
+are not implemented by V2-04.
 
 ```json
 { "schema": "ai-sdlc-project/1",

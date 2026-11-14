@@ -62,6 +62,53 @@ A passing check does not grant human acceptance. Acceptance does not authorize a
 
 ## Adopt in an existing repository
 
+### Provider-neutral offline initialization
+
+From a reviewed AI-SDLC Lite checkout, use Python 3.9+ to preview setup in an
+existing Git project. Run from the framework checkout; never import the CLI from
+an untrusted project. `-B` suppresses Python bytecode writes outside the target.
+
+```bash
+python3 -B -m ai_sdlc init --repo /absolute/path/to/project
+python3 -B -m ai_sdlc init --repo /absolute/path/to/project --apply
+python3 -B -m ai_sdlc init --repo /absolute/path/to/project --check
+```
+
+The default and `--dry-run` are read-only previews. Every bundle destination and
+SHA-256 is listed before `--apply` writes. Setup creates only the self-contained
+Skill under `.agents/skills/ai-sdlc-lite/`, its `framework/` references and ownership
+manifest. Existing instructions, task records, task context, Git settings and
+provider configuration remain untouched. No project configuration is required.
+Open your chosen agent separately and explicitly reference the installed Skill or
+its bundled workflow. Provider discovery, permissions and task approval remain
+unverified; initialization runs no provider, project code, Git command or network
+operation, and installs no dependencies.
+
+The target must be the explicit root of an ordinary Git working tree with an
+internal `.git` directory. Dirty, unborn and detached repositories are accepted;
+cleanliness is UNKNOWN because Git status is not run. Framework-overlapping
+targets, traversal, symlinks, special files and hard-linked installation files are
+refused. Git pointer files (worktrees/submodules), bare repositories and platforms
+without descriptor-relative no-follow filesystem operations are unsupported.
+Stop concurrent writers before applying: this is not a sandbox against hostile
+directory renames or privileged processes.
+
+Matching reruns preserve bytes and timestamps. `--check` verifies the complete
+inventory, ownership manifest and exact current bundle without writing or probing
+a provider. Edited, older, partial, additional or unmanifested installations are
+refused, including native single-file installations; there is no automatic repair,
+upgrade, adoption or deletion. After an interrupted write, preserve the artifacts
+and review ownership before any separately authorized recovery. A successful
+preview does not guarantee that a later apply will be writable.
+
+Init exit codes: **0** successful preview/install/no-op/check; **1** apply started
+but failed and may have left partial artifacts; **2** usage, validation, conflict
+or check failure. Other CLI commands retain their existing exit meanings. Output
+uses sorted relative paths, SHA-256 hashes and stable result/reason identifiers;
+untrusted paths are JSON-escaped. No `--force` or provider setup flag is offered.
+Provider-specific installation and configuration remain separate opt-in workflows
+described below.
+
 ### Native Copilot Skill install (no Python)
 
 `copilot skill add` takes a file, directory, or a URL to a **single SKILL.md** over HTTPS; a GitHub `/tree/...` page URL is not a SKILL.md and is not supported. From the target repository:

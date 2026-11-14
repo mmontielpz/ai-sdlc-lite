@@ -730,8 +730,9 @@ class CliUnicodeDisplay(base_tests.Fixture):
 
 
 class CliSourceGuards(unittest.TestCase):
-    FILES = ('__init__.py', '__main__.py', 'cli.py')
-    STDLIB = {'json', 'os', 'stat', 'subprocess', 'sys', 'pathlib', 'shutil', 'unicodedata', '__future__', 'ai_sdlc'}
+    FILES = ('__init__.py', '__main__.py', 'cli.py', 'initializer.py')
+    STDLIB = {'json', 'os', 'stat', 'subprocess', 'sys', 'pathlib', 'shutil', 'unicodedata',
+              '__future__', 'ai_sdlc', 'contextlib', 'importlib'}
 
     def trees(self, **kwargs):
         for name in self.FILES:
