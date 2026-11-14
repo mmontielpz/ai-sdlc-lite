@@ -1,0 +1,30 @@
+{
+  "schema": "ai-sdlc-adapter/1",
+  "provider": "copilot",
+  "provider_version": {"observed": "1.0.109", "compatibility_claim": "none"},
+  "platforms_observed": ["linux"],
+  "instruction_files": ["AGENTS.md"],
+  "skill": {"source_path": ".agents/skills/ai-sdlc-lite/SKILL.md"},
+  "capabilities": {
+    "version_detect": {"status": "SUPPORTED", "basis": "observed", "evidence": ["QUALIFICATION.md", "scripts/install_skill.py"], "note": "CLI 1.0.109 was observed with its version command; the installer reads it."},
+    "skill_install": {"status": "SUPPORTED", "basis": "observed", "evidence": ["README.md", "QUALIFICATION_MATRIX.md"], "note": "Local-file project install was observed once on 1.0.109; installing from the public URL was not tested."},
+    "skill_discovery": {"status": "SUPPORTED", "basis": "observed", "evidence": ["README.md", "QUALIFICATION_MATRIX.md"], "note": "The installed project Skill was listed as enabled on 1.0.109."},
+    "skill_invocation": {"status": "NOT_QUALIFIED", "basis": "documented", "evidence": ["QUALIFICATION_MATRIX.md"], "note": "Live trials were stopped or staged; smoke is NOT RUN."},
+    "instruction_file": {"status": "NOT_QUALIFIED", "basis": "documented", "evidence": ["QUALIFICATION_MATRIX.md"], "note": "AGENTS.md is the documented instruction file; behavior is not independently observed."},
+    "noninteractive_run": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "Not recorded."},
+    "structured_output": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "Not recorded."},
+    "resume": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "Not recorded."},
+    "cancellation": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "Not recorded."},
+    "timeout": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "A soft credit cap exists, which is a cost control and not a time limit."},
+    "native_sandbox": {"status": "NOT_QUALIFIED", "basis": "configuration", "evidence": ["scripts/install_skill.py", "README.md"], "note": "Optional sandbox settings are configuration-tested only; runtime enforcement is unverified."},
+    "native_approval": {"status": "NOT_QUALIFIED", "basis": "documented", "evidence": ["QUALIFICATION_MATRIX.md", "README.md"], "note": "Native prompts exist; command matching and prompt reduction are unqualified."},
+    "usage_reporting": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "Usage is visible only inside a session; no reliable task-level counter is recorded."}
+  },
+  "qualification": {"smoke": "NOT_RUN", "deep": "NOT_RUN"},
+  "limitations": [
+    "The version is a historical observation, not a compatibility claim for any installed version.",
+    "Installer readiness is Copilot discovery only and does not establish task approval or sandbox enforcement.",
+    "No live qualification has been run; a declaration is not a qualification."
+  ],
+  "execution_authorized": false
+}

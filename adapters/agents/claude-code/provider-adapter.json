@@ -1,0 +1,30 @@
+{
+  "schema": "ai-sdlc-adapter/1",
+  "provider": "claude-code",
+  "provider_version": {"observed": null, "compatibility_claim": "none"},
+  "platforms_observed": [],
+  "instruction_files": [],
+  "skill": {"source_path": ".agents/skills/ai-sdlc-lite/SKILL.md"},
+  "capabilities": {
+    "version_detect": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "No version or availability record exists in this repository."},
+    "skill_install": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "No Skill install evidence is recorded."},
+    "skill_discovery": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "No Skill discovery evidence is recorded."},
+    "skill_invocation": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "Not recorded as a tested target."},
+    "instruction_file": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "The verifier protects CLAUDE.md as a governance path; that is scope protection, not evidence about this provider."},
+    "noninteractive_run": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "Not recorded."},
+    "structured_output": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "Not recorded."},
+    "resume": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "Not recorded."},
+    "cancellation": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "Not recorded."},
+    "timeout": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "Not recorded."},
+    "native_sandbox": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "Not recorded."},
+    "native_approval": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "Not recorded."},
+    "usage_reporting": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "Not recorded."}
+  },
+  "qualification": {"smoke": "NOT_RUN", "deep": "NOT_RUN"},
+  "limitations": [
+    "Long-term target only: it has acted as an executor of missions, not as a tested target.",
+    "No live qualification has been run; a declaration is not a qualification.",
+    "No version is probed; no compatibility with any installed version is claimed."
+  ],
+  "execution_authorized": false
+}

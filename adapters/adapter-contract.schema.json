@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ai-sdlc-adapter/1",
+  "title": "AI-SDLC Lite provider adapter declaration (no execution authority)",
+  "description": "Declarative, provider-neutral description of what repository records say about a coding-agent provider. It never runs a provider, probes a version, or grants authority. The validator in ai_sdlc/adapters.py reads x-vocabulary as the single source of the allowed names and enforces the rules in x-rules.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "provider",
+    "provider_version",
+    "platforms_observed",
+    "instruction_files",
+    "skill",
+    "capabilities",
+    "qualification",
+    "limitations",
+    "execution_authorized"
+  ],
+  "properties": {
+    "schema": {"const": "ai-sdlc-adapter/1"},
+    "provider": {"type": "string", "enum": ["claude-code", "copilot", "codex"]},
+    "provider_version": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observed", "compatibility_claim"],
+      "properties": {
+        "observed": {"type": ["string", "null"], "description": "A historical observed version recorded in the repository, or null. Not a compatibility claim."},
+        "compatibility_claim": {"const": "none"}
+      }
+    },
+    "platforms_observed": {"type": "array", "items": {"enum": ["linux", "macos", "windows"]}},
+    "instruction_files": {"type": "array", "items": {"type": "string"}},
+    "skill": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_path"],
+      "properties": {"source_path": {"const": ".agents/skills/ai-sdlc-lite/SKILL.md"}}
+    },
+    "capabilities": {"type": "object", "description": "Exactly the capability ids in x-vocabulary.capabilities; each has status, basis, evidence and note."},
+    "qualification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["smoke", "deep"],
+      "properties": {"smoke": {"const": "NOT_RUN"}, "deep": {"const": "NOT_RUN"}}
+    },
+    "limitations": {"type": "array", "items": {"type": "string"}},
+    "execution_authorized": {"const": false}
+  },
+  "x-vocabulary": {
+    "providers": ["claude-code", "copilot", "codex"],
+    "statuses": ["SUPPORTED", "NOT_QUALIFIED", "UNKNOWN", "UNSUPPORTED"],
+    "bases": ["observed", "documented", "configuration", "none"],
+    "platforms": ["linux", "macos", "windows"],
+    "capabilities": [
+      "version_detect",
+      "skill_install",
+      "skill_discovery",
+      "skill_invocation",
+      "instruction_file",
+      "noninteractive_run",
+      "structured_output",
+      "resume",
+      "cancellation",
+      "timeout",
+      "native_sandbox",
+      "native_approval",
+      "usage_reporting"
+    ]
+  },
+  "x-rules": {
+    "SUPPORTED": "previously observed: basis observed and at least one existing evidence file",
+    "NOT_QUALIFIED": "documented or configured but never exercised: basis documented or configuration and at least one existing evidence file",
+    "UNKNOWN": "insufficient evidence: basis none and no evidence",
+    "UNSUPPORTED": "evidence confirms absence: basis observed or documented and at least one existing evidence file",
+    "evidence": "repository-relative regular files inside the project; no absolute paths, traversal, globs or symlinks",
+    "strings": "display-safe text only; control, format, surrogate, private-use, separator (except ASCII space) and replacement characters are rejected"
+  }
+}

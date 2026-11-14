@@ -1,0 +1,30 @@
+{
+  "schema": "ai-sdlc-adapter/1",
+  "provider": "codex",
+  "provider_version": {"observed": "0.167.2", "compatibility_claim": "none"},
+  "platforms_observed": ["linux"],
+  "instruction_files": ["AGENTS.md"],
+  "skill": {"source_path": ".agents/skills/ai-sdlc-lite/SKILL.md"},
+  "capabilities": {
+    "version_detect": {"status": "SUPPORTED", "basis": "observed", "evidence": ["QUALIFICATION_MATRIX.md", "adapters/agents/codex/README.md"], "note": "CLI 0.167.2 version and help were inspected read-only in CODEX-001."},
+    "skill_install": {"status": "NOT_QUALIFIED", "basis": "configuration", "evidence": ["scripts/install_skill.py", "adapters/agents/codex/README.md"], "note": "The installer writes the canonical bundle; its readiness check covers Copilot only."},
+    "skill_discovery": {"status": "NOT_QUALIFIED", "basis": "documented", "evidence": ["QUALIFICATION_MATRIX.md", "adapters/agents/codex/README.md"], "note": "Automatic discovery is unverified."},
+    "skill_invocation": {"status": "SUPPORTED", "basis": "observed", "evidence": ["QUALIFICATION_MATRIX.md", "QUALIFICATION.md"], "note": "Explicit invocation was observed once in historical slices."},
+    "instruction_file": {"status": "NOT_QUALIFIED", "basis": "documented", "evidence": ["QUALIFICATION_MATRIX.md", "adapters/agents/codex/examples/declaration.json"], "note": "AGENTS.md is the documented instruction file; behavior is not independently observed."},
+    "noninteractive_run": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "Not recorded in the public repository records."},
+    "structured_output": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "Not recorded in the public repository records."},
+    "resume": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "Interruption and resume are a CODEX-004 gate that has not run."},
+    "cancellation": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "Not recorded."},
+    "timeout": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "Not recorded."},
+    "native_sandbox": {"status": "NOT_QUALIFIED", "basis": "configuration", "evidence": ["adapters/agents/codex/examples/declaration.json", "adapters/agents/codex/README.md"], "note": "A workspace-write profile is declared; effective enforcement is unverified."},
+    "native_approval": {"status": "NOT_QUALIFIED", "basis": "configuration", "evidence": ["adapters/agents/codex/examples/declaration.json", "adapters/agents/codex/README.md"], "note": "An on-request policy is declared; effective behavior is unverified."},
+    "usage_reporting": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "Usage accounting boundaries are unqualified."}
+  },
+  "qualification": {"smoke": "NOT_RUN", "deep": "NOT_RUN"},
+  "limitations": [
+    "The version is a historical observation, not a compatibility claim for any installed version.",
+    "CODEX_ADAPTER_READY is declaration validation only; the existing Codex declaration stays authoritative for its fields.",
+    "No live qualification has been run; a declaration is not a qualification."
+  ],
+  "execution_authorized": false
+}
