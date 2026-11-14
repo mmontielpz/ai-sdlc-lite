@@ -484,7 +484,7 @@ def payload():
                     raise Blocked(f'Absolute framework link refused: {link}')
                 # Resolve dot segments without following symlinks.
                 pending.append(Path(os.path.abspath(path.parent / linked)))
-    entry = (SOURCE / SKILL / 'SKILL.md').read_text(encoding='utf-8')
+    entry = reference_bytes((SKILL / 'SKILL.md').as_posix()).decode('utf-8')
     for name in DOCUMENTS:
         source_name = RESULT_TEMPLATE.as_posix() if name == 'RESULT.md' else name
         old = f'](../../../{source_name})'
@@ -516,12 +516,8 @@ def inventory(destination):
     return files
 
 
-def read_manifest(destination):
-    path = destination / MANIFEST
-    no_symlinks(destination, path)
-    if not path.is_file():
-        raise Blocked('Existing destination has no installer ownership manifest.')
-    record = json.loads(path.read_text(encoding='utf-8'))
+def manifest_files(record):
+    """Validate the shared ownership format without accessing destination paths."""
     if not isinstance(record, dict):
         raise Blocked('Invalid installer manifest.')
     files = record.get('files')
@@ -530,16 +526,41 @@ def read_manifest(destination):
         raise Blocked('Invalid installer manifest.')
     for name, sha in files.items():
         relative = PurePosixPath(name)
-        if (relative.is_absolute() or '..' in relative.parts or '\\' in name
+        if (not name or '\x00' in name or relative.is_absolute() or '..' in relative.parts or '\\' in name
                 or relative.as_posix() != name
                 or not (name == 'SKILL.md' or name.startswith('framework/'))
                 or not isinstance(sha, str) or not re.fullmatch('[0-9a-f]{64}', sha)):
             raise Blocked('Unsafe installer manifest entry.')
-        no_symlinks(destination, destination / name)
     for name in files:
         if any(parent.as_posix() in files for parent in PurePosixPath(name).parents):
             raise Blocked('Ambiguous installer manifest: a file is also a parent path.')
     return files
+
+
+def read_manifest(destination):
+    path = destination / MANIFEST
+    no_symlinks(destination, path)
+    if not path.is_file():
+        raise Blocked('Existing destination has no installer ownership manifest.')
+    files = manifest_files(json.loads(path.read_text(encoding='utf-8')))
+    for name in files:
+        no_symlinks(destination, destination / name)
+    return files
+
+
+def bundle_content():
+    """One canonical payload and byte-compatible ownership manifest for both CLIs."""
+    content = payload()
+    hashes = {name: digest(data) for name, data in sorted(content.items())}
+    content[MANIFEST] = (json.dumps({'format': 1, 'files': hashes}, indent=2,
+                                    sort_keys=True) + '\n').encode()
+    return content, hashes
+
+
+def write_bundle(content, write_file):
+    """Write ownership first; callers provide their exclusive-create boundary."""
+    for name in [MANIFEST, *sorted(set(content) - {MANIFEST})]:
+        write_file(name, content[name])
 
 
 def uninstall(destination, dry_run):
@@ -678,10 +699,7 @@ def main(argv=None):
                     digest((destination / name).read_bytes()) != sha for name, sha in owned.items()):
                 raise Blocked('Installed Skill differs from its ownership manifest.')
             return readiness(root, destination)
-        content = payload()
-        hashes = {name: digest(data) for name, data in sorted(content.items())}
-        manifest = json.dumps({'format': 1, 'files': hashes}, indent=2, sort_keys=True).encode() + b'\n'
-        content[MANIFEST] = manifest
+        content, hashes = bundle_content()
         exists = destination.exists()
         if exists:
             if not destination.is_dir():
@@ -698,13 +716,12 @@ def main(argv=None):
             return 0
         if not exists:
             destination.mkdir(parents=True, exist_ok=False)
-            # Write ownership first so an interrupted installation can be rolled back.
-            for name in [MANIFEST, *sorted(hashes)]:
-                data = content[name]
+            def write_file(name, data):
                 path = destination / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 with path.open('xb') as stream:
                     stream.write(data)
+            write_bundle(content, write_file)
         return readiness(root, destination)
     except (Blocked, OSError, ValueError, TypeError, AttributeError, KeyError, subprocess.SubprocessError) as error:
         print(f'BLOCKED: {error}', file=sys.stderr)
