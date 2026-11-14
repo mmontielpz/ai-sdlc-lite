@@ -4,6 +4,7 @@ Commands:
   verify | baseline | seal | codes   pass straight through to scripts/verify_scope.py (same stdout, stderr, exit codes)
   doctor                              read-only environment and framework check; unknown facts are UNKNOWN
   status [--repo PATH]                read-only description of a repository's HEAD and active task pointer
+  adapter list|validate|matrix        read-only provider adapter declarations (declarative; nothing is executed)
 
 Boundaries (honest):
   * This CLI wraps the verifier; it adds no verification logic. The verifier detects after the fact and
@@ -47,6 +48,7 @@ USAGE = (
     '  verify|baseline|seal|codes   run scripts/verify_scope.py with the same arguments\n'
     '  doctor                       read-only environment and framework check\n'
     '  status [--repo PATH]         read-only HEAD and active-task report\n'
+    '  adapter list|validate|matrix read-only provider adapter declarations (see adapters/README.md)\n'
 )
 HEX = frozenset('0123456789abcdef')
 BAD_REF_CHARS = frozenset(' \\:?[^~*\x7f')
@@ -368,6 +370,9 @@ def main(argv=None):
         return _doctor()
     if command == 'status':
         return _status(rest)
+    if command == 'adapter':
+        from ai_sdlc import adapters  # imported lazily so the other commands are unaffected
+        return adapters.main(rest)
     _err(f'ai_sdlc: unknown command {command!r}')
     sys.stderr.write(USAGE)
     return 2
