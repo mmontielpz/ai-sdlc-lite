@@ -49,12 +49,12 @@ jobs:
               'test_install_skill.InstallerTests.test_native_cli_recognizes_isolated_sandbox_settings',
           }
           suite = unittest.defaultTestLoader.discover('tests')
-          if suite.countTestCases() != 227:
-              raise SystemExit('Expected exactly 227 discovered tests; review inventory changes')
+          if suite.countTestCases() != 242:
+              raise SystemExit('Expected exactly 242 discovered tests; review inventory changes')
           result = unittest.TextTestRunner(verbosity=2).run(suite)
           skipped = {test.id() for test, reason in result.skipped}
-          policy_ok = result.testsRun == 227 and skipped == expected and len(result.skipped) == 2
-          print(f'Discovered=227 Run={result.testsRun} Skipped={len(result.skipped)}')
+          policy_ok = result.testsRun == 242 and skipped == expected and len(result.skipped) == 2
+          print(f'Discovered=242 Run={result.testsRun} Skipped={len(result.skipped)}')
           print('Native runtime qualification: NOT_RUN')
           sys.exit(0 if result.wasSuccessful() and policy_ok else 1)
           PY

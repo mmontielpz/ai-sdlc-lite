@@ -319,9 +319,270 @@ class CliDoctorAndStatus(base_tests.Fixture):
         self.assertIn('symlink; not read', run_cli('status', '--repo', str(self.repo))[1].decode())
 
 
+CANARY = 'CANARY-SECRET-7f3a91'
+
+
+class CliGitMetadata(base_tests.Fixture):
+    """Repository Git metadata is untrusted: crafted HEAD, refs, pointer files and commondir must never make
+    `status` read or print anything outside the validated Git directory. Synthetic fixtures, harmless canaries."""
+
+    def setUp(self):
+        super().setUp()
+        self.sandbox = self.meta / 'sandbox'
+        self.sandbox.mkdir()
+        # canaries at every location a traversal could plausibly reach
+        self.canary_files = []
+        for place in (self.sandbox, self.sandbox / 'evil', self.sandbox / 'evil' / '.git',
+                      self.sandbox / 'evil' / '.git' / 'refs', self.sandbox / 'outside'):
+            place.mkdir(parents=True, exist_ok=True)
+            for name in ('canary.txt', 'HEAD', 'packed-refs', 'main'):
+                path = place / name
+                if not path.exists():
+                    path.write_text(f'{CANARY} more words\n')
+                    self.canary_files.append(path)
+        self.evil = self.sandbox / 'evil'
+        (self.evil / '.git' / 'objects').mkdir(exist_ok=True)  # structurally a Git directory; HEAD is set per test
+
+    def status(self, repo, **env):
+        return run_cli('status', '--repo', str(repo), env=cli_env(**env) if env else None)
+
+    def assert_contained(self, repo, expect=None, **env):
+        before = tree_digest(self.sandbox)
+        code, out, err = self.status(repo, **env)
+        self.assertEqual(code, 0, err)
+        text = (out + err).decode()
+        self.assertNotIn(CANARY, text, 'file contents leaked')
+        self.assertNotIn('more words', text)
+        self.assertEqual(tree_digest(self.sandbox), before, 'status wrote something')
+        for needle in expect or ():
+            self.assertIn(needle, text)
+        return text
+
+    def head(self, text, ref_file_text=None):
+        (self.evil / '.git' / 'HEAD').write_text(text)
+
+    def test_the_original_traversal_exploit_is_contained(self):
+        self.head('ref: ../../canary.txt\n')
+        text = self.assert_contained(self.evil, expect=['branch: UNKNOWN', 'head: UNKNOWN'])
+        self.assertNotIn('canary.txt', text)
+
+    def test_unsafe_symbolic_refs_are_rejected(self):
+        bad = ['../../canary.txt', '/etc/passwd', '/tmp/x', 'refs/../../../canary.txt', 'refs/heads/../../../canary.txt',
+               'refs//heads/main', 'refs/heads/', 'refs/heads/./main', 'refs/heads/.hidden', 'refs\\heads\\main',
+               'refs/heads/a b', 'refs/heads/a:b', 'refs/heads/a*b', 'refs/heads/a?b', 'refs/heads/a[b', 'refs/heads/a^b',
+               'refs/heads/a~1', 'refs/heads/main.lock', 'refs/heads/a@{1}', 'heads/main', 'main', 'refs', 'refs/',
+               'refs/heads/\x01evil', 'refs/heads/' + 'a' * 300, 'C:\\canary.txt', '~/canary.txt', '$HOME/x']
+        for ref in bad:
+            with self.subTest(ref=ref):
+                self.head(f'ref: {ref}\n')
+                text = self.assert_contained(self.evil, expect=['branch: UNKNOWN', 'head: UNKNOWN'])
+                self.assertNotIn('canary', text.lower())
+
+    def test_malformed_head_contents_are_unknown(self):
+        for content in ('', '\n', 'ref:', 'ref: ', 'ref:\n', f'{CANARY}\n', f'ref {CANARY}\n', 'garbage here\n',
+                        'ref: refs/heads/main extra\n', 'ref: refs/heads/ma\x00in\n', '\x00\x01\x02', '"quoted"',
+                        'gitdir: ../canary.txt\n'):
+            with self.subTest(content=content):
+                self.head(content)
+                self.assert_contained(self.evil, expect=['branch: UNKNOWN', 'head: UNKNOWN'])
+
+    def test_non_hex_and_wrong_length_object_ids_are_unknown(self):
+        refs = self.evil / '.git' / 'refs' / 'heads'
+        refs.mkdir(parents=True)
+        self.head('ref: refs/heads/main\n')
+        for content in ('z' * 40, 'g' * 64, 'A' * 40, 'a' * 39, 'a' * 41, 'a' * 63, 'a' * 65, ('a' * 40) + ' ' + CANARY,
+                        CANARY, 'ref: refs/heads/other', '../../canary.txt', ''):
+            with self.subTest(content=content):
+                (refs / 'main').write_text(content + '\n')
+                self.assert_contained(self.evil, expect=['branch: main', 'head: UNKNOWN'])
+        for content in ('z' * 40, 'a' * 39, ('a' * 40) + 'x'):
+            with self.subTest(detached=content):
+                self.head(content + '\n')
+                self.assert_contained(self.evil, expect=['branch: UNKNOWN', 'head: UNKNOWN'])
+        (refs / 'main').unlink()
+        (self.evil / '.git' / 'packed-refs').write_text(f'# pack-refs\n{"z" * 40} refs/heads/main\n')
+        self.head('ref: refs/heads/main\n')
+        self.assert_contained(self.evil, expect=['head: UNKNOWN'])
+        (self.evil / '.git' / 'packed-refs').write_text(f'{CANARY} refs/heads/main\n{"a" * 40} refs/heads/main extra\n')
+        self.assert_contained(self.evil, expect=['head: UNKNOWN'])
+
+    def test_valid_detached_head_and_loose_and_packed_refs_still_work(self):
+        good, other = 'a' * 40, 'b' * 64
+        self.head(good + '\n')
+        self.assert_contained(self.evil, expect=['branch: (detached)', f'head: {good}'])
+        self.head(other + '\n')
+        self.assert_contained(self.evil, expect=['branch: (detached)', f'head: {other}'])
+        self.head('ref: refs/heads/feature/x-1\n')
+        loose = self.evil / '.git' / 'refs' / 'heads' / 'feature'
+        loose.mkdir(parents=True)
+        (loose / 'x-1').write_text(good + '\n')
+        self.assert_contained(self.evil, expect=['branch: feature/x-1', f'head: {good}'])
+        (loose / 'x-1').unlink()
+        (self.evil / '.git' / 'packed-refs').write_text(f'# pack-refs with: peeled\n{other} refs/heads/feature/x-1\n^{good}\n')
+        self.assert_contained(self.evil, expect=['branch: feature/x-1', f'head: {other}'])
+
+    def test_symlink_escapes_are_not_followed(self):
+        canary = self.sandbox / 'outside' / 'canary.txt'
+        git_dir = self.evil / '.git'
+        (git_dir / 'refs' / 'heads').mkdir(parents=True)
+        # final component symlink
+        self.head('ref: refs/heads/main\n')
+        link = git_dir / 'refs' / 'heads' / 'main'
+        try:
+            link.symlink_to(canary)
+        except (OSError, NotImplementedError):
+            self.skipTest('symlinks unavailable')
+        self.assert_contained(self.evil, expect=['head: UNKNOWN'])
+        link.unlink()
+        # intermediate directory symlink
+        (git_dir / 'refs' / 'heads').rmdir()
+        (git_dir / 'refs' / 'heads').symlink_to(self.sandbox / 'outside', target_is_directory=True)
+        (self.sandbox / 'outside' / 'main').write_text(f'{CANARY}\n')
+        self.assert_contained(self.evil, expect=['head: UNKNOWN'])
+        (git_dir / 'refs' / 'heads').unlink()
+        # HEAD itself a symlink
+        (git_dir / 'HEAD').unlink()
+        (git_dir / 'HEAD').symlink_to(canary)
+        self.assert_contained(self.evil, expect=['git: UNKNOWN'])
+        (git_dir / 'HEAD').unlink()
+        (git_dir / 'HEAD').write_text('ref: refs/heads/main\n')
+        # packed-refs symlink
+        (git_dir / 'packed-refs').unlink()
+        (git_dir / 'packed-refs').symlink_to(canary)
+        self.assert_contained(self.evil, expect=['head: UNKNOWN'])
+
+    def test_symlinked_git_directory_and_task_context_are_refused(self):
+        real = self.sandbox / 'realgit'
+        real.mkdir()
+        (real / 'HEAD').write_text('ref: refs/heads/main\n')
+        (real / 'objects').mkdir()
+        repo = self.sandbox / 'viasymlink'
+        repo.mkdir()
+        try:
+            (repo / '.git').symlink_to(real, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            self.skipTest('symlinks unavailable')
+        self.assert_contained(repo, expect=['git: UNKNOWN'])
+        folder = self.evil / '.ai-sdlc-lite'
+        folder.mkdir()
+        (folder / 'task-context.json').symlink_to(self.sandbox / 'outside' / 'canary.txt')
+        self.assert_contained(self.evil, expect=['symlink; not read'])
+
+    def test_malicious_git_pointer_files_are_rejected(self):
+        repo = self.sandbox / 'pointer'
+        repo.mkdir()
+        target_dir = self.sandbox / 'outside'
+        (target_dir / 'HEAD').write_text('ref: refs/heads/main\n')  # a HEAD, but not a Git directory (no objects/)
+        for content in ('gitdir: ../outside\n', f'gitdir: {target_dir}\n', 'gitdir: /\n', 'gitdir: /etc\n',
+                        f'gitdir: {self.sandbox}/outside/canary.txt\n', 'gitdir:\n', 'gitdir: \n', 'garbage\n',
+                        f'{CANARY}\n', 'gitdir: ../outside\x00x\n', 'gitdir: ../out\x1bside\n', '\x00\x00', ''):
+            with self.subTest(content=content):
+                (repo / '.git').write_text(content)
+                self.assert_contained(repo, expect=['git: UNKNOWN'])
+
+    def test_legitimate_git_pointer_separate_git_dir_works(self):
+        outside = self.sandbox / 'separate-git'
+        repo = self.sandbox / 'work'
+        git(self.sandbox, 'init', '-q', '--separate-git-dir', str(outside), str(repo))
+        git(repo, 'commit', '-q', '--allow-empty', '-m', 'c')
+        oid = git(repo, 'rev-parse', 'HEAD')
+        self.assertTrue((repo / '.git').is_file())
+        self.assert_contained(repo, expect=[f'head: {oid}'])
+
+    def test_malicious_commondir_is_rejected(self):
+        main = self.sandbox / 'mainrepo'
+        git(self.sandbox, 'init', '-q', str(main))
+        git(main, 'commit', '-q', '--allow-empty', '-m', 'c')
+        linked = self.sandbox / 'linked'
+        git(main, 'worktree', 'add', '-q', '-b', 'side', str(linked))
+        entry = main / '.git' / 'worktrees' / 'linked'
+        victim = self.sandbox / 'outside'
+        (victim / 'objects').mkdir(exist_ok=True)
+        (victim / 'refs' / 'heads').mkdir(parents=True, exist_ok=True)
+        (victim / 'refs' / 'heads' / 'side').write_text(f'{CANARY}\n')
+        (victim / 'packed-refs').write_text(f'{CANARY} refs/heads/side\n')
+        original = (entry / 'commondir').read_text()
+        for content in ('../../../outside\n', f'{victim}\n', '/\n', '..\n', '.\n', '../..//x\n', f'{CANARY}\n', ''):
+            with self.subTest(commondir=content):
+                (entry / 'commondir').write_text(content)
+                self.assert_contained(linked, expect=['git: UNKNOWN'])
+        (entry / 'commondir').write_text(original)
+        # a back-link that does not name this worktree is also refused
+        original_back = (entry / 'gitdir').read_text()
+        (entry / 'gitdir').write_text(str(victim / '.git') + '\n')
+        self.assert_contained(linked, expect=['git: UNKNOWN'])
+        (entry / 'gitdir').write_text(original_back)
+        # and the untouched layout works
+        self.assert_contained(linked, expect=['branch: side', 'head: ' + git(main, 'rev-parse', 'HEAD')])
+
+    def test_commondir_in_a_plain_git_directory_is_refused(self):
+        self.head('ref: refs/heads/main\n')
+        (self.evil / '.git' / 'commondir').write_text('../../outside\n')
+        self.assert_contained(self.evil, expect=['git: UNKNOWN'])
+
+    def test_valid_repository_outside_the_framework_checkout_and_linked_worktree(self):
+        repo = self.sandbox / 'real'
+        git(self.sandbox, 'init', '-q', str(repo))
+        git(repo, 'commit', '-q', '--allow-empty', '-m', 'c')
+        oid = git(repo, 'rev-parse', 'HEAD')
+        self.assertFalse(str(repo).startswith(str(ROOT)))
+        self.assert_contained(repo, expect=[f'head: {oid}', 'working tree state: UNKNOWN'])
+        git(repo, 'pack-refs', '--all')
+        self.assert_contained(repo, expect=[f'head: {oid}'])
+        git(repo, 'worktree', 'add', '-q', '-b', 'wt', str(self.sandbox / 'wt'))
+        self.assert_contained(self.sandbox / 'wt', expect=['branch: wt', f'head: {oid}'])
+        git(repo, 'checkout', '-q', '--detach')
+        self.assert_contained(repo, expect=['branch: (detached)', f'head: {oid}'])
+
+    def test_untrusted_task_context_values_are_not_echoed_unsafely(self):
+        folder = self.evil / '.ai-sdlc-lite'
+        folder.mkdir()
+        (self.evil / '.git' / 'HEAD').write_text('ref: refs/heads/main\n')
+        record = {'contract': '../../canary.txt', 'checklist': '/etc/passwd', 'result': 'a/\x1b[31mred'}
+        (folder / 'task-context.json').write_text(json.dumps(record))
+        text = self.assert_contained(self.evil)
+        self.assertNotIn('\x1b', text)
+        self.assertNotIn('/etc/passwd', text)
+        self.assertEqual(text.count('active task contract: UNKNOWN'), 1)
+        self.assertIn('active task checklist: UNKNOWN', text)
+        self.assertIn('active task result: UNKNOWN', text)
+
+    def test_status_executes_no_repository_defined_program(self):
+        marker = self.sandbox / 'EXECUTED'
+        script = self.sandbox / 'hook.sh'
+        script.write_text(f'#!/bin/sh\ntouch {marker}\n')
+        script.chmod(0o755)
+        repo = self.sandbox / 'hostile'
+        git(self.sandbox, 'init', '-q', str(repo))
+        git(repo, 'commit', '-q', '--allow-empty', '-m', 'c')
+        config = repo / '.git' / 'config'
+        config.write_text(config.read_text() + f'[core]\n\tfsmonitor = {script}\n\thooksPath = {self.sandbox}\n')
+        hooks = repo / '.git' / 'hooks'
+        hooks.mkdir(exist_ok=True)
+        (hooks / 'reference-transaction').write_text(f'#!/bin/sh\ntouch {marker}\n')
+        (hooks / 'reference-transaction').chmod(0o755)
+        with tempfile.TemporaryDirectory() as empty:  # no git on PATH at all
+            self.assert_contained(repo, expect=['head: '], PATH=empty)
+        self.assertFalse(marker.exists(), 'a repository-defined program ran')
+
+    def test_validators_unit_table(self):
+        from ai_sdlc import cli
+        self.assertTrue(cli._oid_ok('0' * 40) and cli._oid_ok('f' * 64))
+        for bad in ('', 'F' * 40, 'f' * 41, 'g' * 40, None, 5, ' ' + 'a' * 39, 'a' * 39 + '\n'):
+            self.assertFalse(cli._oid_ok(bad), repr(bad))
+        for good in ('refs/heads/main', 'refs/heads/feature/x-1', 'refs/tags/v1.0', 'refs/remotes/origin/main'):
+            self.assertTrue(cli._ref_ok(good), good)
+        for bad in ('', None, 'refs', '/refs/heads/x', 'refs/heads/../x', 'refs/heads//x', 'refs/heads/x/'):
+            self.assertFalse(cli._ref_ok(bad), repr(bad))
+        self.assertIsNone(cli._read_regular(self.sandbox, '..', 'x'))
+        self.assertIsNone(cli._read_regular(self.sandbox, 'a/b'))
+        self.assertIsNone(cli._read_regular(self.sandbox, 'evil'))  # a directory, not a regular file
+        self.assertIsNone(cli._read_regular(self.sandbox))
+
+
 class CliSourceGuards(unittest.TestCase):
     FILES = ('__init__.py', '__main__.py', 'cli.py')
-    STDLIB = {'json', 'os', 'subprocess', 'sys', 'pathlib', 'shutil', '__future__', 'ai_sdlc'}
+    STDLIB = {'json', 'os', 'stat', 'subprocess', 'sys', 'pathlib', 'shutil', '__future__', 'ai_sdlc'}
 
     def trees(self, **kwargs):
         for name in self.FILES:

@@ -11,10 +11,15 @@ Boundaries (honest):
   * Passthrough never executes commands named in a result contract (the verifier does not either).
   * doctor and status write nothing and use no network. status never invokes Git, because Git configuration
     can name programs to run; it reads a few plain files instead.
+  * status treats every byte of the target repository's Git metadata as untrusted. It prints only a branch name
+    that passed strict ref-name validation and an object id that is 40 or 64 lowercase hex digits. Anything else
+    is reported as UNKNOWN, and file contents are never echoed. Reads are limited to regular, non-symlink files
+    below a validated Git directory.
 """
 
 import json
 import os
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -34,13 +39,14 @@ REQUIRED_FILES = (
     '.agents/skills/ai-sdlc-lite/SKILL.md',
 )
 MIN_PYTHON = (3, 9)
-CONTEXT = Path('.ai-sdlc-lite') / 'task-context.json'
 USAGE = (
     'usage: python3 -m ai_sdlc <command> [args]\n'
     '  verify|baseline|seal|codes   run scripts/verify_scope.py with the same arguments\n'
     '  doctor                       read-only environment and framework check\n'
     '  status [--repo PATH]         read-only HEAD and active-task report\n'
 )
+HEX = frozenset('0123456789abcdef')
+BAD_REF_CHARS = frozenset(' \\:?[^~*\x7f')
 
 
 def _err(text):
@@ -122,43 +128,146 @@ def _doctor():
     return 2 if failed else 0
 
 
-def _read_text(path, limit=4096):
+# ---- untrusted Git metadata: strict validation and contained reads ---------------------------------------------
+
+def _oid_ok(text):
+    """A Git object id: exactly 40 (SHA-1) or 64 (SHA-256) lowercase hexadecimal characters, nothing else."""
+    return isinstance(text, str) and len(text) in (40, 64) and all(c in HEX for c in text)
+
+
+def _ref_ok(ref):
+    """A safe full ref name such as refs/heads/main. Rejects absolute, traversal and malformed names."""
+    if not isinstance(ref, str) or not ref.startswith('refs/') or len(ref) > 256 or '@{' in ref:
+        return False
+    for part in ref.split('/'):
+        if part in ('', '.', '..') or part.startswith('.') or part.endswith('.lock'):
+            return False
+        if any(ord(c) < 32 or c in BAD_REF_CHARS for c in part):
+            return False
+    return True
+
+
+def _safe_dir(path):
+    """A real directory that is not a symlink (checked with lstat, never following links)."""
     try:
-        with open(path, 'r', encoding='utf-8', errors='replace') as handle:
-            return handle.read(limit)
+        return stat.S_ISDIR(os.lstat(str(path)).st_mode)
+    except OSError:
+        return False
+
+
+def _read_regular(base, *parts, limit=4096):
+    """Read up to `limit` bytes (decoded) of the regular file base/parts, or None.
+
+    Every component below `base` must be a real directory or, for the last one, a regular file: symlinks are
+    refused at every level, FIFOs and devices are refused, and the resolved path must stay inside `base`.
+    `parts` must be plain names (never separators, '.' or '..').
+    """
+    if not parts or any((not p) or p in ('.', '..') or '/' in p or '\\' in p or '\x00' in p for p in parts):
+        return None
+    try:
+        current = Path(base)
+        for part in parts[:-1]:
+            current = current / part
+            if not _safe_dir(current):
+                return None
+        target = current / parts[-1]
+        if not stat.S_ISREG(os.lstat(str(target)).st_mode):
+            return None
+        real_base = os.path.realpath(str(base))
+        real_target = os.path.realpath(str(target))
+        if os.path.commonpath([real_base, real_target]) != real_base:
+            return None
+        flags = os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0)
+        fd = os.open(str(target), flags)
+        try:
+            if not stat.S_ISREG(os.fstat(fd).st_mode):
+                return None
+            data = os.read(fd, limit)
+        finally:
+            os.close(fd)
+    except (OSError, ValueError):
+        return None
+    return data.decode('utf-8', errors='replace')
+
+
+def _first_line(text):
+    lines = (text or '').splitlines()
+    return lines[0].strip() if lines else ''
+
+
+def _norm(path):
+    return Path(os.path.normpath(str(path)))
+
+
+def _locate_git(repo):
+    """Return (git_dir, common_dir) after structural validation, or None (UNKNOWN). Never invokes Git.
+
+    Accepts a `.git` directory, or a `.git` pointer file (`gitdir: PATH`, as used by linked worktrees and
+    submodules). The target must itself be a real directory that looks like a Git directory. A `commondir` file is
+    honoured only for the exact linked-worktree layout <common>/worktrees/<name> with a matching back-link.
+    """
+    dot = repo / '.git'
+    try:
+        mode = os.lstat(str(dot)).st_mode
     except OSError:
         return None
+    if stat.S_ISDIR(mode):
+        git_dir = dot
+    elif stat.S_ISREG(mode):
+        line = _first_line(_read_regular(repo, '.git', limit=1024))
+        if not line.startswith('gitdir:'):
+            return None
+        target = line[len('gitdir:'):].strip()
+        if not target or any(ord(c) < 32 or ord(c) == 127 for c in target):
+            return None
+        pointed = Path(target)
+        git_dir = _norm(pointed if pointed.is_absolute() else repo / pointed)
+    else:
+        return None
+    if not _safe_dir(git_dir) or _read_regular(git_dir, 'HEAD', limit=1) is None:
+        return None
+    common_text = _read_regular(git_dir, 'commondir', limit=1024)
+    if common_text is None:
+        return (git_dir, git_dir) if _safe_dir(git_dir / 'objects') else None
+    common = _norm(git_dir / _first_line(common_text))
+    if (git_dir.parent.name != 'worktrees' or common != _norm(git_dir.parent.parent) or not _safe_dir(common)
+            or not _safe_dir(common / 'objects')):
+        return None
+    backlink = _first_line(_read_regular(git_dir, 'gitdir', limit=1024))
+    if not backlink or os.path.realpath(backlink) != os.path.realpath(str(repo / '.git')):
+        return None
+    return git_dir, common
 
 
-def _git_dir(repo):
-    """Locate the git directory by reading plain files only (a directory, or a `gitdir:` pointer file)."""
-    dot = repo / '.git'
-    if dot.is_dir():
-        return dot
-    if dot.is_file():
-        text = _read_text(dot) or ''
-        if text.startswith('gitdir:'):
-            target = Path(text[len('gitdir:'):].strip())
-            return target if target.is_absolute() else (repo / target)
-    return None
-
-
-def _resolve_ref(git_dir, ref):
-    text = _read_text(git_dir / ref)
-    if text is None:
-        common = _read_text(git_dir / 'commondir')
-        if common:
-            base = git_dir / common.strip()
-            text = _read_text(base / ref)
-            git_dir = base
-    if text and text.strip():
-        return text.strip().split()[0]
-    packed = _read_text(git_dir / 'packed-refs', limit=1 << 20) or ''
+def _resolve_ref(git_dir, common, ref):
+    """Resolve a validated ref to a validated object id using loose files, then packed-refs; else None."""
+    parts = ref.split('/')
+    for base in (git_dir, common) if git_dir != common else (git_dir,):
+        text = _read_regular(base, *parts, limit=256)
+        if text is not None:
+            value = _first_line(text)
+            return value if _oid_ok(value) else None
+    packed = _read_regular(common, 'packed-refs', limit=1 << 20) or ''
     for line in packed.splitlines():
-        parts = line.split()
-        if len(parts) == 2 and parts[1] == ref and not line.startswith('#'):
-            return parts[0]
+        if line.startswith(('#', '^')):
+            continue
+        fields = line.split()
+        if len(fields) == 2 and fields[1] == ref and _oid_ok(fields[0]):
+            return fields[0]
     return None
+
+
+def _safe_pointer(value):
+    """A repository-relative path text that is safe to print: no absolute form, traversal or control characters."""
+    if not isinstance(value, str) or not value or len(value) > 512:
+        return None
+    if value[0] in '/\\' or (len(value) > 1 and value[1] == ':'):
+        return None
+    if any(ord(c) < 32 or ord(c) == 127 for c in value):
+        return None
+    if any(part in ('', '.', '..') for part in value.replace('\\', '/').split('/')):
+        return None
+    return value
 
 
 def _status(rest):
@@ -172,35 +281,36 @@ def _status(rest):
             return 2
     repo = repo.resolve()
     lines = [f'repository: {repo}']
-    git_dir = _git_dir(repo) if repo.is_dir() else None
-    if git_dir is None:
-        lines.append('git: UNKNOWN (no readable .git found; Git was not invoked)')
-        branch = head = None
+    located = _locate_git(repo) if repo.is_dir() else None
+    if located is None:
+        lines.append('git: UNKNOWN (no safely readable Git directory; Git was not invoked)')
     else:
-        text = (_read_text(git_dir / 'HEAD') or '').strip()
-        if text.startswith('ref:'):
-            ref = text[4:].strip()
-            branch = ref[len('refs/heads/'):] if ref.startswith('refs/heads/') else ref
-            head = _resolve_ref(git_dir, ref)
-        elif len(text) in (40, 64) and all(c in '0123456789abcdef' for c in text):
-            branch, head = '(detached)', text
-        else:
-            branch = head = None
-        lines.append(f'branch: {branch if branch else "UNKNOWN"}')
+        git_dir, common = located
+        line = _first_line(_read_regular(git_dir, 'HEAD', limit=512))
+        branch = head = None
+        if line.startswith('ref:'):
+            ref = line[len('ref:'):].strip()
+            if _ref_ok(ref):
+                branch = ref[len('refs/heads/'):] if ref.startswith('refs/heads/') else ref
+                head = _resolve_ref(git_dir, common, ref)
+        elif _oid_ok(line):
+            branch, head = '(detached)', line
+        lines.append(f'branch: {branch if branch else "UNKNOWN (HEAD is malformed or not safe to follow)"}')
         lines.append(f'head: {head if head else "UNKNOWN"}')
     lines.append('working tree state: UNKNOWN (not inspected; Git is not invoked)')
-    context = repo / CONTEXT
-    if any(part.is_symlink() for part in (repo / '.ai-sdlc-lite', context)):
+    folder, context = repo / '.ai-sdlc-lite', repo / '.ai-sdlc-lite' / 'task-context.json'
+    if folder.is_symlink() or context.is_symlink():
         lines.append('active task: UNKNOWN (task-context path is a symlink; not read)')
     elif context.is_file():
+        text = _read_regular(repo, '.ai-sdlc-lite', 'task-context.json', limit=1 << 16)
         try:
-            record = json.loads(_read_text(context, 1 << 16) or '')
+            record = json.loads(text) if text is not None else None
         except ValueError:
             record = None
         if isinstance(record, dict):
             for key in ('contract', 'checklist', 'result'):
-                value = record.get(key)
-                lines.append(f'active task {key}: {value if isinstance(value, str) and value else "UNKNOWN"}')
+                value = _safe_pointer(record.get(key))
+                lines.append(f'active task {key}: {value if value else "UNKNOWN"}')
             lines.append('task approval: UNVERIFIED (a pointer is not an approval)')
         else:
             lines.append('active task: UNKNOWN (task-context file is not a JSON object)')
