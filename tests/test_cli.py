@@ -580,9 +580,158 @@ class CliGitMetadata(base_tests.Fixture):
         self.assertIsNone(cli._read_regular(self.sandbox))
 
 
+UNSAFE_CHARS = {
+    'U+009B C1 CSI': '\u009b', 'U+0085 NEL': '\u0085', 'U+2028 line separator': '\u2028',
+    'U+2029 paragraph separator': '\u2029', 'U+202E right-to-left override': '\u202e', 'U+200B zero-width space': '\u200b',
+    'U+001B ESC': '\x1b', 'U+0007 BEL': '\x07', 'U+007F DEL': '\x7f', 'U+200F RLM': '\u200f', 'U+2066 LRI': '\u2066',
+    'U+FEFF BOM': '\ufeff', 'U+E0041 tag letter': '\U000e0041', 'U+E000 private use': '\ue000', 'U+FFFD replacement': '\ufffd',
+    'U+00A0 no-break space': '\u00a0', 'U+2002 en space': '\u2002', 'U+2003 em space': '\u2003', 'U+202F narrow nbsp': '\u202f',
+    'U+205F medium math space': '\u205f', 'U+3000 ideographic space': '\u3000', 'U+1680 ogham space': '\u1680',
+    'U+180E mongolian vowel separator': '\u180e', 'U+2060 word joiner': '\u2060', 'U+00AD soft hyphen': '\u00ad',
+}
+SAFE_BRANCHES = ('feature/\u00fcn\u00efcode', 'rama/\u65e5\u672c\u8a9e', '\u0432\u0435\u0442\u043a\u0430', 'caf\u00e9', 'cafe\u0301',
+                 'x-\U0001f642', 'fix/\u0627\u062e\u062a\u0628\u0627\u0631')
+
+
+class CliUnicodeDisplay(base_tests.Fixture):
+    """Branch names, task pointers and paths come from untrusted repositories: unsafe text must never reach the
+    terminal (stdout or stderr); ordinary Unicode must keep working."""
+
+    def setUp(self):
+        super().setUp()
+        self.target = self.meta / 'target'
+        (self.target / '.git' / 'objects').mkdir(parents=True)
+        (self.target / '.git' / 'refs' / 'heads').mkdir(parents=True)
+
+    def run_status(self, repo=None, **env):
+        code, out, err = run_cli('status', '--repo', str(repo or self.target), env=cli_env(**env))
+        self.assertEqual((code, err), (0, b''))
+        return out.decode('utf-8', errors='strict')
+
+    def set_head(self, ref):
+        (self.target / '.git' / 'HEAD').write_bytes(f'ref: {ref}\n'.encode('utf-8', errors='surrogatepass'))
+
+    def set_context(self, **values):
+        folder = self.target / '.ai-sdlc-lite'
+        folder.mkdir(exist_ok=True)
+        record = {'contract': 'tasks/T/TASK.md', 'checklist': 'tasks/T/CHECKLIST.md', 'result': 'tasks/T/RESULT.md'}
+        record.update(values)
+        (folder / 'task-context.json').write_text(json.dumps(record))
+
+    def test_unsafe_characters_in_branch_names_are_never_printed(self):
+        self.set_head('refs/heads/main')
+        for label, char in UNSAFE_CHARS.items():
+            for template in ('refs/heads/a{c}b', 'refs/heads/{c}lead', 'refs/heads/trail{c}', 'refs/heads/dir/{c}/leaf'):
+                with self.subTest(char=label, template=template):
+                    self.set_head(template.format(c=char))
+                    text = self.run_status()
+                    self.assertNotIn(char, text)
+                    self.assertIn('branch: UNKNOWN', text)
+                    self.assertIn('head: UNKNOWN', text)
+
+    def test_unsafe_characters_in_task_context_are_never_printed(self):
+        self.set_head('refs/heads/main')
+        for label, char in UNSAFE_CHARS.items():
+            for key in ('contract', 'checklist', 'result'):
+                with self.subTest(char=label, key=key):
+                    self.set_context(**{key: f'tasks/a{char}b.md'})
+                    text = self.run_status()
+                    self.assertNotIn(char, text)
+                    self.assertIn(f'active task {key}: UNKNOWN', text)
+
+    def test_lone_surrogates_are_rejected_in_context_and_branch(self):
+        self.set_head('refs/heads/main')
+        (self.target / '.ai-sdlc-lite').mkdir()
+        # JSON text with an escaped lone surrogate, which Python decodes to a str that cannot be encoded
+        (self.target / '.ai-sdlc-lite' / 'task-context.json').write_text(
+            '{"contract": "tasks/a\\ud800b.md", "checklist": "\\udc80", "result": "ok/RESULT.md"}')
+        text = self.run_status()
+        self.assertIn('active task contract: UNKNOWN', text)
+        self.assertIn('active task checklist: UNKNOWN', text)
+        self.assertIn('active task result: ok/RESULT.md', text)
+        # the invalid UTF-8 encoding of a surrogate inside HEAD
+        (self.target / '.git' / 'HEAD').write_bytes(b'ref: refs/heads/a\xed\xa0\x80b\n')
+        text = self.run_status()
+        self.assertIn('branch: UNKNOWN', text)
+        self.assertNotIn('\ufffd', text)
+        # in-process: a str holding a surrogate is unsafe, and printing never raises
+        from ai_sdlc import cli
+        self.assertFalse(cli._display_safe('a\ud800b'))
+        self.assertFalse(cli._ref_ok('refs/heads/a\ud800b'))
+        self.assertIsNone(cli._safe_pointer('tasks/\ud800'))
+
+    def test_ordinary_unicode_branch_names_still_work(self):
+        for name in SAFE_BRANCHES:
+            with self.subTest(branch=name):
+                self.set_head(f'refs/heads/{name}')
+                self.assertIn(f'branch: {name}\n', self.run_status())
+
+    def test_ordinary_unicode_and_spaces_in_task_pointers_still_work(self):
+        self.set_head('refs/heads/main')
+        for value in ('tasks/\u65e5\u672c\u8a9e/TASK.md', 'tasks/my docs/TASK.md', 'tasks/caf\u00e9/\u00fc.md', 'a\U0001f642/b.md'):
+            with self.subTest(value=value):
+                self.set_context(contract=value)
+                self.assertIn(f'active task contract: {value}\n', self.run_status())
+        for value in (' tasks/x.md', 'tasks/x.md ', '  ', 'tasks//x.md', './x.md'):
+            with self.subTest(rejected=value):
+                self.set_context(contract=value)
+                self.assertIn('active task contract: UNKNOWN', self.run_status())
+
+    def test_unsafe_repository_path_is_escaped_not_printed(self):
+        base = self.meta / 'paths'
+        base.mkdir()
+        for label, char in (('ESC', '\x1b'), ('RLO', '\u202e'), ('CSI', '\u009b'), ('NEL', '\u0085')):
+            with self.subTest(char=label):
+                repo = base / f'r{char}x'
+                try:
+                    (repo / '.git' / 'objects').mkdir(parents=True)
+                except (OSError, ValueError):
+                    self.skipTest('filesystem rejects the name')
+                (repo / '.git' / 'HEAD').write_text('ref: refs/heads/main\n')
+                text = self.run_status(repo)
+                self.assertNotIn(char, text)
+                self.assertIn('repository: ', text)
+                self.assertIn('branch: main', text)
+
+    def test_unencodable_output_is_escaped_without_a_traceback(self):
+        self.set_head('refs/heads/feature/\u00fcn\u00ef')
+        code, out, err = run_cli('status', '--repo', str(self.target), env=cli_env(PYTHONIOENCODING='ascii'))
+        self.assertEqual((code, err), (0, b''))
+        self.assertIn(b'branch: feature/\\xfcn\\xef', out)
+
+    def test_unicode_separators_do_not_alter_how_metadata_is_parsed(self):
+        oid = 'a' * 40
+        self.set_head('refs/heads/main')
+        packed = self.target / '.git' / 'packed-refs'
+        for sep in ('\u00a0', '\u3000', '\u2003', '\t', '  '):
+            with self.subTest(separator=repr(sep)):
+                packed.write_text(f'{oid}{sep}refs/heads/main\n')
+                self.assertIn('head: UNKNOWN', self.run_status())
+        packed.write_text(f'{oid} refs/heads/main\n')
+        self.assertIn(f'head: {oid}', self.run_status())
+        for tail in ('\u2028', '\u2029', '\u0085', '\u3000', '\u205f'):
+            with self.subTest(tail=repr(tail)):
+                self.set_head(f'refs/heads/main{tail}')
+                text = self.run_status()
+                self.assertIn('branch: UNKNOWN', text)
+                self.assertNotIn(tail, text)
+
+    def test_display_rules_unit_table(self):
+        from ai_sdlc import cli
+        for label, char in UNSAFE_CHARS.items():
+            self.assertFalse(cli._display_safe(f'a{char}b'), label)
+            self.assertFalse(cli._ref_ok(f'refs/heads/a{char}b'), label)
+            self.assertIsNone(cli._safe_pointer(f'a{char}b'), label)
+        for name in SAFE_BRANCHES:
+            self.assertTrue(cli._display_safe(name), name)
+            self.assertTrue(cli._ref_ok('refs/heads/' + name), name)
+        self.assertTrue(cli._display_safe('plain text with spaces'))
+        self.assertFalse(cli._display_safe(None))
+
+
 class CliSourceGuards(unittest.TestCase):
     FILES = ('__init__.py', '__main__.py', 'cli.py')
-    STDLIB = {'json', 'os', 'stat', 'subprocess', 'sys', 'pathlib', 'shutil', '__future__', 'ai_sdlc'}
+    STDLIB = {'json', 'os', 'stat', 'subprocess', 'sys', 'pathlib', 'shutil', 'unicodedata', '__future__', 'ai_sdlc'}
 
     def trees(self, **kwargs):
         for name in self.FILES:

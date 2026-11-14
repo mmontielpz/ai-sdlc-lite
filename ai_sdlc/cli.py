@@ -14,7 +14,9 @@ Boundaries (honest):
   * status treats every byte of the target repository's Git metadata as untrusted. It prints only a branch name
     that passed strict ref-name validation and an object id that is 40 or 64 lowercase hex digits. Anything else
     is reported as UNKNOWN, and file contents are never echoed. Reads are limited to regular, non-symlink files
-    below a validated Git directory.
+    below a validated Git directory. Externally sourced display text (branch names, task pointers) containing
+    control, format, surrogate, private-use, line or paragraph separator, replacement or non-ASCII space characters
+    is never printed; look-alike letters from different scripts are not detected.
 """
 
 import json
@@ -22,6 +24,7 @@ import os
 import stat
 import subprocess
 import sys
+import unicodedata
 from pathlib import Path
 
 __all__ = ['main', 'ROOT', 'VERIFIER']
@@ -47,6 +50,9 @@ USAGE = (
 )
 HEX = frozenset('0123456789abcdef')
 BAD_REF_CHARS = frozenset(' \\:?[^~*\x7f')
+# Unicode general categories that can drive a terminal or spoof output: control, format (zero-width, bidi, tags),
+# surrogate, private use, line and paragraph separators, and space separators (checked separately for U+0020).
+UNSAFE_CATEGORIES = frozenset(('Cc', 'Cf', 'Cs', 'Co', 'Zl', 'Zp', 'Zs'))
 
 
 def _err(text):
@@ -142,7 +148,20 @@ def _ref_ok(ref):
     for part in ref.split('/'):
         if part in ('', '.', '..') or part.startswith('.') or part.endswith('.lock'):
             return False
-        if any(ord(c) < 32 or c in BAD_REF_CHARS for c in part):
+        if any(ord(c) < 32 or c in BAD_REF_CHARS for c in part) or not _display_safe(part):
+            return False
+    return True
+
+
+def _display_safe(text):
+    """True if `text` may be printed: no control, format, surrogate, private-use, separator or replacement
+    characters. Ordinary text in any script is allowed, and so is the plain ASCII space (other spaces are not)."""
+    if not isinstance(text, str):
+        return False
+    for char in text:
+        if char == ' ':
+            continue
+        if char == '\ufffd' or unicodedata.category(char) in UNSAFE_CATEGORIES:
             return False
     return True
 
@@ -191,8 +210,9 @@ def _read_regular(base, *parts, limit=4096):
 
 
 def _first_line(text):
-    lines = (text or '').splitlines()
-    return lines[0].strip() if lines else ''
+    """First line, split on LF only and trimmed of ASCII blanks only. str.splitlines()/strip() would treat Unicode
+    separators (U+0085, U+2028, U+3000 ...) as line breaks or padding and silently shorten an unsafe name."""
+    return (text or '').split('\n', 1)[0].strip(' \t\r')
 
 
 def _norm(path):
@@ -217,7 +237,7 @@ def _locate_git(repo):
         line = _first_line(_read_regular(repo, '.git', limit=1024))
         if not line.startswith('gitdir:'):
             return None
-        target = line[len('gitdir:'):].strip()
+        target = line[len('gitdir:'):].strip(' ')
         if not target or any(ord(c) < 32 or ord(c) == 127 for c in target):
             return None
         pointed = Path(target)
@@ -248,10 +268,10 @@ def _resolve_ref(git_dir, common, ref):
             value = _first_line(text)
             return value if _oid_ok(value) else None
     packed = _read_regular(common, 'packed-refs', limit=1 << 20) or ''
-    for line in packed.splitlines():
+    for line in packed.split('\n'):
         if line.startswith(('#', '^')):
             continue
-        fields = line.split()
+        fields = line.rstrip('\r').split(' ')
         if len(fields) == 2 and fields[1] == ref and _oid_ok(fields[0]):
             return fields[0]
     return None
@@ -263,11 +283,20 @@ def _safe_pointer(value):
         return None
     if value[0] in '/\\' or (len(value) > 1 and value[1] == ':'):
         return None
-    if any(ord(c) < 32 or ord(c) == 127 for c in value):
+    if not _display_safe(value) or value != value.strip(' '):
         return None
     if any(part in ('', '.', '..') for part in value.replace('\\', '/').split('/')):
         return None
     return value
+
+
+def _emit(text):
+    """Write to stdout; if the stream cannot encode the (already validated) text, write an ASCII-escaped form.
+    Never raises with the text in an error message."""
+    try:
+        sys.stdout.write(text)
+    except UnicodeEncodeError:
+        sys.stdout.write(text.encode('ascii', 'backslashreplace').decode('ascii'))
 
 
 def _status(rest):
@@ -280,7 +309,8 @@ def _status(rest):
             _err('usage: python3 -m ai_sdlc status [--repo PATH]')
             return 2
     repo = repo.resolve()
-    lines = [f'repository: {repo}']
+    shown = str(repo) if _display_safe(str(repo)) else str(repo).encode('unicode_escape').decode('ascii')
+    lines = [f'repository: {shown}']
     located = _locate_git(repo) if repo.is_dir() else None
     if located is None:
         lines.append('git: UNKNOWN (no safely readable Git directory; Git was not invoked)')
@@ -289,7 +319,7 @@ def _status(rest):
         line = _first_line(_read_regular(git_dir, 'HEAD', limit=512))
         branch = head = None
         if line.startswith('ref:'):
-            ref = line[len('ref:'):].strip()
+            ref = line[len('ref:'):].strip(' ')
             if _ref_ok(ref):
                 branch = ref[len('refs/heads/'):] if ref.startswith('refs/heads/') else ref
                 head = _resolve_ref(git_dir, common, ref)
@@ -316,7 +346,7 @@ def _status(rest):
             lines.append('active task: UNKNOWN (task-context file is not a JSON object)')
     else:
         lines.append('active task: NOT INITIALIZED (non-blocking)')
-    sys.stdout.write('\n'.join(lines) + '\n')
+    _emit('\n'.join(lines) + '\n')
     return 0
 
 
