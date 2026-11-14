@@ -335,3 +335,7 @@ protections are not created by this candidate. Document a main URL only after th
 branch exists and is verified. For repeatable installation, pin a reviewed public
 commit; no new release or tag is implied. Codex runtime installation and unattended
 operation remain unqualified.
+
+## Offline delivery planner
+
+`python3 -B -m ai_sdlc delivery plan|verify|report --repo PATH --input FILE` provides deterministic provider-neutral Git delivery preflight. See [ai-sdlc-delivery/1](docs/DELIVERY_CONTRACT.md) for the JSON request, sealed plan, status codes and supported repository layouts. Store plan output outside the target checkout. Verification detects changed HEAD, branch, file inventory, configuration and index. These commands perform no Git mutations, subprocess execution, network requests or inference. A plan digest proves integrity, never authorization; local READY does not establish future write permission or remote delivery readiness.

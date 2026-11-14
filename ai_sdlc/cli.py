@@ -50,6 +50,7 @@ USAGE = (
     '  doctor                       read-only environment and framework check\n'
     '  status [--repo PATH]         read-only HEAD and active-task report\n'
     '  adapter list|validate|matrix read-only provider adapter declarations (see adapters/README.md)\n'
+    '  delivery plan|verify|report read-only delivery preflight (docs/DELIVERY_CONTRACT.md)\n'
     '  init --repo PATH            preview offline Skill setup; --apply to write; --check to verify\n'
 )
 HEX = frozenset('0123456789abcdef')
@@ -375,6 +376,9 @@ def main(argv=None):
     if command == 'adapter':
         from ai_sdlc import adapters  # imported lazily so the other commands are unaffected
         return adapters.main(rest)
+    if command == 'delivery':
+        from ai_sdlc import delivery
+        return delivery.main(rest)
     if command == 'init':
         from ai_sdlc import initializer
         return initializer.main(rest)
