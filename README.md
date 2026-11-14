@@ -88,7 +88,7 @@ Then use the copy-ready request in [Quickstart](#quickstart). Task initializatio
 
 The [installer](scripts/install_skill.py) resolves the target Git root, reports existing changes, previews every destination and SHA-256, and writes only inside `.agents/skills/ai-sdlc-lite/`. Add `--dry-run` to preview without writing. A framework target, conflicting installation, or symlink in the installation path is refused. Matching repeat installations do not rewrite files; automatic upgrades are not supported.
 
-The installed entry point links to `framework/`, containing byte-preserved canonical documents, their local link dependencies, and the MIT license. Linked examples and historical evidence are reference material, not additional instructions to execute. Existing target instructions and active records remain untouched. Agree on task/result paths outside the bundle; the manual adoption steps below remain available when adapting templates.
+The installed entry point links to `framework/`, containing canonical references, their local link dependencies, and the MIT license. Reusable result content comes from [templates/RESULT.md](templates/RESULT.md), with its README link rebased for the backward-compatible `framework/RESULT.md` path. The mutable root RESULT.md is never bundled or used to initialize a task. Other reference bytes are preserved. Linked examples and historical evidence are reference material, not additional instructions to execute. Existing target instructions and active records remain untouched. Agree on task/result paths outside the bundle; the manual adoption steps below remain available when adapting templates.
 
 `READY` after installation means the references are present and the installed Copilot CLI discovers this enabled project Skill. It does not establish task approval, sandbox enforcement, successful coding, or zero permission prompts. Missing CLI or failed discovery reports `BLOCKED` and leaves installed files available for inspection or rollback. Use `--check` for a non-writing workspace and installed-manifest check, and `/skills info ai-sdlc-lite` in the target session. The installer reports root and parent `AGENTS.md` locations without reading or changing their contents, target writability, task-context paths and the launch command. Detection does not establish that Copilot loads an ancestor file. CLI behavior depends on version and policy. Default installation changes no permissions or global configuration and runs no packages, builds, tests or inference.
 
@@ -112,7 +112,7 @@ For development preflight, ask the agent to report the target snapshot, allowed 
 
 Keep task approval, CLI tool authorization, workspace access, sandbox enforcement and delivery acceptance distinct. Within the approved plan, proceed with supported routine operations without repeated BOV approvals; respect operational prompts and restrictions. Production access/deployment, secrets or credentials, new dependencies, destructive work outside task-owned temporary paths, Git push, publication/release and scope expansion need explicit authorization for that action. Routine plan approval does not imply it.
 
-An optional narrow permission setup is available for Copilot CLI 1.0.109. Its configuration behavior is tested; authenticated command matching, runtime confinement and prompt reduction remain unqualified. The native Skill is unchanged because `.agents` is read-only in the inspected environment; use the document-based guidance above. No filesystem restriction is bypassed.
+An optional narrow permission setup is available for Copilot CLI 1.0.109. Its configuration behavior is tested; authenticated command matching, runtime confinement and prompt reduction remain unqualified. Historical observation from the earlier inspected environment: the native Skill was unchanged because `.agents` was read-only. The consolidated Skill now references `templates/RESULT.md`; the document-based guidance above remains available. No filesystem restriction is bypassed.
 
 ### Opt in to reviewed development operations
 
@@ -165,7 +165,7 @@ Uninstall and configuration rollback validate the target and their own ownership
 
 ### Manual document adoption
 
-1. Open the target repository and review its existing instructions and working changes. Copy or adapt [TASK.md](TASK.md), [CHECKLIST.md](CHECKLIST.md), and [RESULT.md](RESULT.md) into its root, preserving any existing files with those names. Use another agreed location if needed, and tell the agent the exact paths.
+1. Open the target repository and review its existing instructions and working changes. Copy or adapt [TASK.md](TASK.md), [CHECKLIST.md](CHECKLIST.md), and the reusable [result template](templates/RESULT.md) into agreed active task paths, preserving existing files. Root RESULT.md may contain historical execution evidence and is not a template source. Tell the agent the exact paths.
 2. Review [AGENTS.md](AGENTS.md). If the target already has agent instructions, merge the relevant guidance into them; never overwrite existing AGENTS.md instructions. Resolve conflicts with the project owner. If none exists, adapt this AGENTS.md to the project. Keep applicable license notices when copying project material; examples and other foundation documents are not required for adoption.
 3. Keep one active task/result pair. Before reusing it, preserve the completed pair and its evidence under a task-specific directory, such as `tasks/SMALL-FIX-001/`, or in version history. Retain approval references, checked revisions, and verification evidence together; do not overwrite prior results or commit secrets.
 
@@ -272,3 +272,19 @@ AI-SDLC Lite is an independent adaptation informed by [Anthropic's AI-Native SDL
 Design lessons also came from the local FOB (Fix One, Break One) AI-SDLC handoff: bounded work, human checkpoints, and evidence-based reporting. No FOB files or implementation code are included. Findings from that single project do not establish general productivity benefits.
 
 Original AI-SDLC Lite project material is available under the [MIT License](LICENSE). Referenced third-party material and trademarks remain subject to their respective owners' rights; the project license does not relicense them.
+
+## Canonical development candidate
+
+The canonical repository is https://github.com/mmontielpz/ai-sdlc-lite.
+This local candidate adds offline scope verification, declarative Codex/Godot adapters,
+and reusable result-template isolation. Its inclusion here does not imply a release or runtime qualification.
+Technical adapter boundaries are described in [the configuration reference](docs/qualification/CODEX-002-summary.md);
+the [architecture](ARCHITECTURE.md) and [DX proposal](DX_ARCHITECTURE.md) remain plans where labeled.
+
+The existing master raw installation URL above remains the compatibility entry point.
+The proposed governance is main for stable reviewed work, develop for integration,
+feature/* for bounded changes and experiment/* for qualification. These branches and
+protections are not created by this candidate. Document a main URL only after that
+branch exists and is verified. For repeatable installation, pin a reviewed public
+commit; no new release or tag is implied. Codex runtime installation and unattended
+operation remain unqualified.

@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ai-sdlc-godot-adapter/1",
+  "title": "AI-SDLC Lite Godot adapter configuration",
+  "description": "Declarative data. A declaration is not authorization to run anything and not proof of isolation. Rules that JSON Schema cannot express (path safety, protected-path conflicts, runner files, version constraint, approvals) are enforced by validate_adapter.py, which is the reference implementation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "project", "godot", "runners", "commands", "paths", "generated", "isolation", "evidence", "approvals"],
+  "properties": {
+    "schema": {"const": "ai-sdlc-godot-adapter/1"},
+    "project": {
+      "type": "object", "additionalProperties": false, "required": ["root", "working_directory", "detect"],
+      "properties": {"root": {"type": "string"}, "working_directory": {"type": "string"}, "detect": {"const": "project.godot"}}
+    },
+    "godot": {
+      "type": "object", "additionalProperties": false, "required": ["min_version"],
+      "properties": {"min_version": {"type": "string", "pattern": "^\\d+\\.\\d+(\\.\\d+)?$"},
+                     "max_version_exclusive": {"type": "string", "pattern": "^\\d+\\.\\d+(\\.\\d+)?$"}}
+    },
+    "runners": {
+      "type": "array",
+      "items": {"type": "object", "additionalProperties": false,
+                "required": ["id", "kind", "path", "approved", "isolation_by_runner"],
+                "properties": {"id": {"type": "string"}, "kind": {"const": "project-wrapper"}, "path": {"type": "string"},
+                               "approved": {"type": "boolean"}, "isolation_by_runner": {"type": "boolean"}}}
+    },
+    "commands": {
+      "type": "array",
+      "items": {"type": "object", "additionalProperties": false,
+                "required": ["id", "role", "runner", "args", "timeout_seconds", "writes"],
+                "properties": {"id": {"type": "string"}, "role": {"enum": ["import", "test", "gui"]}, "runner": {"type": "string"},
+                               "args": {"type": "array", "items": {"type": "string"}},
+                               "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 3600},
+                               "writes": {"type": "array", "items": {"type": "string"}},
+                               "optional": {"type": "boolean"}, "requires_display": {"type": "boolean"}}}
+    },
+    "paths": {
+      "type": "object", "additionalProperties": false, "required": ["protected", "allowed", "generated"],
+      "properties": {"protected": {"type": "array", "items": {"type": "string"}},
+                     "allowed": {"type": "array", "items": {"type": "string"}},
+                     "sensitive_allowed": {"type": "array", "items": {"type": "string"}},
+                     "generated": {"type": "array", "items": {"type": "string"}},
+                     "ignorable": {"type": "array", "items": {"type": "string"}}}
+    },
+    "generated": {"type": "object", "additionalProperties": false, "required": ["policy"],
+                  "properties": {"policy": {"enum": ["ignored", "tracked", "project-decides"]}}},
+    "isolation": {
+      "type": "object", "additionalProperties": false, "required": ["required", "profile", "disposable_workspace", "protected_user_data"],
+      "properties": {"required": {"const": true}, "profile": {"enum": ["private-home-xdg", "project-managed"]},
+                     "disposable_workspace": {"const": true},
+                     "protected_user_data": {"type": "array", "items": {"enum": ["linux-xdg-data", "linux-xdg-config", "linux-xdg-cache", "macos-app-support", "windows-appdata"]}}}
+    },
+    "evidence": {
+      "type": "object", "additionalProperties": false, "required": ["required", "store"],
+      "properties": {"required": {"type": "array", "items": {"enum": ["exit_code", "output_log", "result_line"]}},
+                     "store": {"const": "outside-repository"}, "result_line_pattern": {"type": "string", "maxLength": 200}}
+    },
+    "approvals": {
+      "type": "object", "additionalProperties": false, "required": ["execution_approved_by", "approved_revision"],
+      "properties": {"execution_approved_by": {"type": ["string", "null"]}, "approved_revision": {"type": ["string", "null"]}}
+    }
+  }
+}

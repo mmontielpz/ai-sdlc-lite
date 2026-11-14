@@ -1,0 +1,131 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ai-sdlc-codex-adapter/1",
+  "title": "Codex CLI 0.167.2 declaration (no execution authority)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "cli_version",
+    "skill_path",
+    "instruction_paths",
+    "permissions",
+    "scope",
+    "evidence"
+  ],
+  "properties": {
+    "schema": {
+      "const": "ai-sdlc-codex-adapter/1"
+    },
+    "cli_version": {
+      "const": "0.167.2"
+    },
+    "skill_path": {
+      "const": ".agents/skills/ai-sdlc-lite/SKILL.md"
+    },
+    "instruction_paths": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512
+      }
+    },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sandbox",
+        "approval_policy",
+        "additional_write_roots",
+        "bypass",
+        "automatic_review",
+        "effective_config_review_required"
+      ],
+      "properties": {
+        "sandbox": {
+          "enum": [
+            "read-only",
+            "workspace-write"
+          ]
+        },
+        "approval_policy": {
+          "enum": [
+            "on-request",
+            "never"
+          ]
+        },
+        "additional_write_roots": {
+          "const": []
+        },
+        "bypass": {
+          "const": false
+        },
+        "automatic_review": {
+          "const": false
+        },
+        "effective_config_review_required": {
+          "const": true
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allowed_paths",
+        "allowed_sensitive_paths",
+        "protected_paths"
+      ],
+      "properties": {
+        "allowed_paths": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          }
+        },
+        "allowed_sensitive_paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          }
+        },
+        "protected_paths": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "store",
+        "verifier"
+      ],
+      "properties": {
+        "format": {
+          "const": "jsonl"
+        },
+        "store": {
+          "const": "outside-project"
+        },
+        "verifier": {
+          "const": "existing-result-contract"
+        }
+      }
+    }
+  }
+}

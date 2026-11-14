@@ -1,0 +1,29 @@
+{
+  "schema": "ai-sdlc-godot-adapter/1",
+  "project": {"root": "project", "working_directory": ".", "detect": "project.godot"},
+  "godot": {"min_version": "4.3", "max_version_exclusive": "5.0"},
+  "runners": [
+    {"id": "wrapper", "kind": "project-wrapper", "path": "tools/run_godot.sh", "approved": false, "isolation_by_runner": true}
+  ],
+  "commands": [
+    {"id": "import", "role": "import", "runner": "wrapper", "args": ["--headless", "--path", ".", "--import"],
+     "timeout_seconds": 300, "writes": [".godot/**"]},
+    {"id": "smoke", "role": "test", "runner": "wrapper", "args": ["--headless", "--path", ".", "-s", "tests/run_smoke.gd"],
+     "timeout_seconds": 120, "writes": []},
+    {"id": "gui-review", "role": "gui", "runner": "wrapper", "args": ["--path", ".", "--resolution", "1280x720"],
+     "timeout_seconds": 600, "writes": [], "optional": true, "requires_display": true}
+  ],
+  "paths": {
+    "protected": ["project.godot", "export_presets.cfg", "assets/approved/**"],
+    "allowed": ["scripts/**", "scenes/**"],
+    "sensitive_allowed": [],
+    "generated": [".godot/**"],
+    "ignorable": []
+  },
+  "generated": {"policy": "ignored"},
+  "isolation": {"required": true, "profile": "private-home-xdg", "disposable_workspace": true,
+                "protected_user_data": ["linux-xdg-data", "linux-xdg-config", "linux-xdg-cache", "macos-app-support", "windows-appdata"]},
+  "evidence": {"required": ["exit_code", "output_log", "result_line"], "store": "outside-repository",
+               "result_line_pattern": "^RESULT (PASS|FAIL)"},
+  "approvals": {"execution_approved_by": null, "approved_revision": null}
+}
