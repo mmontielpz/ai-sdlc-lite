@@ -35,6 +35,23 @@ def decode_ref(raw, encoding='utf-8', code='INVALID_REF'):
         raise Rejected(code) from None
 
 
+def resolve_ref(git, ref_name):
+    """Resolve a branch ref from loose file first, then packed-refs; return SHA or None."""
+    target = git / ref_name
+    if target.exists() or target.is_symlink():
+        return decode_ref(read(target), 'ascii').strip('\n')
+    packed = git / 'packed-refs'
+    if packed.exists():
+        sha = None
+        for line in decode_ref(read(packed)).splitlines():
+            fields = line.split(' ')
+            if len(fields) == 2 and fields[1] == ref_name:
+                require(sha is None, 'INVALID_REF')
+                sha = fields[0]
+        return sha
+    return None
+
+
 def text(value):
     return isinstance(value, str) and 0 < len(value) <= 4096 and all(32 <= ord(c) < 127 for c in value)
 
@@ -208,16 +225,7 @@ def snapshot(repo, request):
     head = decode_ref(read(git / 'HEAD')).strip('\n')
     require(head == 'ref: refs/heads/' + request['expected_branch'], 'BRANCH_CHANGED')
     target = git / ('refs/heads/' + request['expected_branch'])
-    if target.exists() or target.is_symlink():
-        sha = decode_ref(read(target), 'ascii').strip('\n')
-    else:
-        sha = None
-        if (git / 'packed-refs').exists():
-            for line in decode_ref(read(git / 'packed-refs')).splitlines():
-                fields = line.split(' ')
-                if len(fields) == 2 and fields[1] == head[5:]:
-                    require(sha is None, 'INVALID_REF')
-                    sha = fields[0]
+    sha = resolve_ref(git, 'refs/heads/' + request['expected_branch'])
     require(oid(sha) and sha == request['head_sha'], 'HEAD_CHANGED')
     # Read-only permission observation; no lock-file probes or mutation attempts.
     paths = [git, git / 'objects', git / 'refs', git / 'HEAD']

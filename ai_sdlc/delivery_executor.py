@@ -105,11 +105,12 @@ class Executor:
     def _head_from_disk(self):
         # No Git execution until local config/environment has been validated.
         request = self.request
-        target = self.repo / '.git' / ('refs/heads/' + request['expected_branch'])
-        if d.present(target):
-            value = d.decode_ref(d.read(target), 'ascii', 'INVALID_SHA').strip()
-        else:
-            value = request['head_sha']  # packed baseline handled by snapshot
+        try:
+            value = d.resolve_ref(self.repo / '.git', 'refs/heads/' + request['expected_branch'])
+        except d.Rejected as error:
+            if str(error) == 'INVALID_REF':
+                raise d.Rejected('INVALID_SHA') from None
+            raise
         d.require(d.oid(value), 'INVALID_SHA')
         return value
 

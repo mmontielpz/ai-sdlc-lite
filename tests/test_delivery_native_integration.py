@@ -218,6 +218,66 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual([e['event'] for e in journal.entries], ['header', 'begin', 'end', 'begin', 'end'])
         self.assertEqual(journal.verify()['entries'], 5)
 
+    def test_committed_delivery_recovers_idempotently_after_pack_refs(self):
+        adapter = self.adapter()
+        real = adapter._run
+        blind = [False]
+
+        def blind_commit(*argv, **kw):
+            if blind[0]:
+                raise d.Rejected('GIT_OUTCOME_UNKNOWN')
+            result = real(*argv, **kw)
+            if argv[0] == 'commit':
+                blind[0] = True
+                raise d.Rejected('GIT_OUTCOME_UNKNOWN')
+            return result
+
+        with patch.object(adapter, '_run', blind_commit):
+            self.rejected(self.executor(adapter).commit, 'GIT_OUTCOME_UNKNOWN')
+        sha = self.git('rev-parse', 'HEAD').strip()
+        self.assertNotEqual(sha, self.base)
+        self.git('pack-refs', '--all')
+        self.assertFalse((self.repo / '.git' / 'refs' / 'heads' / 'feature' / 'test').exists())
+        fresh = self.reopen()
+        approvals, intents = len(self.approvals), len(self.native)
+        self.assertEqual(self.executor(fresh).commit(), sha)
+        self.assertEqual(self.executor(self.reopen()).commit(), sha)
+        self.assertEqual((len(self.approvals), len(self.native)), (approvals, intents))
+        self.assertEqual(self.git('rev-list', '--count', 'HEAD').strip(), '2')
+        self.assertEqual(self.journals[-1].unresolved(), [])
+
+    def test_ambiguous_pending_commit_after_pack_refs_stays_unresolved_without_replay(self):
+        adapter = self.adapter()
+        with self.crash_before(adapter, 'commit'):
+            with self.assertRaises(RuntimeError):
+                self.executor(adapter).commit()
+        commit_id = self.plan['digest'] + '-commit-a1'
+        sha = self.foreign_commit(b'foreign\n')
+        self.git('pack-refs', '--all')
+        fresh = self.reopen()
+        approvals, intents = len(self.approvals), len(self.native)
+        self.rejected(self.executor(fresh).commit, 'RECOVERY_AMBIGUOUS')
+        self.assertEqual((len(self.approvals), len(self.native)), (approvals, intents))
+        self.assertEqual(self.git('rev-parse', 'HEAD').strip(), sha)
+        self.assertEqual(self.git('rev-list', '--count', 'HEAD').strip(), '2')
+        self.assertEqual(self.journals[-1].unresolved(), [commit_id])
+
+    def test_detached_head_after_pack_refs_rejects_without_mutation(self):
+        adapter = self.adapter()
+        with self.crash_before(adapter, 'commit'):
+            with self.assertRaises(RuntimeError):
+                self.executor(adapter).commit()
+        commit_id = self.plan['digest'] + '-commit-a1'
+        self.git('pack-refs', '--all')
+        subprocess.run(['git', '-C', str(self.repo), 'checkout', '--detach', self.base],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        fresh = self.reopen()
+        approvals, intents = len(self.approvals), len(self.native)
+        self.rejected(self.executor(fresh).commit, 'RECOVERY_AMBIGUOUS')
+        self.assertEqual((len(self.approvals), len(self.native)), (approvals, intents))
+        self.assertEqual(self.git('rev-list', '--count', 'HEAD').strip(), '1')
+        self.assertEqual(self.journals[-1].unresolved(), [commit_id])
+
     def test_approved_branch_creation_then_delivery_on_the_new_branch(self):
         adapter = self.adapter()
         created = adapter.create_branch('host-branch-1', 'feature/native', self.base)
