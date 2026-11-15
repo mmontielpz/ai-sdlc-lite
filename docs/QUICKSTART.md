@@ -80,3 +80,16 @@ By default `verify` prints machine-readable JSON (`--format json`). Add `--forma
 | `PARTIAL` | `1` | Dirty baseline, unknown ignored baseline, or unsealed evidence when `--require-sealed` is set. |
 | `BLOCKED` | `2` | Out-of-scope, protected, test, or governance modification, missing evidence, hash mismatch, or invalid contract. |
 | `UNKNOWN` | `3` | Unreadable or invalid input (used by `delivery` preflight; `verify` fails closed as `BLOCKED` exit `2`). |
+
+## 7. Controlled Local Delivery
+
+After verification passes, create a sealed delivery plan (`operations: ["commit"]`), verify it, and execute a local-only commit with an external journal and interactive terminal confirmation:
+
+```bash
+ai-sdlc delivery plan --repo /path/to/repo --input /safe/place/delivery-request.json > /safe/place/delivery-plan.json
+ai-sdlc delivery verify --repo /path/to/repo --input /safe/place/delivery-plan.json
+ai-sdlc delivery execute --repo /path/to/repo --input /safe/place/delivery-plan.json \
+  --journal /safe/place/delivery-journal.jsonl --author-name "Owner" --author-email "owner@example.com"
+```
+
+`delivery execute` only performs the bounded local commit (no push, pull request, or remote mutation), stores the hash-chained journal outside the repository, and requires typing `YES` in an interactive terminal. Non-interactive runs and JSON-only approvals fail closed with no repository mutation.

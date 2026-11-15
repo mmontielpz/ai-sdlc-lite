@@ -15,7 +15,11 @@ from pathlib import Path
 CONTRACT = 'ai-sdlc-delivery/1'
 LIMIT = 16 * 1024 * 1024
 MAX_FILES = 10000
-USAGE = 'usage: python3 -B -m ai_sdlc delivery plan|verify|report --repo PATH --input FILE\n'
+USAGE = (
+    'usage: python3 -B -m ai_sdlc delivery plan|verify|report --repo PATH --input FILE\n'
+    '       python3 -B -m ai_sdlc delivery execute --repo PATH --input FILE --journal FILE '
+    '--author-name NAME --author-email EMAIL [--attempt 1-9]\n'
+)
 
 
 class Rejected(Exception):
@@ -286,10 +290,104 @@ def verify(repo, value):
     return result
 
 
+def _parse_execute_args(argv):
+    opts = {}
+    i = 0
+    allowed = {'--repo', '--input', '--journal', '--author-name', '--author-email', '--attempt'}
+    while i < len(argv):
+        flag = argv[i]
+        require(flag in allowed and flag not in opts and i + 1 < len(argv), 'USAGE')
+        opts[flag] = argv[i + 1]
+        i += 2
+    for required in ('--repo', '--input', '--journal', '--author-name', '--author-email'):
+        require(required in opts, 'USAGE')
+    attempt_raw = opts.get('--attempt', '1')
+    require(re.fullmatch(r'[1-9]', attempt_raw) is not None, 'INVALID_ATTEMPT')
+    return (opts['--repo'], opts['--input'], opts['--journal'],
+            opts['--author-name'], opts['--author-email'], int(attempt_raw))
+
+
+def execute_cli(argv):
+    repo, source, journal_arg, author_name, author_email, attempt = _parse_execute_args(argv)
+    identity = (author_name, author_email)
+    require(all(text(v) and not set('<>\n') & set(v) for v in identity) and '@' in author_email, 'INVALID_IDENTITY')
+
+    repo_real = safe_path(Path(repo))
+    require(repo_real.is_dir() and stat.S_ISDIR(repo_real.lstat().st_mode), 'UNSAFE_PATH')
+    require(isinstance(journal_arg, str) and bool(journal_arg.strip()) and '\0' not in journal_arg, 'JOURNAL_PATH_INVALID')
+    j_raw = Path(journal_arg).expanduser()
+    require(not j_raw.is_symlink(), 'JOURNAL_PATH_INVALID')
+    journal_path = Path(os.path.abspath(str(j_raw)))
+    require(os.path.commonpath([str(journal_path), str(repo_real)]) != str(repo_real), 'JOURNAL_INSIDE_REPOSITORY')
+    require(journal_path.parent.is_dir(), 'JOURNAL_PATH_INVALID')
+    safe_path(journal_path.parent)
+
+    value = load(source)
+    if isinstance(value, dict) and set(value) == {'plan', 'evidence'}:
+        value = value['plan']
+    result = verify(repo, value)
+    require(result['status'] == 'READY', 'PREFLIGHT_NOT_READY')
+    request = value['request']
+    require(request['operations'] == ['commit'], 'REMOTE_OPERATIONS_FORBIDDEN')
+    require(request['commit']['signing'] == 'forbidden', 'SIGNING_UNSUPPORTED')
+    require(request['base_sha'] == request['head_sha'], 'BASE_MISMATCH')
+
+    require(sys.stdin.isatty(), 'NON_INTERACTIVE_APPROVAL_REQUIRED')
+    sys.stderr.write(
+        f"Repository: {request['repository']} ({repo_real})\n"
+        f"Branch: {request['expected_branch']}\n"
+        f"HEAD: {request['head_sha']}\n"
+        f"Approved scope: {', '.join(request['authorized_files'])}\n"
+        f"Commit identity: {author_name} <{author_email}>\n"
+        f"Operation: local commit (attempt {attempt})\n"
+        "Type YES to approve local commit: "
+    )
+    sys.stderr.flush()
+    reply = sys.stdin.readline().rstrip('\r\n')
+    require(reply == 'YES', 'APPROVAL_DENIED')
+
+    from .delivery_executor import Executor
+    from .native_git import GitAdapter, Journal
+
+    with Journal(journal_path, request['repository'], repo_real) as journal:
+        adapter = GitAdapter(
+            repo_real,
+            request['repository'],
+            request['expected_branch'],
+            identity,
+            journal,
+            authorizer=lambda intent: f'cli-tty-a{attempt}' if intent.get('operation') in ('stage', 'commit') else False,
+            allow=('stage', 'commit'),
+        )
+        executor = Executor(
+            repo_real,
+            value,
+            approve=lambda intent: intent.get('operation') in ('stage', 'commit'),
+            journal=journal,
+            git_adapter=adapter,
+            attempt=attempt,
+        )
+        commit_sha = executor.commit()
+
+    output = {
+        'contract': CONTRACT,
+        'status': 'COMMITTED',
+        'plan_digest': value['digest'],
+        'commit_sha': commit_sha,
+        'branch': request['expected_branch'],
+        'journal': str(journal_path),
+        'mutations': 'LOCAL_COMMIT_ONLY',
+    }
+    print(json.dumps(output, sort_keys=True, ensure_ascii=True, allow_nan=False))
+    return 0
+
+
 def main(argv):
     try:
-        require(len(argv) == 5 and argv[0] in ('plan', 'verify', 'report')
-                and argv[1] == '--repo' and argv[3] == '--input', 'USAGE')
+        require(len(argv) >= 1 and argv[0] in ('plan', 'verify', 'report', 'execute'), 'USAGE')
+        if argv[0] == 'execute':
+            return execute_cli(argv[1:])
+        require(len(argv) == 5 and argv[1] == '--repo' and argv[3] == '--input', 'USAGE')
         command, repo, source = argv[0], argv[2], argv[4]
         value = load(source)
         if command == 'plan':
