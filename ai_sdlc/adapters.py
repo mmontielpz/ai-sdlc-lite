@@ -24,9 +24,11 @@ import sys
 import unicodedata
 from pathlib import Path
 
+from ._root import framework_root
+
 __all__ = ['main', 'ROOT', 'validate_declaration', 'load_vocabulary', 'render_matrix', 'render_matrix_json']
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = framework_root()
 SCHEMA_PARTS = ('adapters', 'adapter-contract.schema.json')
 SCHEMA_ID = 'ai-sdlc-adapter/1'
 REPORT_SCHEMA = 'ai-sdlc-adapter-report/1'

@@ -29,10 +29,12 @@ import sys
 import unicodedata
 from pathlib import Path
 
+from ._root import framework_root
+
 __all__ = ['main', 'ROOT', 'VERIFIER']
 
-# Resolved from this module's location, never from the current working directory.
-ROOT = Path(__file__).resolve().parent.parent
+# Resolved from this module's location (source checkout or bundled _framework), never from cwd.
+ROOT = framework_root()
 VERIFIER = ROOT / 'scripts' / 'verify_scope.py'
 PASSTHROUGH = ('verify', 'baseline', 'seal', 'codes')
 REQUIRED_FILES = (
@@ -305,7 +307,7 @@ def _emit(text):
 
 
 def _status(rest):
-    repo = ROOT
+    repo = Path.cwd() if ROOT == Path(__file__).resolve().parent / '_framework' else ROOT
     args = list(rest)
     if args:
         if len(args) == 2 and args[0] == '--repo':
