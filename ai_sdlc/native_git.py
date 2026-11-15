@@ -149,7 +149,7 @@ class Journal:
     }
     RECOVERY = ('RECONCILED_APPLIED', 'RECONCILED_NOT_APPLIED', 'AMBIGUOUS')
 
-    def __init__(self, path, repository, root, clock=None, repair_torn_tail=False):
+    def __init__(self, path, repository, root, clock=None, repair_torn_tail=False, create=True):
         self.repository = repository
         self.root = str(Path(os.path.abspath(str(root))))
         d.require(d.text(repository) and d.text(self.root), 'JOURNAL_INVALID')
@@ -166,9 +166,13 @@ class Journal:
         self.entries = []
         self.last = GENESIS
         self.repaired = False
-        flags = os.O_RDWR | os.O_CREAT | os.O_APPEND | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_CLOEXEC', 0)
+        flags = os.O_RDWR | os.O_APPEND | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_CLOEXEC', 0)
+        if create:
+            flags |= os.O_CREAT
         try:
             self.fd = os.open(str(path), flags, 0o600)
+        except FileNotFoundError:
+            raise d.Rejected('JOURNAL_MISSING') from None
         except OSError:
             raise d.Rejected('JOURNAL_PATH_INVALID') from None
         try:
@@ -178,7 +182,7 @@ class Journal:
                 fcntl.flock(self.fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except OSError:
                 raise d.Rejected('JOURNAL_LOCKED') from None
-            self._load(repair_torn_tail)
+            self._load(repair_torn_tail, create)
         except BaseException:
             self.close()
             raise
@@ -194,7 +198,7 @@ class Journal:
     def __exit__(self, *exc):
         self.close()
 
-    def _load(self, repair):
+    def _load(self, repair, create=True):
         size = os.fstat(self.fd).st_size
         d.require(size <= JOURNAL_LIMIT, 'JOURNAL_INVALID')
         data = os.pread(self.fd, size, 0) if size else b''
@@ -208,6 +212,7 @@ class Journal:
             data = data[:keep]
         self._validate(data)
         if not self.entries:
+            d.require(create, 'JOURNAL_INVALID')
             self.append('header', repository=self.repository, root=self.root, contract=JOURNAL_CONTRACT)
         header = self.entries[0]
         d.require(header['repository'] == self.repository and header['root'] == self.root, 'JOURNAL_REPOSITORY_MISMATCH')

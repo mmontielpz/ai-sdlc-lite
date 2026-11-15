@@ -52,7 +52,7 @@ USAGE = (
     '  doctor                       read-only environment and framework check\n'
     '  status [--repo PATH]         read-only HEAD and active-task report\n'
     '  adapter list|validate|matrix read-only provider adapter declarations (see adapters/README.md)\n'
-    '  delivery plan|verify|report|execute  delivery preflight and interactive local commit (docs/DELIVERY_CONTRACT.md)\n'
+    '  delivery plan|verify|report|execute|recover  delivery preflight, local commit, and observe-only recovery (docs/DELIVERY_CONTRACT.md)\n'
     '  result-template --repo PATH --out F [--baseline-record F] generate fail-closed result.json template\n'
     '  init --repo PATH            preview offline Skill setup; --apply to write; --check to verify\n'
 )
