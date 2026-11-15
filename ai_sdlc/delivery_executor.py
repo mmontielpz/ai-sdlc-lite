@@ -10,6 +10,7 @@ import shutil
 import subprocess
 
 from . import delivery as d
+from .native_git import GitAdapter
 
 
 class Executor:
@@ -21,14 +22,22 @@ class Executor:
     expected), find_pr(identity), create_pr(identity). Read errors must raise;
     absence is None. Remote implementations must enforce non-force updates,
     avoid retries, redact errors and never invoke merge.
+
+    Optional git_adapter (a native_git.GitAdapter) takes over local staging and
+    committing: the executor then runs no mutating Git command itself. Its journal is
+    the durable local record; both the executor's approve and the adapter's authorizer
+    must approve each mutation. attempt (1-9) selects the operation-id generation; raise
+    it only on an explicit owner decision to retry a retired (failed/not-applied) operation.
     """
 
-    def __init__(self, repo, plan, approve, journal, remote=None):
+    def __init__(self, repo, plan, approve, journal, remote=None, git_adapter=None, attempt=1):
         self.repo = Path(repo).absolute()
         self.plan = copy.deepcopy(plan)
         self.approve = approve
         self.journal = journal
         self.remote = remote
+        self.git_adapter = git_adapter
+        self.attempt = attempt
         d.keys(self.plan, 'contract request snapshot authorized_state digest')
         d.require(self.plan['contract'] == d.CONTRACT, 'UNSUPPORTED_CONTRACT')
         d.require(self.plan['digest'] == d.digest({k: v for k, v in self.plan.items() if k != 'digest'}), 'DIGEST_MISMATCH')
@@ -38,6 +47,28 @@ class Executor:
                   for p in self.request['authorized_files']}, 'INVALID_AUTHORIZED_STATE')
         self.git = shutil.which('git')
         d.require(self.git is not None, 'GIT_UNAVAILABLE')
+        if git_adapter is not None:
+            d.require(type(attempt) is int and 1 <= attempt <= 9, 'INVALID_ADAPTER')
+            # The adapter has no deletion operation; never degrade silently.
+            d.require(all(s is not None for s in self.plan['authorized_state'].values()), 'ADAPTER_UNSUPPORTED_DELETION')
+            self._check_adapter()
+
+    def _check_adapter(self):
+        adapter = self.git_adapter
+        d.require(isinstance(adapter, GitAdapter), 'INVALID_ADAPTER')
+        d.require(os.path.abspath(str(self.repo)) == str(adapter.repo) and adapter.repository == self.request['repository']
+                  and adapter.branch == self.request['expected_branch'], 'ADAPTER_MISMATCH')
+
+    def _operation_id(self, operation):
+        return '%s-%s-a%d' % (self.plan['digest'], operation, self.attempt)
+
+    def _reconcile(self):
+        """Verify the durable journal and reconcile interrupted operations; ambiguity blocks."""
+        journal = self.git_adapter.journal
+        journal.verify()
+        if journal.pending():
+            self.git_adapter.recover()
+        d.require(not journal.unresolved(), 'RECOVERY_AMBIGUOUS')
 
     def _git(self, *args):
         # Exclude inherited Git, credentials, global config and executable hooks.
@@ -110,7 +141,43 @@ class Executor:
             data = self._git('cat-file', 'blob', fields[2].decode('ascii'))
             d.require(hashlib.sha256(data).hexdigest() == state['sha256'], 'STAGED_STATE_CHANGED')
 
+    @staticmethod
+    def _refuse_retired(status):
+        # Failed, not-applied and ambiguous operations are never retried automatically,
+        # and the refusal happens before any approval is requested.
+        codes = {'failed': 'OPERATION_ID_REUSED', 'not_applied': 'OPERATION_NOT_APPLIED', 'ambiguous': 'OPERATION_AMBIGUOUS'}
+        d.require(status not in codes, codes.get(status, ''))
+
+    def _commit_native(self, head):
+        """Stage and commit through the injected adapter. Never retries a retired operation."""
+        base = self.request['head_sha']
+        adapter = self.git_adapter
+        files = {p: dict(s) for p, s in self.plan['authorized_state'].items()}
+        stage_id, commit_id = self._operation_id('stage'), self._operation_id('commit')
+        staged = self._staged()
+        status = adapter.journal.operation(stage_id)[0]
+        self._refuse_retired(status)
+        if status == 'applied':
+            pass  # resume after an interruption; the staged state is re-proven below
+        else:
+            d.require(not staged, 'INDEX_NOT_EMPTY')
+            d.verify(self.repo, self.plan)
+            self._intent('stage', head)
+            d.require(self._state() == base, 'HEAD_CHANGED')
+            adapter.stage(stage_id, files)
+        d.require(self._staged() == self.request['authorized_files'], 'STAGED_FILES_MISMATCH')
+        self._verify_tree(None)
+        self._refuse_retired(adapter.journal.operation(commit_id)[0])
+        self._intent('commit', head)
+        d.require(self._state() == base, 'HEAD_CHANGED')
+        adapter.commit(commit_id, self.request['commit']['message'], files)
+        d.require(self._state() != base, 'COMMIT_NOT_OBSERVED')
+        return self.commit()
+
     def commit(self):
+        if self.git_adapter is not None:
+            self._check_adapter()
+            self._reconcile()
         head = self._state()
         base = self.request['head_sha']
         d.require(self.request['base_sha'] == base, 'BASE_MISMATCH')
@@ -126,6 +193,8 @@ class Executor:
             self._verify_tree(head)
             d.require(not self._git('status', '--porcelain', '--untracked-files=all'), 'WORKTREE_CHANGED')
             return head
+        if self.git_adapter is not None:
+            return self._commit_native(head)
         staged = self._staged()
         key = self.plan['digest'] + ':stage'
         if staged:
