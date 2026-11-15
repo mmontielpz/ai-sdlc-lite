@@ -10,7 +10,7 @@ import shutil
 import subprocess
 
 from . import delivery as d
-from .native_git import GitAdapter
+from .native_git import GitAdapter, decoded
 
 
 class Executor:
@@ -120,7 +120,7 @@ class Executor:
         d.require(self.approve(copy.deepcopy(intent)) is True, 'APPROVAL_REQUIRED')
 
     def _names(self, *args):
-        return sorted(p.decode('utf-8') for p in self._git(*args).split(b'\0') if p)
+        return sorted(decoded(p) for p in self._git(*args).split(b'\0') if p)
 
     def _staged(self):
         return self._names('diff', '--cached', '--name-only', '--no-renames', '-z')
@@ -138,7 +138,7 @@ class Executor:
             d.require(len(fields) == 3 and fields[0] == (b'100755' if state['executable'] else b'100644')
                       and fields[1] == b'blob', 'STAGED_STATE_CHANGED')
             import hashlib
-            data = self._git('cat-file', 'blob', fields[2].decode('ascii'))
+            data = self._git('cat-file', 'blob', decoded(fields[2], 'ascii'))
             d.require(hashlib.sha256(data).hexdigest() == state['sha256'], 'STAGED_STATE_CHANGED')
 
     @staticmethod
@@ -184,9 +184,9 @@ class Executor:
         d.require(self.request['commit']['signing'] == 'forbidden', 'SIGNING_UNSUPPORTED')
         if head != base:
             # Recovery proves actual commit identity; never trusts a saved receipt.
-            parent = self._git('rev-list', '--parents', '-n', '1', head).decode().split()
+            parent = decoded(self._git('rev-list', '--parents', '-n', '1', head), 'ascii').split()
             d.require(parent == [head, base], 'COMMIT_IDENTITY_MISMATCH')
-            message = self._git('show', '-s', '--format=%B', head).decode().rstrip('\n')
+            message = decoded(self._git('show', '-s', '--format=%B', head)).rstrip('\n')
             d.require(message == self.request['commit']['message'], 'COMMIT_IDENTITY_MISMATCH')
             d.require(self._names('diff-tree', '--no-commit-id', '--name-only', '--no-renames', '-r', '-z', head)
                       == self.request['authorized_files'], 'COMMIT_FILES_MISMATCH')

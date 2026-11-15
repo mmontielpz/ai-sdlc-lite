@@ -118,6 +118,31 @@ class IntegrationTests(unittest.TestCase):
             return real(*argv, **kw)
         return patch.object(adapter, '_run', run)
 
+    def foreign_commit(self, message):
+        """Move the branch to a commit with exactly these message bytes (`git commit` would re-encode invalid UTF-8)."""
+        body = (b'tree ' + self.git('write-tree').strip().encode() + b'\nparent ' + self.base.encode()
+                + b'\nauthor O <o@example.invalid> 1700000000 +0000\ncommitter O <o@example.invalid> 1700000000 +0000\n\n'
+                + message)
+        sha = subprocess.run(['git', '-C', str(self.repo), 'hash-object', '-t', 'commit', '-w', '--stdin', '--literally'],
+                             input=body, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=True).stdout.decode().strip()
+        self.git('update-ref', 'refs/heads/feature/test', sha)
+        return sha
+
+    def test_pending_commit_with_undecodable_foreign_commit_blocks_the_executor(self):
+        adapter = self.adapter()
+        with self.crash_before(adapter, 'commit'):
+            with self.assertRaises(RuntimeError):
+                self.executor(adapter).commit()  # the stage applied; the commit never ran
+        commit_id = self.plan['digest'] + '-commit-a1'
+        sha = self.foreign_commit(b'Change a \xe9\n')
+        fresh = self.reopen()
+        approvals, intents = len(self.approvals), len(self.native)
+        self.rejected(self.executor(fresh).commit, 'RECOVERY_AMBIGUOUS')
+        self.assertEqual((len(self.approvals), len(self.native)), (approvals, intents))  # nothing asked, nothing replayed
+        self.assertEqual(self.git('rev-parse', 'HEAD').strip(), sha)
+        self.assertEqual(self.journals[-1].unresolved(), [commit_id])
+        self.assertEqual(self.journals[-1].verify()['entries'], len(self.journals[-1].entries))
+
     # ---- Approved operations ----
     def test_approved_stage_and_commit_run_through_the_adapter(self):
         sha = self.executor().commit()
