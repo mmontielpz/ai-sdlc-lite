@@ -1,6 +1,23 @@
 # Working with AI-SDLC Lite
 
-Use one bounded task at a time. This guide helps a human and an agent navigate the process; the canonical contracts remain [AGENTS.md](AGENTS.md), [TASK.md](TASK.md), [CHECKLIST.md](CHECKLIST.md), and [RESULT.md](RESULT.md). See [README.md](README.md) for BOV, lifecycle concepts, and outcome definitions. Preserve existing project instructions and work when adopting the process.
+Use one bounded task at a time. This guide helps a human and an agent navigate the process; the canonical contracts remain [AGENTS.md](AGENTS.md), [TASK.md](TASK.md), [CHECKLIST.md](CHECKLIST.md), [RESULT.md](RESULT.md), and [RESULT_CONTRACT.md](RESULT_CONTRACT.md). See [README.md](README.md) for BOV, lifecycle concepts, and outcome definitions. Preserve existing project instructions and work when adopting the process.
+
+## Daily workflow at a glance
+
+`Task -> Gate 1 (plan approval) -> Implementation -> Evidence -> Verify -> Gate 2 (human acceptance)`
+
+1. **Task & Gate 1:** State the bounded task; inspect read-only and approve the plan + checks once before editing.
+2. **Baseline (when tracking dirty or ignored files):** Before edits, capture `ai-sdlc baseline --repo . --out /outside/baseline.json`.
+3. **Implement & Capture Evidence:** Edit only approved paths, run checks, and write test output (`out.txt`) outside the repository.
+4. **Verify:** Run `ai-sdlc verify --repo . --result /outside/result.json --baseline-record /outside/baseline.json` (add `ai-sdlc seal` + `--evidence-manifest` when hash sealing is required).
+5. **Gate 2:** Report the `verify` outcome and diff; stop for human acceptance.
+
+## Evidence custody and result artifacts
+
+- **`result.json` vs `RESULT.md`:** `result.json` (`ai-sdlc-lite-result/1`, defined in [RESULT_CONTRACT.md](RESULT_CONTRACT.md)) is the machine-verifiable contract checked by `ai-sdlc verify`. Mandatory fields are `schema`, `task_id`, `baseline_sha`, `baseline_dirty_paths`, `allowed_paths`, `modified_paths`, `verification`, and `claimed_status`; `modified_paths` and `verification[].exit_code` must reflect observed evidence. `RESULT.md` is optional human-readable documentation.
+- **External custody:** Store `baseline.json`, `manifest.json`, `result.json`, and command output (`out.txt`) outside the repository (unless explicitly allowed). Files created inside the repository count as workspace changes, and `ai-sdlc baseline` refuses to write inside the repository.
+- **Baseline & ignored files (`PARTIAL`):** `--baseline-record` cross-checks `baseline_sha`, `baseline_dirty_paths`, and `baseline_ignored_paths` against the recorded pre-task state. If `--baseline-record` is omitted and any non-ignorable ignored file exists, `verify` caps the outcome at `PARTIAL` (`ignored_baseline_unknown`). Declare expected ignored build/cache artifacts in `ignorable_paths` (e.g. `**/__pycache__/**`).
+- **Sensitive paths & unverified claims:** Test files and governance files (`AGENTS.md`, `.github/`, etc.) require explicit approval in `allowed_sensitive_paths`; `allowed_paths` alone is insufficient. Missing evidence or an unverified claim never produces `PASS` because `claimed_status` cannot upgrade the computed status.
 
 ## Deliver one useful increment
 
