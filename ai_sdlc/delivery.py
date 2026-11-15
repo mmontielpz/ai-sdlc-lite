@@ -19,6 +19,7 @@ USAGE = (
     'usage: python3 -B -m ai_sdlc delivery plan|verify|report --repo PATH --input FILE\n'
     '       python3 -B -m ai_sdlc delivery execute --repo PATH --input FILE --journal FILE '
     '--author-name NAME --author-email EMAIL [--attempt 1-9]\n'
+    '       python3 -B -m ai_sdlc delivery recover --repo PATH --journal FILE --repository ID --branch NAME\n'
 )
 
 
@@ -382,11 +383,87 @@ def execute_cli(argv):
     return 0
 
 
+def _parse_recover_args(argv):
+    opts = {}
+    i = 0
+    allowed = {'--repo', '--journal', '--repository', '--branch'}
+    while i < len(argv):
+        flag = argv[i]
+        require(flag in allowed and flag not in opts and i + 1 < len(argv), 'USAGE')
+        opts[flag] = argv[i + 1]
+        i += 2
+    for required in ('--repo', '--journal', '--repository', '--branch'):
+        require(required in opts, 'USAGE')
+    return opts['--repo'], opts['--journal'], opts['--repository'], opts['--branch']
+
+
+def recover_cli(argv):
+    repo, journal_arg, repository, branch = _parse_recover_args(argv)
+    require(text(repository), 'INVALID_IDENTITY')
+    require(bool(branch) and ref('refs/heads/' + branch), 'INVALID_BRANCH')
+
+    repo_real = safe_path(Path(repo))
+    require(repo_real.is_dir() and stat.S_ISDIR(repo_real.lstat().st_mode), 'UNSAFE_PATH')
+    require(isinstance(journal_arg, str) and bool(journal_arg.strip()) and '\0' not in journal_arg, 'JOURNAL_PATH_INVALID')
+    j_raw = Path(journal_arg).expanduser()
+    require(not j_raw.is_symlink(), 'JOURNAL_PATH_INVALID')
+    journal_path = Path(os.path.abspath(str(j_raw)))
+    require(os.path.commonpath([str(journal_path), str(repo_real)]) != str(repo_real), 'JOURNAL_INSIDE_REPOSITORY')
+    require(journal_path.parent.is_dir(), 'JOURNAL_PATH_INVALID')
+    safe_path(journal_path.parent)
+    require(journal_path.exists(), 'JOURNAL_MISSING')
+    require(journal_path.is_file() and not journal_path.is_symlink() and journal_path.stat().st_size > 0, 'JOURNAL_INVALID')
+
+    from .native_git import GitAdapter, Journal
+
+    with Journal(journal_path, repository, repo_real, create=False) as journal:
+        summary = journal.verify()
+        pending_before = journal.pending()
+        adapter = GitAdapter(
+            repo_real,
+            repository,
+            branch,
+            ('recover', 'recover@local.invalid'),
+            journal,
+            allow=(),
+        )
+        observed = adapter._observe(branch=False)
+        reconciled = adapter.recover()
+        pending_after = journal.pending()
+        unresolved = journal.unresolved()
+        statuses = journal.statuses()
+
+    status = 'PARTIAL' if unresolved else 'RECONCILED'
+    output = {
+        'contract': CONTRACT,
+        'status': status,
+        'repository': repository,
+        'repo_root': str(repo_real),
+        'journal': str(journal_path),
+        'journal_entries': summary['entries'],
+        'journal_head_hash': summary['head_hash'],
+        'expected_branch': branch,
+        'observed_branch': observed['branch'],
+        'head_sha': observed['head_sha'],
+        'pending_before': pending_before,
+        'reconciled': reconciled,
+        'pending': pending_after,
+        'unresolved': unresolved,
+        'statuses': statuses,
+        'journal_appended': bool(reconciled),
+        'mutations': 'NONE',
+    }
+    print(json.dumps(output, sort_keys=True, ensure_ascii=True, allow_nan=False))
+    return 1 if unresolved else 0
+
+
 def main(argv):
     try:
-        require(len(argv) >= 1 and argv[0] in ('plan', 'verify', 'report', 'execute'), 'USAGE')
+        require(len(argv) >= 1 and argv[0] in ('plan', 'verify', 'report', 'execute', 'recover'), 'USAGE')
         if argv[0] == 'execute':
             return execute_cli(argv[1:])
+        if argv[0] == 'recover':
+            return recover_cli(argv[1:])
         require(len(argv) == 5 and argv[1] == '--repo' and argv[3] == '--input', 'USAGE')
         command, repo, source = argv[0], argv[2], argv[4]
         value = load(source)

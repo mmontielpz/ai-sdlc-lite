@@ -93,3 +93,14 @@ ai-sdlc delivery execute --repo /path/to/repo --input /safe/place/delivery-plan.
 ```
 
 `delivery execute` only performs the bounded local commit (no push, pull request, or remote mutation), stores the hash-chained journal outside the repository, and requires typing `YES` in an interactive terminal. Non-interactive runs and JSON-only approvals fail closed with no repository mutation.
+
+Interactive TTY confirmation is an operational safeguard, not cryptographic human authentication. A process with the same OS-user privileges may allocate a PTY and simulate interactive input.
+
+To reconcile an interrupted local delivery from its external journal without re-running Git mutations or rolling back automatically:
+
+```bash
+ai-sdlc delivery recover --repo /path/to/repo --journal /safe/place/delivery-journal.jsonl \
+  --repository https://example.invalid/owner/repo --branch feature/branch
+```
+
+`delivery recover` is observe-only with respect to Git (never commits, retries, or rolls back), may append reconciliation events to the external journal, and exits `0` (`RECONCILED`), `1` (`PARTIAL` when ambiguous/unresolved operations remain), `2` (`BLOCKED` on tampered, missing, or mismatched journal), or `3` (`UNKNOWN`).
