@@ -61,9 +61,12 @@ Store `baseline.json`, `result.json`, and test output (`out.txt`) outside the re
 
 ```bash
 ai-sdlc baseline --repo /path/to/repo --out /safe/place/baseline.json
+ai-sdlc result-template --repo /path/to/repo --out /safe/place/result.json --baseline-record /safe/place/baseline.json
 ai-sdlc verify --repo /path/to/repo --result /safe/place/result.json --baseline-record /safe/place/baseline.json
 ai-sdlc verify --repo /path/to/repo --result /safe/place/result.json --baseline-record /safe/place/baseline.json --format summary
 ```
+
+`result-template` populates repository-derived fields (`schema`, `baseline_sha`, `baseline_dirty_paths`, `baseline_ignored_paths`, `modified_paths`) and sets fail-closed defaults (`verification: []`, `claimed_status: "BLOCKED"`, `execution_state: "in_progress"`). Before running `verify`, the developer or agent must fill in `task_id`, `allowed_paths`, `modified_paths` (if further changes occurred), observed `verification` entries (`command`, `exit_code`, `evidence`), `claimed_status`, and `execution_state: "complete"`.
 
 By default `verify` prints machine-readable JSON (`--format json`). Add `--format summary` for a concise human-readable terminal view (for example, `Status: PASS (computed: PASS, claimed: PASS)` with modified paths, evidence completeness, failure codes, and guidance) while preserving the exact same exit codes (`0`/`1`/`2`).
 
