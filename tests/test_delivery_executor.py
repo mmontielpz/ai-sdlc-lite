@@ -155,6 +155,25 @@ class ExecutorTests(unittest.TestCase):
         self.assertEqual([a['operation'] for a in self.approvals], ['stage', 'commit'])
         self.assertEqual(self.git('status', '--porcelain'), '')
 
+    def test_commit_recovery_after_pack_refs_is_idempotent(self):
+        sha = self.executor().commit()
+        self.git('pack-refs', '--all')
+        self.assertFalse((self.repo / '.git' / 'refs' / 'heads' / 'feature' / 'test').exists())
+        approvals = len(self.approvals)
+        self.assertEqual(self.executor().commit(), sha)
+        self.assertEqual(len(self.approvals), approvals)
+        self.assertEqual(self.git('rev-list', '--count', 'HEAD').strip(), '2')
+
+    def test_commit_recovery_with_mixed_loose_and_packed_refs_uses_loose_ref(self):
+        sha = self.executor().commit()
+        self.git('pack-refs', '--all')
+        # Simulate a newer loose ref alongside an older packed-refs entry.
+        ref = self.repo / '.git' / 'refs' / 'heads' / 'feature' / 'test'
+        ref.parent.mkdir(parents=True, exist_ok=True)
+        ref.write_text(sha + '\n')
+        self.assertEqual(self.executor().commit(), sha)
+        self.assertEqual(self.git('rev-list', '--count', 'HEAD').strip(), '2')
+
     def test_each_mutation_requires_approval(self):
         for operation in ('stage', 'commit', 'push', 'pull_request'):
             self.denied = {operation}
