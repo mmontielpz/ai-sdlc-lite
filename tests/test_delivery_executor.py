@@ -121,6 +121,33 @@ class ExecutorTests(unittest.TestCase):
         self.rejected(self.executor().commit, 'COMMIT_IDENTITY_MISMATCH')
         self.assertEqual(self.approvals, [])
 
+    def test_malformed_ref_file_in_head_from_disk_is_rejected(self):
+        ref = self.repo / '.git' / 'refs' / 'heads' / 'feature' / 'test'
+        index_before = (self.repo / '.git' / 'index').read_bytes()
+        ref.write_bytes(b'bad\xe9\n')
+        self.rejected(self.executor().commit, 'INVALID_SHA')
+        self.assertEqual(self.approvals, [])
+        self.assertEqual(ref.read_bytes(), b'bad\xe9\n')
+        self.assertEqual((self.repo / '.git' / 'index').read_bytes(), index_before)
+
+    def test_valid_utf8_non_ascii_branch_in_head_rejects_commit_without_mutation(self):
+        (self.repo / '.git' / 'HEAD').write_bytes('ref: refs/heads/café\n'.encode('utf-8'))
+        self.rejected(self.executor().commit, 'BRANCH_CHANGED')
+        self.assertEqual(self.approvals, [])
+        self.assertEqual(self.git('rev-parse', 'refs/heads/feature/test').strip(), self.base)
+
+    def test_malformed_non_utf8_head_rejects_commit_without_mutation(self):
+        (self.repo / '.git' / 'HEAD').write_bytes(b'ref: refs/heads/caf\xe9\n')
+        self.rejected(self.executor().commit, 'INVALID_REF')
+        self.assertEqual(self.approvals, [])
+        self.assertEqual(self.git('rev-parse', 'refs/heads/feature/test').strip(), self.base)
+
+    def test_detached_head_rejects_commit_without_mutation(self):
+        self.git('checkout', '--detach', self.base)
+        self.rejected(self.executor().commit, 'BRANCH_CHANGED')
+        self.assertEqual(self.approvals, [])
+        self.assertEqual(self.git('rev-parse', 'HEAD').strip(), self.base)
+
     def test_commit_and_fresh_instance_recovery(self):
         sha = self.executor().commit()
         self.assertEqual(self.git('rev-parse', 'HEAD^').strip(), self.base)
