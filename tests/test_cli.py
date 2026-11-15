@@ -729,6 +729,17 @@ class CliUnicodeDisplay(base_tests.Fixture):
         self.assertFalse(cli._display_safe(None))
 
 
+class DeliveryCliRouting(unittest.TestCase):
+    def test_delivery_routes_without_verifier_or_git(self):
+        from ai_sdlc import cli, delivery
+        from unittest.mock import patch
+        with patch.object(delivery, 'main', return_value=3) as handler, \
+             patch.object(cli, '_passthrough', side_effect=AssertionError('verifier')), \
+             patch.object(cli.subprocess, 'run', side_effect=AssertionError('subprocess')):
+            self.assertEqual(cli.main(['delivery', 'report', '--repo', '/repo', '--input', '/plan']), 3)
+            handler.assert_called_once_with(['report', '--repo', '/repo', '--input', '/plan'])
+
+
 class CliSourceGuards(unittest.TestCase):
     FILES = ('__init__.py', '__main__.py', 'cli.py', 'initializer.py')
     STDLIB = {'json', 'os', 'stat', 'subprocess', 'sys', 'pathlib', 'shutil', 'unicodedata',

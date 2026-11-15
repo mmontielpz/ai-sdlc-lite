@@ -198,3 +198,9 @@ DX-002 can proceed as a deterministic local usability slice after owner approval
 Decisions requested for the next mission: accept the small V1 subset and module invocation (D1), preserve Standard behavior while adding orthogonal intent profiles (D4), approve external receipt paths and custody, and select exact synthetic fixtures. No change to D5 (verifier never executes checks). Runtime versions, credentials, native integration, inference budget and any GitHub fixture publication need separate explicit scope. This document asks for design review; it does not request any permission setting change.
 
 NEXT: DX-002-LOCAL-CLI. OWNER_APPROVAL_REQUIRED: YES.
+
+## V2-04E: deterministic delivery planning
+
+The first DX-005 component is the offline `ai_sdlc.delivery` planner, exposed as `delivery plan|verify|report`. The versioned [delivery contract](docs/DELIVERY_CONTRACT.md) binds repository paths/identity, expected branch/SHAs, authorized final file hashes, full working-file inventory, index/config hashes and intended delivery metadata to a deterministic digest. Direct metadata reads avoid Git execution and provider coupling. Live verification invalidates changed inputs; report uses the same live checks.
+
+This slice supplies no executor. Authorization, remote state, CI and signing capability are not inferred from hashes or adapter declarations. GIT_WRITE_BLOCKED records unavailable metadata writes without a probe or bypass. READY describes local preflight only; PARTIAL/UNKNOWN preserve unavailable external facts. Future operation templates, native receipts, reconciliation and live runtime qualification remain separate roadmap gates.
