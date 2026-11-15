@@ -36,27 +36,66 @@ jobs:
       - name: Deterministic suite and explicit skip policy
         run: |
           python -B - <<'PY'
+          import collections
           import os
+          import pathlib
           import shutil
-          import sys
           import unittest
 
           # No native-agent installation/authentication or inference in this job.
           if shutil.which('copilot') or os.environ.get('UPDATE_GOLDEN'):
               raise SystemExit('Copilot must be absent and UPDATE_GOLDEN unset')
-          expected = {
+          expected_skips = {
               'test_install_skill.InstallerTests.test_native_cli_discovery_and_rollback',
               'test_install_skill.InstallerTests.test_native_cli_recognizes_isolated_sandbox_settings',
           }
+          # Deleting or renaming a test module must be a reviewed change to this list.
+          # New modules need not be listed; they are reported below and must still pass.
+          expected_modules = {
+              'test_adapter_contract', 'test_cli', 'test_codex_adapter', 'test_controlled_autonomy',
+              'test_delivery', 'test_delivery_executor', 'test_delivery_native_integration',
+              'test_delivery_reporting', 'test_godot_adapter', 'test_init', 'test_install_skill',
+              'test_installer_recovery', 'test_micro_cycles', 'test_native_git',
+              'test_verify_contract', 'test_verify_scope',
+          }
+
+          def walk(items):
+              for item in items:
+                  if isinstance(item, unittest.TestSuite):
+                      yield from walk(item)
+                  else:
+                      yield item
+
           suite = unittest.defaultTestLoader.discover('tests')
-          if suite.countTestCases() != 427:
-              raise SystemExit('Expected exactly 427 discovered tests; review inventory changes')
+          cases = list(walk(suite))
+          if not cases:
+              raise SystemExit('No tests discovered')
+          counts = collections.Counter(case.id().split('.')[0] for case in cases)
+          missing = sorted(expected_modules - set(counts))
+          if missing:
+              raise SystemExit('Expected test modules contributing no tests: ' + ', '.join(missing))
+          on_disk = {path.stem for path in pathlib.Path('tests').glob('test_*.py')}
+          silent = sorted(on_disk - set(counts))
+          if silent:
+              raise SystemExit('Test modules on disk contributing no tests: ' + ', '.join(silent))
+          extra = sorted(set(counts) - expected_modules)
+          if extra:
+              print('NOTICE: modules not in expected_modules (consider adding): ' + ', '.join(extra))
           result = unittest.TextTestRunner(verbosity=2).run(suite)
           skipped = {test.id() for test, reason in result.skipped}
-          policy_ok = result.testsRun == 427 and skipped == expected and len(result.skipped) == 2
-          print(f'Discovered=427 Run={result.testsRun} Skipped={len(result.skipped)}')
+          problems = []
+          if not result.wasSuccessful():
+              problems.append('failures, errors or unexpected successes')
+          if result.testsRun != len(cases):
+              problems.append('ran %d of %d discovered tests' % (result.testsRun, len(cases)))
+          if result.expectedFailures:
+              problems.append('expected failures are not allowed')
+          if skipped != expected_skips:
+              problems.append('unexpected skip set: %s' % sorted(skipped ^ expected_skips))
+          print('Discovered=%d Run=%d Skipped=%d Modules=%d' % (len(cases), result.testsRun, len(skipped), len(counts)))
           print('Native runtime qualification: NOT_RUN')
-          sys.exit(0 if result.wasSuccessful() and policy_ok else 1)
+          if problems:
+              raise SystemExit('; '.join(problems))
           PY
       - name: Codex declaration validator (runtime NOT_RUN)
         run: >-
@@ -82,3 +121,16 @@ jobs:
           git diff --exit-code
           git diff --cached --exit-code
           test -z "$(git ls-files --others --exclude-standard)"
+
+  ci-gate:
+    name: ci-gate
+    if: always()
+    needs: [deterministic]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions: {}
+    env:
+      TESTS: ${{ needs.deterministic.result }}
+    steps:
+      - name: Single stable required check
+        run: test "$TESTS" = success
