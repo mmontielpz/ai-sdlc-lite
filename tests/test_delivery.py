@@ -72,6 +72,43 @@ class DeliveryTests(unittest.TestCase):
         (self.git / 'HEAD').write_text('ref: refs/heads/other\n')
         self.rejected(lambda: d.verify(self.repo, value), 'BRANCH_CHANGED')
 
+    def test_valid_utf8_non_ascii_head_reports_branch_changed(self):
+        value, _ = self.make()
+        (self.git / 'HEAD').write_bytes('ref: refs/heads/café\n'.encode('utf-8'))
+        self.rejected(self.make, 'BRANCH_CHANGED')
+        self.rejected(lambda: d.verify(self.repo, value), 'BRANCH_CHANGED')
+
+    def test_malformed_non_utf8_head_is_rejected_not_an_exception(self):
+        value, _ = self.make()
+        (self.git / 'HEAD').write_bytes(b'ref: refs/heads/caf\xe9\n')
+        self.rejected(self.make, 'INVALID_REF')
+        self.rejected(lambda: d.verify(self.repo, value), 'INVALID_REF')
+
+    def test_detached_head_reports_branch_changed(self):
+        value, _ = self.make()
+        (self.git / 'HEAD').write_text('a' * 40 + '\n')
+        self.rejected(self.make, 'BRANCH_CHANGED')
+        self.rejected(lambda: d.verify(self.repo, value), 'BRANCH_CHANGED')
+
+    def test_malformed_loose_ref_file_is_rejected(self):
+        value, _ = self.make()
+        (self.git / 'refs' / 'heads' / 'main').write_bytes(b'deadbeef\xe9\n')
+        self.rejected(self.make, 'INVALID_REF')
+        self.rejected(lambda: d.verify(self.repo, value), 'INVALID_REF')
+
+    def test_packed_refs_with_valid_utf8_non_ascii_branch_still_succeeds(self):
+        (self.git / 'refs' / 'heads' / 'main').unlink()
+        (self.git / 'packed-refs').write_bytes(
+            ('b' * 40 + ' refs/heads/café\n' + 'a' * 40 + ' refs/heads/main\n').encode('utf-8'))
+        plan, evidence = self.make()
+        self.assertEqual(evidence['status'], 'READY')
+        self.assertEqual(d.verify(self.repo, plan)['status'], 'READY')
+
+    def test_malformed_packed_refs_is_rejected(self):
+        (self.git / 'refs' / 'heads' / 'main').unlink()
+        (self.git / 'packed-refs').write_bytes(b'b' * 40 + b' refs/heads/caf\xe9\n' + b'a' * 40 + b' refs/heads/main\n')
+        self.rejected(self.make, 'INVALID_REF')
+
     def test_content_drift(self):
         value, _ = self.make()
         (self.repo / 'a.txt').write_text('different')

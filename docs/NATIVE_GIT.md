@@ -89,9 +89,10 @@ decoded lossily and never escapes as an exception. In `recover()` it leaves the 
   use between the final check and the Git call is detected afterwards, not prevented.
 - A failed postcondition after `git add`/`commit` is journaled, but the library never
   unstages, resets or deletes; a human resolves the state.
-- The `GIT_OUTPUT_INVALID` guarantee covers decoding of **Git command output**. Repository
-  files that the planner or executor read directly (such as `.git/HEAD` or a ref file) are
-  not covered by it.
+- Repository reference files read directly by the planner or executor (`.git/HEAD`, loose
+  refs, and `packed-refs`) are decoded strictly via `decode_ref` (`INVALID_REF` in
+  `delivery.py`, `INVALID_SHA` in `_head_from_disk`), distinguishing valid UTF-8
+  non-ASCII branch names (`BRANCH_CHANGED`) from malformed reference bytes.
 - ASCII-only paths and messages; no deletions, renames, submodules, LFS, signing,
   unborn HEAD, linked worktrees or nonlocal operations. Linux/POSIX only (`fcntl`).
 - Tested on Python 3.14 and AST-checked for 3.9 grammar; 3.9 runtime NOT_RUN locally.

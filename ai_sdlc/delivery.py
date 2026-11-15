@@ -27,6 +27,14 @@ def require(value, code):
         raise Rejected(code)
 
 
+def decode_ref(raw, encoding='utf-8', code='INVALID_REF'):
+    """Decode Git reference file bytes strictly without lossy replacement."""
+    try:
+        return raw.decode(encoding)
+    except UnicodeError:
+        raise Rejected(code) from None
+
+
 def text(value):
     return isinstance(value, str) and 0 < len(value) <= 4096 and all(32 <= ord(c) < 127 for c in value)
 
@@ -197,15 +205,15 @@ def snapshot(repo, request):
         safe_path(info)
     require(not any(present(info / name) for name in ('alternates', 'http-alternates')), 'UNSAFE_GIT_LAYOUT')
     require(not any(k.startswith('GIT_') for k in os.environ), 'UNSAFE_GIT_ENVIRONMENT')
-    head = read(git / 'HEAD').decode('ascii').strip('\n')
+    head = decode_ref(read(git / 'HEAD')).strip('\n')
     require(head == 'ref: refs/heads/' + request['expected_branch'], 'BRANCH_CHANGED')
     target = git / ('refs/heads/' + request['expected_branch'])
     if target.exists() or target.is_symlink():
-        sha = read(target).decode('ascii').strip('\n')
+        sha = decode_ref(read(target), 'ascii').strip('\n')
     else:
         sha = None
         if (git / 'packed-refs').exists():
-            for line in read(git / 'packed-refs').decode('ascii').splitlines():
+            for line in decode_ref(read(git / 'packed-refs')).splitlines():
                 fields = line.split(' ')
                 if len(fields) == 2 and fields[1] == head[5:]:
                     require(sha is None, 'INVALID_REF')

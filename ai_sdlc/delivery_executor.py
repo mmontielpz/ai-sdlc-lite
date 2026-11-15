@@ -107,7 +107,7 @@ class Executor:
         request = self.request
         target = self.repo / '.git' / ('refs/heads/' + request['expected_branch'])
         if d.present(target):
-            value = d.read(target).decode('ascii').strip()
+            value = d.decode_ref(d.read(target), 'ascii', 'INVALID_SHA').strip()
         else:
             value = request['head_sha']  # packed baseline handled by snapshot
         d.require(d.oid(value), 'INVALID_SHA')

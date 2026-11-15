@@ -143,6 +143,58 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(self.journals[-1].unresolved(), [commit_id])
         self.assertEqual(self.journals[-1].verify()['entries'], len(self.journals[-1].entries))
 
+    def test_unresolved_journal_with_malformed_head_preserves_journal_and_makes_no_mutations(self):
+        adapter = self.adapter()
+        with self.crash_before(adapter, 'commit'):
+            with self.assertRaises(RuntimeError):
+                self.executor(adapter).commit()
+        commit_id = self.plan['digest'] + '-commit-a1'
+        (self.repo / '.git' / 'HEAD').write_bytes(b'ref: refs/heads/caf\xe9\n')
+        fresh = self.reopen()
+        approvals, intents = len(self.approvals), len(self.native)
+        self.rejected(self.executor(fresh).commit, 'RECOVERY_AMBIGUOUS')
+        self.assertEqual((len(self.approvals), len(self.native)), (approvals, intents))
+        self.assertEqual(self.git('rev-parse', 'refs/heads/feature/test').strip(), self.base)
+        self.assertEqual(self.git('diff', '--cached', '--name-only').strip(), 'a.txt')
+        self.assertEqual(self.journals[-1].unresolved(), [commit_id])
+        self.assertEqual(self.journals[-1].verify()['entries'], len(self.journals[-1].entries))
+
+    def test_unresolved_journal_with_valid_utf8_non_ascii_head_preserves_journal_and_makes_no_mutations(self):
+        adapter = self.adapter()
+        with self.crash_before(adapter, 'commit'):
+            with self.assertRaises(RuntimeError):
+                self.executor(adapter).commit()
+        commit_id = self.plan['digest'] + '-commit-a1'
+        ref = 'refs/heads/café'.encode('utf-8')
+        subprocess.run(['git', '-C', str(self.repo), 'update-ref', ref, self.base], check=True)
+        subprocess.run(['git', '-C', str(self.repo), 'symbolic-ref', 'HEAD', ref], check=True)
+        fresh = self.reopen()
+        approvals, intents = len(self.approvals), len(self.native)
+        self.rejected(self.executor(fresh).commit, 'JOURNAL_INVALID')
+        self.assertEqual((len(self.approvals), len(self.native)), (approvals, intents))
+        self.assertEqual(self.git('rev-parse', 'refs/heads/feature/test').strip(), self.base)
+        self.assertEqual(self.git('diff', '--cached', '--name-only').strip(), 'a.txt')
+        self.assertEqual(self.journals[-1].unresolved(), [commit_id])
+        self.assertEqual(self.journals[-1].verify()['entries'], len(self.journals[-1].entries))
+
+    def test_unresolved_journal_with_malformed_ref_file_rejects_without_mutation(self):
+        adapter = self.adapter()
+        with self.crash_before(adapter, 'commit'):
+            with self.assertRaises(RuntimeError):
+                self.executor(adapter).commit()
+        commit_id = self.plan['digest'] + '-commit-a1'
+        ref = self.repo / '.git' / 'refs' / 'heads' / 'feature' / 'test'
+        index_before = (self.repo / '.git' / 'index').read_bytes()
+        ref.write_bytes(b'bad\xe9\n')
+        fresh = self.reopen()
+        approvals, intents = len(self.approvals), len(self.native)
+        self.rejected(self.executor(fresh).commit, 'RECOVERY_AMBIGUOUS')
+        self.assertEqual((len(self.approvals), len(self.native)), (approvals, intents))
+        self.assertEqual(ref.read_bytes(), b'bad\xe9\n')
+        self.assertEqual((self.repo / '.git' / 'index').read_bytes(), index_before)
+        self.assertEqual(self.journals[-1].unresolved(), [commit_id])
+        self.assertEqual(self.journals[-1].verify()['entries'], len(self.journals[-1].entries))
+
     # ---- Approved operations ----
     def test_approved_stage_and_commit_run_through_the_adapter(self):
         sha = self.executor().commit()
