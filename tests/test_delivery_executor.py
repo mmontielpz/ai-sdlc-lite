@@ -95,6 +95,32 @@ class ExecutorTests(unittest.TestCase):
         with self.assertRaisesRegex(d.Rejected, '^' + code + '$'):
             call()
 
+    def foreign_commit(self, message):
+        """Move the branch to a commit with exactly these message bytes (`git commit` would re-encode invalid UTF-8)."""
+        self.git('add', 'a.txt')
+        body = (b'tree ' + self.git('write-tree').strip().encode() + b'\nparent ' + self.base.encode()
+                + b'\nauthor O <o@example.invalid> 1700000000 +0000\ncommitter O <o@example.invalid> 1700000000 +0000\n\n'
+                + message)
+        sha = subprocess.run(['git', '-C', str(self.repo), 'hash-object', '-t', 'commit', '-w', '--stdin', '--literally'],
+                             input=body, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=True).stdout.decode().strip()
+        self.git('update-ref', 'refs/heads/feature/test', sha)
+        return sha
+
+    def test_recovery_proof_with_non_utf8_commit_message_is_rejected_not_an_exception(self):
+        sha = self.foreign_commit(b'Change a \xe9\n')
+        shown = subprocess.run(['git', '-C', str(self.repo), 'show', '-s', '--format=%B', sha],
+                               stdout=subprocess.PIPE, check=True).stdout
+        with self.assertRaises(UnicodeDecodeError):  # fixture guard: Git really emits invalid UTF-8 here
+            shown.decode('utf-8')
+        self.rejected(self.executor().commit, 'GIT_OUTPUT_INVALID')
+        self.assertEqual(self.approvals, [])
+        self.assertEqual(self.git('rev-parse', 'HEAD').strip(), sha)  # nothing was changed
+
+    def test_recovery_proof_with_valid_utf8_foreign_message_is_an_identity_mismatch(self):
+        self.foreign_commit('Change a café\n'.encode('utf-8'))
+        self.rejected(self.executor().commit, 'COMMIT_IDENTITY_MISMATCH')
+        self.assertEqual(self.approvals, [])
+
     def test_commit_and_fresh_instance_recovery(self):
         sha = self.executor().commit()
         self.assertEqual(self.git('rev-parse', 'HEAD^').strip(), self.base)

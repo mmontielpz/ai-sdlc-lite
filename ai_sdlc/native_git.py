@@ -44,6 +44,14 @@ def sha(value):
     return hashlib.sha256(value.encode('utf-8')).hexdigest()
 
 
+def decoded(raw, encoding='utf-8'):
+    """Decode Git output strictly. Bytes that do not decode are a rejected observation, never an exception."""
+    try:
+        return raw.decode(encoding)
+    except UnicodeError:
+        raise d.Rejected('GIT_OUTPUT_INVALID') from None
+
+
 def shape(value, names):
     d.require(isinstance(value, dict) and set(value) == set(names.split()), 'JOURNAL_INVALID')
 
@@ -388,7 +396,7 @@ class GitAdapter:
                 key = item.split(b'\n', 1)[0].decode('utf-8', 'replace')
                 d.require(self.CONFIG.fullmatch(key), 'UNSAFE_GIT_CONFIG')
         d.require(self._out('config', '--local', '--bool', '--get', 'core.bare').strip() == b'false', 'UNSAFE_GIT_CONFIG')
-        top = self._out('rev-parse', '--show-toplevel').decode('utf-8').strip()
+        top = decoded(self._out('rev-parse', '--show-toplevel')).strip()
         d.require(os.path.realpath(top) == str(repo), 'REPOSITORY_MISMATCH')
         # Attributes can select executable filters and alter staged bytes.
         count = 0
@@ -399,11 +407,11 @@ class GitAdapter:
                 d.require(count <= d.MAX_FILES and name != '.gitattributes', 'ATTRIBUTES_UNSUPPORTED')
         if branch:
             code, value = self._run('symbolic-ref', '-q', '--short', 'HEAD', ok=(0, 1))
-            d.require(code == 0 and value.decode('utf-8').strip() == self.branch, 'BRANCH_CHANGED')
+            d.require(code == 0 and decoded(value).strip() == self.branch, 'BRANCH_CHANGED')
 
     def _head(self):
         code, value = self._run('rev-parse', '--verify', '-q', 'HEAD', ok=(0, 1))
-        head = value.decode('ascii').strip()
+        head = decoded(value, 'ascii').strip()
         d.require(code == 0 and d.oid(head), 'UNBORN_HEAD')
         return head
 
@@ -433,7 +441,7 @@ class GitAdapter:
         self._check_repository(branch)
         code, value = self._run('symbolic-ref', '-q', '--short', 'HEAD', ok=(0, 1))
         d.require(code == 0, 'BRANCH_CHANGED')
-        return {'branch': value.decode('utf-8').strip(), 'head_sha': self._head(), 'staged': self._staged()}
+        return {'branch': decoded(value).strip(), 'head_sha': self._head(), 'staged': self._staged()}
 
     def observe(self):
         """Read-only observed state; needs no authorization."""
@@ -525,10 +533,10 @@ class GitAdapter:
 
     def _commit_matches(self, post, observed):
         head = observed['head_sha']
-        parents = self._out('rev-list', '--parents', '-n', '1', 'HEAD').decode('ascii').split()
+        parents = decoded(self._out('rev-list', '--parents', '-n', '1', 'HEAD'), 'ascii').split()
         if parents != [head, post['parent']] or observed['staged']:
             return False
-        message = self._out('show', '-s', '--format=%B', 'HEAD').decode('utf-8').rstrip('\n')
+        message = decoded(self._out('show', '-s', '--format=%B', 'HEAD')).rstrip('\n')
         if sha(message) != post['message_sha256']:
             return False
         changed = self._raw('diff-tree', '--no-commit-id', '--raw', '--no-abbrev', '--no-renames', '-r', '-z', 'HEAD')
@@ -627,6 +635,7 @@ class GitAdapter:
         outcome = {}
         for operation_id in self.journal.pending():
             status, begin = self.journal.operation(operation_id)
+            observed = None
             try:
                 observed = self._observe(branch=False)
                 if self._post_holds(begin['operation'], begin['expected_post'], observed):
@@ -636,7 +645,8 @@ class GitAdapter:
                 else:
                     result = 'AMBIGUOUS'
             except d.Rejected:
-                observed, result = None, 'AMBIGUOUS'
+                # Unverifiable: stay unresolved, and keep whatever state could be observed as evidence.
+                result = 'AMBIGUOUS'
             self.journal.append('recovery', operation_id=operation_id, status=result, observed=observed)
             if result == 'RECONCILED_APPLIED' and begin['operation'] == 'create_branch':
                 self.branch = begin['expected_post']['branch']

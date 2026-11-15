@@ -678,6 +678,122 @@ class NativeGitTests(unittest.TestCase):
         self.assertEqual(self.code(adapter.stage, 's2', files), 'JOURNAL_UNRESOLVED')
         self.assertEqual(self.code(adapter.stage, 's1', files), 'OPERATION_AMBIGUOUS')
 
+    # ---- D2: Git output that is not valid UTF-8 must never escape as an uncaught exception ----
+    def git_bytes(self, *args, data=None):
+        env = {'PATH': os.defpath, 'HOME': '/dev/null', 'GIT_CONFIG_NOSYSTEM': '1', 'GIT_CONFIG_GLOBAL': '/dev/null',
+               'GIT_AUTHOR_NAME': 'T', 'GIT_AUTHOR_EMAIL': 't@example.invalid',
+               'GIT_COMMITTER_NAME': 'T', 'GIT_COMMITTER_EMAIL': 't@example.invalid'}
+        return subprocess.run(['git', '-C', str(self.repo), *args], env=env, input=data, stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE, check=True).stdout
+
+    def foreign_commit(self, message):
+        """Move main to a commit whose message is exactly these bytes. `git commit` re-encodes invalid UTF-8,
+        so the object is written directly. Its tree is the index tree, so the index is clean afterwards."""
+        body = (b'tree ' + self.git('write-tree').encode() + b'\nparent ' + self.head().encode()
+                + b'\nauthor O <o@example.invalid> 1700000000 +0000\ncommitter O <o@example.invalid> 1700000000 +0000\n\n'
+                + message)
+        sha = self.git_bytes('hash-object', '-t', 'commit', '-w', '--stdin', '--literally', data=body).decode().strip()
+        self.git('update-ref', 'refs/heads/main', sha)
+        return sha
+
+    def pending_commit(self):
+        """A commit operation that crashed before Git ran, so it is pending; returns (adapter, files)."""
+        adapter = self.adapter()
+        files = self.write('a.txt', b'one\n')
+        adapter.stage('s1', files)
+        with self.crash_on(adapter, 'commit'):
+            with self.assertRaises(RuntimeError):
+                adapter.commit('c1', 'msg', files)
+        return self.reopen(self.journals[0]), files
+
+    def mutating_calls(self, adapter):
+        calls = []
+        real = adapter._run
+
+        def spy(*argv, **kw):
+            if argv[0] in ('add', 'commit', 'switch'):
+                calls.append(argv[0])
+            return real(*argv, **kw)
+        return calls, patch.object(adapter, '_run', spy)
+
+    def test_recovery_with_non_utf8_foreign_commit_message_is_ambiguous_not_an_exception(self):
+        adapter, files = self.pending_commit()
+        sha = self.foreign_commit(b'msg \xe9 not utf8\n')
+        # Fixture guard: Git really emits bytes that are not valid UTF-8 for this commit.
+        self.assertIn(b'\xe9', self.git_bytes('cat-file', 'commit', sha))
+        with self.assertRaises(UnicodeDecodeError):
+            self.git_bytes('show', '-s', '--format=%B', sha).decode('utf-8')
+        calls, spy = self.mutating_calls(adapter)
+        with spy:
+            self.assertEqual(adapter.recover(), {'c1': 'AMBIGUOUS'})
+            # Uncertain outcome: no replay, no new mutation, no new id accepted.
+            self.assertEqual(self.code(adapter.commit, 'c1', 'msg', files), 'OPERATION_AMBIGUOUS')
+            self.assertEqual(self.code(adapter.commit, 'c2', 'other', files), 'JOURNAL_UNRESOLVED')
+        self.assertEqual(calls, [])
+        journal = self.journals[-1]
+        recovery = journal.entries[-1]
+        self.assertEqual((recovery['event'], recovery['status']), ('recovery', 'AMBIGUOUS'))
+        self.assertEqual(recovery['observed']['head_sha'], sha)  # what could be observed is preserved as evidence
+        self.assertEqual(journal.unresolved(), ['c1'])
+        self.assertEqual(journal.verify()['entries'], len(journal.entries))
+        journal.close()
+        reopened = ng.Journal(self.jpath, ID, self.repo)
+        self.addCleanup(reopened.close)
+        self.assertEqual(reopened.operation('c1')[0], 'ambiguous')  # the chain on disk is intact and still unresolved
+
+    def test_recovery_with_valid_utf8_foreign_commit_message_is_ambiguous(self):
+        adapter, files = self.pending_commit()
+        sha = self.foreign_commit('msg café\n'.encode('utf-8'))
+        self.git_bytes('show', '-s', '--format=%B', sha).decode('utf-8')  # fixture guard: valid UTF-8
+        self.assertEqual(adapter.recover(), {'c1': 'AMBIGUOUS'})
+        self.assertEqual(self.journals[-1].entries[-1]['observed']['head_sha'], sha)
+
+    def test_recovery_of_the_adapters_own_applied_commit_still_reconciles(self):
+        adapter, files = self.pending_commit()
+        self.git('commit', '-q', '-m', 'msg')  # the commit the crashed operation was about to make
+        self.assertEqual(adapter.recover(), {'c1': 'RECONCILED_APPLIED'})
+        self.assertEqual(adapter.commit('c1', 'msg', files)['status'], 'REPLAYED')
+
+    def test_observe_with_non_utf8_branch_name_is_rejected_not_an_exception(self):
+        adapter = self.adapter()
+        name = b'refs/heads/caf\xe9'
+        self.git_bytes('update-ref', name, 'HEAD')
+        self.git_bytes('symbolic-ref', 'HEAD', name)
+        with self.assertRaises(UnicodeDecodeError):  # fixture guard
+            self.git_bytes('symbolic-ref', '--short', 'HEAD').decode('utf-8')
+        self.assertEqual(self.code(adapter.observe), 'GIT_OUTPUT_INVALID')
+        # A mutation is denied before anything begins; the denial is journaled.
+        files = self.write('a.txt', b'one\n')
+        self.assertEqual(self.code(adapter.stage, 's1', files), 'GIT_OUTPUT_INVALID')
+        self.assertEqual(self.events(), ['header', 'denied'])
+        self.assertEqual(self.journals[0].unresolved(), [])
+        self.assertEqual(self.git('diff', '--cached', '--name-only'), '')
+
+    def test_observe_with_utf8_non_ascii_branch_name_reports_branch_changed(self):
+        adapter = self.adapter()
+        name = 'refs/heads/café'.encode('utf-8')
+        self.git_bytes('update-ref', name, 'HEAD')
+        self.git_bytes('symbolic-ref', 'HEAD', name)
+        self.git_bytes('symbolic-ref', '--short', 'HEAD').decode('utf-8')  # fixture guard: valid UTF-8
+        self.assertEqual(self.code(adapter.observe), 'BRANCH_CHANGED')
+
+    def test_unknown_outcome_then_undecodable_state_stays_unresolved_without_duplicate_mutation(self):
+        adapter = self.adapter()
+        journal = self.journals[0]
+        files = self.write('a.txt', b'one\n')
+        adapter.stage('s1', files)
+        with self.faulty_git('commit', after_apply=False, blind=True):
+            self.assertEqual(self.code(adapter.commit, 'c1', 'msg', files), 'GIT_OUTCOME_UNKNOWN')
+        self.assertEqual(journal.unresolved(), ['c1'])  # D3: an unobservable outcome is unresolved, not failed
+        self.foreign_commit(b'caf\xe9\n')
+        calls, spy = self.mutating_calls(adapter)
+        with spy:
+            self.assertEqual(adapter.recover(), {'c1': 'AMBIGUOUS'})
+            self.assertEqual(self.code(adapter.commit, 'c1', 'msg', files), 'OPERATION_AMBIGUOUS')
+        self.assertEqual(calls, [])
+        self.assertEqual(self.git('rev-list', '--count', 'HEAD'), '2')  # base + the foreign commit, nothing from the adapter
+        self.assertEqual(journal.unresolved(), ['c1'])
+
     # ---- Repository isolation and environment ----
     def test_repository_isolation(self):
         other = Path(self.tmp.name) / 'other'

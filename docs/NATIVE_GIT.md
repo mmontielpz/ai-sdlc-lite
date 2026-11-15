@@ -74,6 +74,12 @@ one proven not to have applied is journaled `failed`. If the state cannot be obs
 all, no result is recorded: the call raises `GIT_OUTCOME_UNKNOWN` and the operation stays
 `pending` until `recover()` reconciles it. It is never recorded as a confirmed failure.
 
+Git output that is not valid UTF-8 (for example a commit written with a raw non-UTF-8
+message, or a branch name with such bytes) is rejected as `GIT_OUTPUT_INVALID`. It is never
+decoded lossily and never escapes as an exception. In `recover()` it leaves the operation
+`AMBIGUOUS` (unresolved, never replayed) and the state that could be observed is kept in the
+`recovery` entry; the executor's commit-identity proof rejects it the same way.
+
 ## Limitations
 
 - The hash chain is tamper-evident, not authenticated: a writer with file access can
@@ -83,6 +89,9 @@ all, no result is recorded: the call raises `GIT_OUTCOME_UNKNOWN` and the operat
   use between the final check and the Git call is detected afterwards, not prevented.
 - A failed postcondition after `git add`/`commit` is journaled, but the library never
   unstages, resets or deletes; a human resolves the state.
+- The `GIT_OUTPUT_INVALID` guarantee covers decoding of **Git command output**. Repository
+  files that the planner or executor read directly (such as `.git/HEAD` or a ref file) are
+  not covered by it.
 - ASCII-only paths and messages; no deletions, renames, submodules, LFS, signing,
   unborn HEAD, linked worktrees or nonlocal operations. Linux/POSIX only (`fcntl`).
 - Tested on Python 3.14 and AST-checked for 3.9 grammar; 3.9 runtime NOT_RUN locally.
