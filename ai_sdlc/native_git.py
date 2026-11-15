@@ -604,7 +604,9 @@ class GitAdapter:
                 if self._post_holds(operation, post, observed):
                     detail, result = 'APPLIED_AFTER_ERROR', 'applied'
             except d.Rejected:
-                observed = None
+                # Neither "applied" nor "failed" can be shown. Record no result: the operation stays pending, so
+                # unresolved() reports it, new mutations are blocked, and recover() reconciles it by observation.
+                raise d.Rejected('GIT_OUTCOME_UNKNOWN') from None
         self.journal.append('end', operation_id=operation_id, result=result, observed=observed, detail=detail)
         d.require(result == 'applied', detail)
         if operation == 'create_branch':

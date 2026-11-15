@@ -68,6 +68,12 @@ machine). A torn final line is refused until an explicit `repair_torn_tail=True`
 `recover()` observes Git and never re-executes: applied, not applied, or ambiguous.
 Pending or ambiguous operations block new mutations (`JOURNAL_UNRESOLVED`).
 
+If Git reports an error (timeout, I/O error, nonzero exit) the adapter re-observes the
+repository: a change that did apply is journaled `applied` (`APPLIED_AFTER_ERROR`), and
+one proven not to have applied is journaled `failed`. If the state cannot be observed at
+all, no result is recorded: the call raises `GIT_OUTCOME_UNKNOWN` and the operation stays
+`pending` until `recover()` reconciles it. It is never recorded as a confirmed failure.
+
 ## Limitations
 
 - The hash chain is tamper-evident, not authenticated: a writer with file access can

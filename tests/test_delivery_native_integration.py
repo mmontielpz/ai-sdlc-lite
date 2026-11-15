@@ -248,6 +248,34 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(self.git('rev-parse', 'HEAD').strip(), self.base)
         self.assertEqual(self.git('diff', '--cached', '--name-only').split(), ['surprise.txt'])
 
+    def test_unobservable_stage_outcome_is_reconciled_then_delivery_resumes(self):
+        adapter = self.adapter()
+        real = adapter._run
+        state = {'lost': False}
+
+        def run(*argv, **kw):
+            if state['lost']:
+                raise d.Rejected('GIT_OUTCOME_UNKNOWN')  # Git can no longer be observed
+            if argv[0] == 'add':
+                real(*argv, **kw)  # the add applies ...
+                state['lost'] = True
+                raise d.Rejected('GIT_OUTCOME_UNKNOWN')  # ... but its outcome is lost
+            return real(*argv, **kw)
+        with patch.object(adapter, '_run', run):
+            self.rejected(self.executor(adapter).commit, 'GIT_OUTCOME_UNKNOWN')
+        journal = self.journals[0]
+        stage_id = self.plan['digest'] + '-stage-a1'
+        self.assertEqual((journal.operation(stage_id)[0], journal.unresolved()), ('pending', [stage_id]))
+        self.assertEqual(self.git('diff', '--cached', '--name-only').split(), ['a.txt'])
+        self.assertEqual(self.git('rev-parse', 'HEAD').strip(), self.base)
+        # A later executor reconciles by observation, resumes at commit and never repeats the stage.
+        sha = self.executor(adapter).commit()
+        self.assertEqual(self.git('rev-parse', 'HEAD').strip(), sha)
+        self.assertEqual(self.git('rev-parse', 'HEAD^').strip(), self.base)
+        self.assertEqual([a['operation'] for a in self.approvals], ['stage', 'commit'])
+        self.assertEqual([i['operation'] for i in self.native], ['stage', 'commit'])
+        self.assertEqual(journal.unresolved(), [])
+
     def test_failed_git_operation_is_not_retried(self):
         # An untracked, ignored file makes `git add` fail after approval.
         self.git('checkout', '--', 'a.txt')

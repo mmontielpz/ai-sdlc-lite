@@ -3,6 +3,7 @@ import ast
 import hashlib
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -68,10 +69,10 @@ class NativeGitTests(unittest.TestCase):
         self.addCleanup(journal.close)
         return journal
 
-    def adapter(self, auth=None, allow=OPS, branch='main', journal=None, repo=None):
+    def adapter(self, auth=None, allow=OPS, branch='main', journal=None, repo=None, git=None):
         auth = auth if auth is not None else Auth()
         return ng.GitAdapter(repo or self.repo, ID, branch, IDENTITY, journal or self.journal(), authorizer=auth,
-                             allow=allow)
+                             allow=allow, git=git)
 
     def write(self, name, data=b'content\n', mode=None):
         path = self.repo / name
@@ -466,6 +467,216 @@ class NativeGitTests(unittest.TestCase):
         self.assertEqual(self.code(adapter.stage, 's1', files), 'AUTHORIZATION_DENIED')
         auth.answer = True
         self.assertEqual(adapter.stage('s1', files)['status'], 'APPLIED')
+
+    # ---- Git failure classification (S1) ----
+    # Deterministic fault injection: no sleeps and no real timeouts. Only calls made by the adapter are
+    # intercepted (they carry the adapter's minimal environment); the test's own Git helper is untouched.
+    def faulty_git(self, subcommand, after_apply=True, exc=None, blind=False):
+        """First `subcommand` call fails with exc, after Git applied it when after_apply. blind=True makes every
+        later adapter Git call fail too, so the resulting repository state cannot be observed."""
+        real = subprocess.run
+        state = {'fired': False}
+        make = exc or (lambda cmd: subprocess.TimeoutExpired(cmd, 60))
+
+        def run(cmd, **kw):
+            adapter_call = 'GIT_TERMINAL_PROMPT' in (kw.get('env') or {}) and '-C' in cmd
+            if adapter_call and blind and state['fired']:
+                raise make(cmd)
+            if adapter_call and not state['fired'] and cmd[cmd.index('-C') + 2] == subcommand:
+                state['fired'] = True
+                if after_apply:
+                    real(cmd, **kw)
+                raise make(cmd)
+            return real(cmd, **kw)
+        return patch('ai_sdlc.native_git.subprocess.run', run)
+
+    def before_git(self, subcommand, action):
+        """Run action() once, immediately before the adapter's first `subcommand` Git call."""
+        real = subprocess.run
+        state = {'done': False}
+
+        def run(cmd, **kw):
+            if ('GIT_TERMINAL_PROMPT' in (kw.get('env') or {}) and '-C' in cmd and not state['done']
+                    and cmd[cmd.index('-C') + 2] == subcommand):
+                state['done'] = True
+                action()
+            return real(cmd, **kw)
+        return patch('ai_sdlc.native_git.subprocess.run', run)
+
+    def wrapper_git(self, subcommand):
+        """A git executable that performs the real command and then exits 1 (nonzero exit after the change)."""
+        script = Path(self.tmp.name) / ('git-fails-after-' + subcommand)
+        script.write_text('#!/bin/sh\n%s "$@"; rc=$?\ncase " $* " in *" %s "*) [ "$rc" = 0 ] && exit 1;; esac\nexit $rc\n'
+                          % (shutil.which('git'), subcommand))
+        script.chmod(0o755)
+        return str(script)
+
+    def end_event(self):
+        return [e for e in self.journals[-1].entries if e['event'] == 'end'][-1]
+
+    def test_add_applied_then_timeout_is_journaled_applied(self):
+        adapter = self.adapter()
+        files = self.write('a.txt', b'one\n')
+        with self.faulty_git('add'):
+            result = adapter.stage('s1', files)
+        self.assertEqual(result['status'], 'APPLIED')
+        end = self.end_event()
+        self.assertEqual((end['result'], end['detail']), ('applied', 'APPLIED_AFTER_ERROR'))
+        self.assertEqual(self.git('diff', '--cached', '--name-only'), 'a.txt')
+        asked = len(adapter.authorizer.intents)
+        self.assertEqual(adapter.stage('s1', files)['status'], 'REPLAYED')  # no second add, no new authorization
+        self.assertEqual((len(adapter.authorizer.intents), self.events().count('begin')), (asked, 1))
+        self.assertEqual(self.journals[0].unresolved(), [])
+
+    def test_commit_applied_then_oserror_is_journaled_applied(self):
+        adapter = self.adapter()
+        base = self.head()
+        files = self.write('a.txt', b'one\n')
+        adapter.stage('s1', files)
+        with self.faulty_git('commit', exc=lambda cmd: OSError('simulated I/O failure')):
+            result = adapter.commit('c1', 'msg', files)
+        self.assertEqual(result['status'], 'APPLIED')
+        end = self.end_event()
+        self.assertEqual((end['result'], end['detail']), ('applied', 'APPLIED_AFTER_ERROR'))
+        self.assertEqual((self.git('rev-list', '--count', 'HEAD'), self.git('rev-parse', 'HEAD^')), ('2', base))
+
+    def test_commit_applied_then_nonzero_exit_is_journaled_applied(self):
+        adapter = self.adapter(git=self.wrapper_git('commit'))
+        base = self.head()
+        files = self.write('a.txt', b'one\n')
+        adapter.stage('s1', files)
+        result = adapter.commit('c1', 'msg', files)  # the wrapper ran the real commit, then exited 1
+        self.assertEqual(result['status'], 'APPLIED')
+        end = self.end_event()
+        self.assertEqual((end['result'], end['detail']), ('applied', 'APPLIED_AFTER_ERROR'))
+        self.assertEqual((self.git('rev-list', '--count', 'HEAD'), self.git('rev-parse', 'HEAD^')), ('2', base))
+
+    def test_branch_switch_applied_then_timeout_is_journaled_applied(self):
+        adapter = self.adapter()
+        base = self.head()
+        with self.faulty_git('switch'):
+            result = adapter.create_branch('b1', 'feature/x', base)
+        self.assertEqual(result['status'], 'APPLIED')
+        end = self.end_event()
+        self.assertEqual((end['result'], end['detail']), ('applied', 'APPLIED_AFTER_ERROR'))
+        self.assertEqual((adapter.branch, self.git('branch', '--show-current')), ('feature/x', 'feature/x'))
+
+    def test_timeout_before_git_runs_is_a_confirmed_failure(self):
+        adapter = self.adapter()
+        files = self.write('a.txt', b'one\n')
+        with self.faulty_git('add', after_apply=False):
+            self.assertEqual(self.code(adapter.stage, 's1', files), 'GIT_OUTCOME_UNKNOWN')
+        begin = [e for e in self.journals[0].entries if e['event'] == 'begin'][-1]
+        end = self.end_event()
+        self.assertEqual((end['result'], end['detail']), ('failed', 'GIT_OUTCOME_UNKNOWN'))
+        self.assertEqual(end['observed'], begin['expected'])  # observation proves nothing changed
+        self.assertEqual(self.git('diff', '--cached', '--name-only'), '')
+        self.assertEqual(self.journals[0].unresolved(), [])
+        self.assertEqual(self.code(adapter.stage, 's1', files), 'OPERATION_ID_REUSED')
+        self.assertEqual(adapter.stage('s2', files)['status'], 'APPLIED')
+
+    def test_postcondition_failure_after_unexpected_file_change(self):
+        adapter = self.adapter()
+        base = self.head()
+        files = self.write('a.txt', b'one\n')
+        with self.before_git('add', lambda: (self.repo / 'a.txt').write_bytes(b'CHANGED\n')):
+            self.assertEqual(self.code(adapter.stage, 's1', files), 'POSTCONDITION_FAILED')
+        end = self.end_event()
+        self.assertEqual((end['result'], end['detail']), ('failed', 'POSTCONDITION_FAILED'))
+        staged = {item[0]: item[1] for item in end['observed']['staged']}
+        self.assertEqual(staged, {'a.txt': hashlib.sha256(b'CHANGED\n').hexdigest()})  # the wrong bytes were staged
+        self.assertNotEqual(staged['a.txt'], files['a.txt']['sha256'])
+        self.assertEqual(self.journals[0].unresolved(), [])
+        # Fail closed: nothing else can proceed on top of the unexpected index.
+        self.assertEqual(self.code(adapter.stage, 's2', files), 'INDEX_NOT_EMPTY')
+        self.assertEqual(self.code(adapter.commit, 'c1', 'msg', files), 'STAGED_FILES_MISMATCH')
+        self.assertEqual(self.head(), base)
+
+    def test_postcondition_failure_after_extra_staged_file(self):
+        adapter = self.adapter()
+        files = self.write('a.txt', b'one\n')
+        adapter.stage('s1', files)
+
+        def stage_extra():
+            (self.repo / 'extra.txt').write_bytes(b'extra\n')
+            self.git('add', 'extra.txt')
+        with self.before_git('commit', stage_extra):
+            self.assertEqual(self.code(adapter.commit, 'c1', 'msg', files), 'POSTCONDITION_FAILED')
+        end = self.end_event()
+        self.assertEqual((end['result'], end['detail']), ('failed', 'POSTCONDITION_FAILED'))
+        # The unauthorized file is in the commit; the library records it and never resets or amends.
+        self.assertEqual(self.git('diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD').split(), ['a.txt', 'extra.txt'])
+        self.assertEqual(self.journals[0].unresolved(), [])
+        self.assertEqual(self.code(adapter.commit, 'c1', 'msg', files), 'OPERATION_ID_REUSED')
+
+    # ---- D3: an outcome that cannot be observed is never recorded as a confirmed failure ----
+    def test_unobservable_outcome_after_apply_stays_unresolved(self):
+        adapter = self.adapter()
+        journal = self.journals[0]
+        files = self.write('a.txt', b'one\n')
+        with self.faulty_git('add', blind=True):
+            self.assertEqual(self.code(adapter.stage, 's1', files), 'GIT_OUTCOME_UNKNOWN')
+        self.assertEqual(self.git('diff', '--cached', '--name-only'), 'a.txt')  # it did apply
+        self.assertEqual(self.events(), ['header', 'begin'])  # no confirmed result was recorded
+        self.assertEqual(journal.operation('s1')[0], 'pending')
+        self.assertEqual(journal.unresolved(), ['s1'])
+        self.assertEqual(self.code(adapter.stage, 's2', self.write('b.txt', b'two\n')), 'JOURNAL_UNRESOLVED')
+        self.assertEqual(adapter.recover(), {'s1': 'RECONCILED_APPLIED'})
+        self.assertEqual(journal.unresolved(), [])
+        asked = len(adapter.authorizer.intents)
+        self.assertEqual(adapter.stage('s1', files)['status'], 'REPLAYED')
+        self.assertEqual(len(adapter.authorizer.intents), asked)
+
+    def test_unobservable_outcome_without_apply_recovers_as_not_applied(self):
+        adapter = self.adapter()
+        journal = self.journals[0]
+        files = self.write('a.txt', b'one\n')
+        with self.faulty_git('add', after_apply=False, blind=True):
+            self.assertEqual(self.code(adapter.stage, 's1', files), 'GIT_OUTCOME_UNKNOWN')
+        self.assertEqual(self.git('diff', '--cached', '--name-only'), '')
+        self.assertEqual((journal.operation('s1')[0], journal.unresolved()), ('pending', ['s1']))
+        self.assertEqual(adapter.recover(), {'s1': 'RECONCILED_NOT_APPLIED'})
+        self.assertEqual(journal.unresolved(), [])
+        self.assertEqual(self.code(adapter.stage, 's1', files), 'OPERATION_NOT_APPLIED')  # id is retired, not retried
+        self.assertEqual(adapter.stage('s2', files)['status'], 'APPLIED')
+
+    def test_unobservable_commit_outcome_recovers_without_a_second_commit(self):
+        adapter = self.adapter()
+        journal = self.journals[0]
+        files = self.write('a.txt', b'one\n')
+        adapter.stage('s1', files)
+        with self.faulty_git('commit', blind=True):
+            self.assertEqual(self.code(adapter.commit, 'c1', 'msg', files), 'GIT_OUTCOME_UNKNOWN')
+        self.assertEqual(self.git('rev-list', '--count', 'HEAD'), '2')  # the commit did apply
+        self.assertEqual(journal.unresolved(), ['c1'])
+        self.assertEqual(self.code(adapter.commit, 'c2', 'other', files), 'JOURNAL_UNRESOLVED')
+        self.assertEqual(adapter.recover(), {'c1': 'RECONCILED_APPLIED'})
+        self.assertEqual(adapter.commit('c1', 'msg', files)['status'], 'REPLAYED')
+        self.assertEqual(self.git('rev-list', '--count', 'HEAD'), '2')
+
+    def test_unobservable_branch_switch_updates_the_adapter_on_recovery(self):
+        adapter = self.adapter()
+        journal = self.journals[0]
+        base = self.head()
+        with self.faulty_git('switch', blind=True):
+            self.assertEqual(self.code(adapter.create_branch, 'b1', 'feature/x', base), 'GIT_OUTCOME_UNKNOWN')
+        self.assertEqual((self.git('branch', '--show-current'), adapter.branch), ('feature/x', 'main'))
+        self.assertEqual(journal.unresolved(), ['b1'])
+        self.assertEqual(adapter.recover(), {'b1': 'RECONCILED_APPLIED'})
+        self.assertEqual(adapter.branch, 'feature/x')
+
+    def test_unobservable_outcome_with_unexplained_state_recovers_as_ambiguous(self):
+        adapter = self.adapter()
+        journal = self.journals[0]
+        files = self.write('a.txt', b'one\n')
+        with self.faulty_git('add', after_apply=False, blind=True):
+            self.assertEqual(self.code(adapter.stage, 's1', files), 'GIT_OUTCOME_UNKNOWN')
+        self.write('other.txt', b'surprise\n')
+        self.git('add', 'other.txt')  # an unexplained change made while the outcome was unknown
+        self.assertEqual(adapter.recover(), {'s1': 'AMBIGUOUS'})
+        self.assertEqual(journal.unresolved(), ['s1'])
+        self.assertEqual(self.code(adapter.stage, 's2', files), 'JOURNAL_UNRESOLVED')
+        self.assertEqual(self.code(adapter.stage, 's1', files), 'OPERATION_AMBIGUOUS')
 
     # ---- Repository isolation and environment ----
     def test_repository_isolation(self):
