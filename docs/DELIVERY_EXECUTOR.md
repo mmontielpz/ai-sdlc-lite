@@ -67,6 +67,38 @@ automatic retries, regardless of the plan retry allowance. On restart, verified
 remote HEAD or exact PR identity can reconcile success; otherwise a pending entry
 blocks further mutation. Never delete pending evidence merely to retry.
 
+## Native Git adapter integration (V2-04G-02)
+
+`Executor(..., git_adapter=adapter, attempt=1)` routes local staging and committing
+through an injected `native_git.GitAdapter` (see [NATIVE_GIT.md](NATIVE_GIT.md)).
+Without an adapter the behavior above is unchanged. With one, the executor runs no
+mutating Git command itself and adds no second Git implementation.
+
+| Delivery step | Native operation | Operation ID |
+| --- | --- | --- |
+| stage | `GitAdapter.stage` | `<plan digest>-stage-a<attempt>` |
+| commit | `GitAdapter.commit` | `<plan digest>-commit-a<attempt>` |
+
+- **Two independent authorizations.** Each mutation needs the executor's plan-bound
+  `approve` and then the adapter's own `authorizer` (and `allow` entry). Neither implies
+  the other; the adapter's journal records `denied` events.
+- **Durable evidence.** The adapter journal records expected state and authorization
+  before the Git call and observed state after it. The executor verifies the journal
+  chain before every commit attempt.
+- **Interruptions.** Pending operations are reconciled by observation (applied, not
+  applied, ambiguous) before any further step; ambiguity stops with `RECOVERY_AMBIGUOUS`.
+  A staged-and-applied stage resumes at commit without a second stage approval.
+- **No automatic retry.** A failed, not-applied or ambiguous operation ID is retired and
+  refused before any approval is requested. Only an explicit owner decision to raise
+  `attempt` (1-9) creates new IDs and requires fresh approvals.
+- **Binding checks.** The adapter must be a `GitAdapter` for the same path, repository
+  identity and branch as the plan. Planned file deletions are refused
+  (`ADAPTER_UNSUPPORTED_DELETION`). Commit messages must also satisfy the adapter
+  (printable ASCII, no leading or trailing space).
+- **Not added.** Branch creation is a host step through the adapter before planning,
+  not an executor operation. Push and pull-request orchestration is unchanged and still
+  needs its injected remote backend; the adapter has no remote operations.
+
 ## Repeatable checks
 
 ```sh
