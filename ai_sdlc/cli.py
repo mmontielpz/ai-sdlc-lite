@@ -48,7 +48,7 @@ REQUIRED_FILES = (
 MIN_PYTHON = (3, 9)
 USAGE = (
     'usage: python3 -m ai_sdlc <command> [args]\n'
-    '  verify|baseline|seal|codes   run scripts/verify_scope.py with the same arguments\n'
+    '  verify|baseline|seal|codes   run scripts/verify_scope.py with the same arguments (verify supports --format summary|json)\n'
     '  doctor                       read-only environment and framework check\n'
     '  status [--repo PATH]         read-only HEAD and active-task report\n'
     '  adapter list|validate|matrix read-only provider adapter declarations (see adapters/README.md)\n'

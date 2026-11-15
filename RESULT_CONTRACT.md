@@ -9,7 +9,7 @@ python3 -B scripts/verify_scope.py baseline --repo /path/to/repo --out /safe/pla
 python3 -B scripts/verify_scope.py seal --out /safe/place/manifest.json out.txt ...
 # Verify (the optional inputs add hash-integrity checks only, see "Evidence contract" below):
 python3 -B scripts/verify_scope.py verify --repo /path/to/repo --result result.json [--out report.json] \
-    [--baseline-record /safe/place/baseline.json] [--evidence-manifest /safe/place/manifest.json] [--require-sealed]
+    [--baseline-record /safe/place/baseline.json] [--evidence-manifest /safe/place/manifest.json] [--require-sealed] [--format {json,summary}]
 python3 -B scripts/verify_scope.py codes      # print the stable failure-code registry
 # exit 0 PASS, 1 PARTIAL, 2 BLOCKED (any error or ambiguity is BLOCKED, including a repository whose
 # local Git configuration defines a filter or diff-driver program: code executable_git_config)
