@@ -750,7 +750,8 @@ class NativeGitTests(unittest.TestCase):
 
     def test_recovery_of_the_adapters_own_applied_commit_still_reconciles(self):
         adapter, files = self.pending_commit()
-        self.git('commit', '-q', '-m', 'msg')  # the commit the crashed operation was about to make
+        token = self.journals[-1].operation('c1')[1]['expected_post']['provenance']
+        self.git('commit', '-q', '-m', 'msg\n\nAI-SDLC-Provenance: ' + token)  # the commit the crashed operation was about to make
         self.assertEqual(adapter.recover(), {'c1': 'RECONCILED_APPLIED'})
         self.assertEqual(adapter.commit('c1', 'msg', files)['status'], 'REPLAYED')
 
@@ -793,6 +794,98 @@ class NativeGitTests(unittest.TestCase):
         self.assertEqual(calls, [])
         self.assertEqual(self.git('rev-list', '--count', 'HEAD'), '2')  # base + the foreign commit, nothing from the adapter
         self.assertEqual(journal.unresolved(), ['c1'])
+
+    # ---- D4: Commit provenance — never attribute a foreign commit by matching content alone ----
+    def test_foreign_commit_with_identical_parent_message_and_tree_is_ambiguous(self):
+        adapter, files = self.pending_commit()
+        sha = self.foreign_commit(b'msg\n')
+        calls, spy = self.mutating_calls(adapter)
+        with spy:
+            self.assertEqual(adapter.recover(), {'c1': 'AMBIGUOUS'})
+            self.assertEqual(self.code(adapter.commit, 'c1', 'msg', files), 'OPERATION_AMBIGUOUS')
+        self.assertEqual(calls, [])
+        self.assertEqual(self.git('rev-list', '--count', 'HEAD'), '2')
+        self.assertEqual(self.journals[-1].entries[-1]['observed']['head_sha'], sha)
+        self.assertEqual(self.journals[-1].unresolved(), ['c1'])
+
+    def test_foreign_commit_with_identical_author_and_timestamp_is_ambiguous(self):
+        adapter, files = self.pending_commit()
+        ts = self.journals[-1].operation('c1')[1]['ts']
+        env = {'PATH': os.defpath, 'HOME': '/dev/null', 'GIT_CONFIG_NOSYSTEM': '1', 'GIT_CONFIG_GLOBAL': '/dev/null',
+               'GIT_AUTHOR_NAME': IDENTITY[0], 'GIT_AUTHOR_EMAIL': IDENTITY[1],
+               'GIT_COMMITTER_NAME': IDENTITY[0], 'GIT_COMMITTER_EMAIL': IDENTITY[1],
+               'GIT_AUTHOR_DATE': '%d +0000' % ts, 'GIT_COMMITTER_DATE': '%d +0000' % ts}
+        subprocess.run(['git', '-C', str(self.repo), 'commit', '--no-verify', '--no-gpg-sign', '-q', '-m', 'msg'],
+                       env=env, check=True)
+        self.assertEqual(adapter.recover(), {'c1': 'AMBIGUOUS'})
+        self.assertEqual(adapter.journal.unresolved(), ['c1'])
+
+    def test_concurrent_same_identity_writer_is_ambiguous(self):
+        adapter, files = self.pending_commit()
+        other_jpath = self.jpath.with_name('other-writer.jsonl')
+        other_journal = self.journal(other_jpath, self.repo)
+        other = self.adapter(journal=other_journal)
+        other.commit('c1', 'msg', files)
+        self.assertEqual(adapter.recover(), {'c1': 'AMBIGUOUS'})
+        self.assertEqual(adapter.journal.unresolved(), ['c1'])
+
+    def test_legacy_pending_journal_without_provenance_fails_closed_as_ambiguous(self):
+        adapter, files = self.pending_commit()
+        journal = self.journals[-1]
+        _, begin = journal.operation('c1')
+        # Simulate a pre-D4 legacy journal entry where expected_post has no provenance field.
+        begin['expected_post'].pop('provenance', None)
+        self.git('commit', '-q', '-m', 'msg')
+        self.assertEqual(adapter.recover(), {'c1': 'AMBIGUOUS'})
+        self.assertEqual(journal.unresolved(), ['c1'])
+
+    def test_provenance_token_mentioned_only_in_body_or_duplicated_is_ambiguous(self):
+        adapter, files = self.pending_commit()
+        _, begin = self.journals[-1].operation('c1')
+        token = begin['expected_post'].get('provenance', '0' * 32)
+        # Body mention without reserved final trailer.
+        self.foreign_commit(('msg\n\nAI-SDLC-Provenance: %s\n\nmore body\n' % token).encode('utf-8'))
+        self.assertEqual(adapter.recover(), {'c1': 'AMBIGUOUS'})
+
+    def test_duplicated_provenance_trailer_is_ambiguous(self):
+        adapter, files = self.pending_commit()
+        _, begin = self.journals[-1].operation('c1')
+        token = begin['expected_post'].get('provenance', '0' * 32)
+        self.foreign_commit(('msg\n\nAI-SDLC-Provenance: %s\nAI-SDLC-Provenance: %s\n' % (token, token)).encode('utf-8'))
+        self.assertEqual(adapter.recover(), {'c1': 'AMBIGUOUS'})
+
+    def test_mismatched_provenance_trailer_is_ambiguous(self):
+        adapter, files = self.pending_commit()
+        self.foreign_commit(('msg\n\nAI-SDLC-Provenance: %s\n' % ('f' * 32)).encode('utf-8'))
+        self.assertEqual(adapter.recover(), {'c1': 'AMBIGUOUS'})
+
+    def test_user_message_containing_reserved_trailer_prefix_is_rejected(self):
+        adapter = self.adapter()
+        files = self.write('a.txt', b'one\n')
+        adapter.stage('s1', files)
+        self.assertEqual(self.code(adapter.commit, 'c1', 'AI-SDLC-Provenance: ' + 'a' * 32, files), 'INVALID_ARGUMENTS')
+
+    def test_crash_after_commit_before_end_reconciles_with_provenance_and_packed_refs(self):
+        adapter = self.adapter()
+        files = self.write('a.txt', b'one\n')
+        adapter.stage('s1', files)
+        journal = self.journals[0]
+        real = journal.append
+
+        def lose_end(event, **kw):
+            if event == 'end':
+                raise RuntimeError('simulated crash')
+            return real(event, **kw)
+
+        with patch.object(journal, 'append', lose_end):
+            with self.assertRaises(RuntimeError):
+                adapter.commit('c1', 'crashy', files)
+        self.git('pack-refs', '--all')
+        fresh = self.reopen(journal)
+        self.assertEqual(fresh.recover(), {'c1': 'RECONCILED_APPLIED'})
+        self.assertEqual(fresh.recover(), {})
+        self.assertEqual(fresh.commit('c1', 'crashy', files)['status'], 'REPLAYED')
+        self.assertEqual(self.git('rev-list', '--count', 'HEAD'), '2')
 
     # ---- Repository isolation and environment ----
     def test_repository_isolation(self):
