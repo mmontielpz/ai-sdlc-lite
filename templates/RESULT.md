@@ -1,6 +1,6 @@
 # Result record
 
-Template: record actual evidence for one task. Replace placeholders; do not turn planned or illustrative checks into measured results. Use [README.md](../README.md) outcome definitions.
+Template: optional human-readable record for one task. For deterministic CLI verification (`ai-sdlc verify`), use `result.json` (`ai-sdlc-lite-result/1`, see `RESULT_CONTRACT.md`). Replace placeholders; do not turn planned or illustrative checks into measured results. Use [README.md](../README.md) outcome definitions.
 
 ## Identity and changes — Observe
 

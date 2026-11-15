@@ -55,11 +55,16 @@ See [examples/first-five-minutes/README.md](../examples/first-five-minutes/READM
 
 ## 5. Deterministic Verification
 
+Daily workflow: `Task -> Gate 1 -> Implementation -> External Evidence -> Verify -> Gate 2` (see [WORKFLOW.md](../WORKFLOW.md) and [RESULT_CONTRACT.md](../RESULT_CONTRACT.md)).
+
+Store `baseline.json`, `result.json`, and test output (`out.txt`) outside the repository so they do not pollute workspace diffs:
+
 ```bash
-ai-sdlc verify --repo /path/to/repo --result result.json
+ai-sdlc baseline --repo /path/to/repo --out /safe/place/baseline.json
+ai-sdlc verify --repo /path/to/repo --result /safe/place/result.json --baseline-record /safe/place/baseline.json
 ```
 
-Commands recorded in `result.json` are **never** executed by `verify`; the verifier checks repository scope, protected paths, baseline ancestry, and evidence hashes.
+`result.json` (`ai-sdlc-lite-result/1`) is the machine-verifiable artifact (`schema`, `task_id`, `baseline_sha`, `baseline_dirty_paths`, `allowed_paths`, `modified_paths`, `verification`, `claimed_status` mandatory; `modified_paths` and `verification[].exit_code` must come from observed evidence). `RESULT.md` is optional human-readable documentation. Commands recorded in `result.json` are **never** executed by `verify`, and unverified claims never produce `PASS`.
 
 ## 6. Interpreting Outcomes
 
