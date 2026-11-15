@@ -62,7 +62,10 @@ Store `baseline.json`, `result.json`, and test output (`out.txt`) outside the re
 ```bash
 ai-sdlc baseline --repo /path/to/repo --out /safe/place/baseline.json
 ai-sdlc verify --repo /path/to/repo --result /safe/place/result.json --baseline-record /safe/place/baseline.json
+ai-sdlc verify --repo /path/to/repo --result /safe/place/result.json --baseline-record /safe/place/baseline.json --format summary
 ```
+
+By default `verify` prints machine-readable JSON (`--format json`). Add `--format summary` for a concise human-readable terminal view (for example, `Status: PASS (computed: PASS, claimed: PASS)` with modified paths, evidence completeness, failure codes, and guidance) while preserving the exact same exit codes (`0`/`1`/`2`).
 
 `result.json` (`ai-sdlc-lite-result/1`) is the machine-verifiable artifact (`schema`, `task_id`, `baseline_sha`, `baseline_dirty_paths`, `allowed_paths`, `modified_paths`, `verification`, `claimed_status` mandatory; `modified_paths` and `verification[].exit_code` must come from observed evidence). `RESULT.md` is optional human-readable documentation. Commands recorded in `result.json` are **never** executed by `verify`, and unverified claims never produce `PASS`.
 

@@ -12,7 +12,7 @@ Subcommands:
   baseline --repo PATH [--out F]  capture a baseline record (SHA, dirty and ignored paths, digest); run before the task
   seal --out F FILE...            record evidence hashes in a manifest (hash integrity only, not authentication)
   codes                           print the stable failure-code registry
-  verify --repo PATH --result F [--baseline-record F] [--evidence-manifest F] [--require-sealed]
+  verify --repo PATH --result F [--baseline-record F] [--evidence-manifest F] [--require-sealed] [--format {json,summary}]
                                   verify a result contract; exit 0 PASS, 1 PARTIAL, 2 BLOCKED
 
 The verifier NEVER modifies the repository: no reset, clean, delete, checkout or write. Recovery is owner-controlled.
@@ -27,6 +27,7 @@ import os
 import re
 import subprocess
 import sys
+import unicodedata
 from pathlib import Path
 
 CONTRACT_SCHEMA = 'ai-sdlc-lite-result/1'
@@ -594,6 +595,111 @@ def blocked_report(error):
             'limitations': LIMITATIONS}
 
 
+_SAFE_ESCAPES = {'\n': '\\n', '\r': '\\r', '\t': '\\t'}
+_UNSAFE_CATEGORIES = frozenset(('Cc', 'Cf', 'Cs', 'Co', 'Zl', 'Zp', 'Zs'))
+
+
+def safe_display_text(value, limit=500):
+    """Escape terminal-control, newline, and bidi/format characters in untrusted display text."""
+    text = value if isinstance(value, str) else str(value)
+    out = []
+    for ch in text:
+        if ch == ' ':
+            out.append(ch)
+        elif ch in _SAFE_ESCAPES:
+            out.append(_SAFE_ESCAPES[ch])
+        elif unicodedata.category(ch) in _UNSAFE_CATEGORIES:
+            code = ord(ch)
+            if code < 0x100:
+                out.append(f'\\x{code:02x}')
+            elif code < 0x10000:
+                out.append(f'\\u{code:04x}')
+            else:
+                out.append(f'\\U{code:08x}')
+        else:
+            out.append(ch)
+    cleaned = ''.join(out)
+    if len(cleaned) > limit:
+        return cleaned[:limit - 3] + '...'
+    return cleaned
+
+
+def format_summary(report):
+    """Render a concise, escaped human-readable summary from an existing verification report."""
+    if not isinstance(report, dict):
+        report = {}
+    raw_status = report.get('status')
+    status = raw_status if raw_status in ('PASS', 'PARTIAL', 'BLOCKED', 'UNKNOWN') else 'UNKNOWN'
+    computed = report.get('computed_status')
+    claimed = report.get('claimed_status')
+    if computed in ('PASS', 'PARTIAL', 'BLOCKED', 'UNKNOWN') and claimed in ('PASS', 'PARTIAL', 'BLOCKED', 'UNKNOWN'):
+        status_line = f'Status: {status} (computed: {computed}, claimed: {claimed})'
+    else:
+        status_line = f'Status: {status}'
+    lines = [status_line]
+
+    task_id = report.get('task_id')
+    if isinstance(task_id, str) and task_id:
+        lines.append(f'Task: {safe_display_text(task_id)}')
+
+    paths = report.get('modified_paths')
+    if isinstance(paths, list):
+        if not paths:
+            lines.append('Modified paths: none')
+        else:
+            lines.append(f'Modified paths ({len(paths)}):')
+            for path in paths[:50]:
+                lines.append(f'  - {safe_display_text(path)}')
+            if len(paths) > 50:
+                lines.append(f'  - ... (+{len(paths) - 50} more)')
+    else:
+        lines.append('Modified paths: unavailable')
+
+    evidence = report.get('evidence')
+    trust = report.get('trust') if isinstance(report.get('trust'), dict) else {}
+    integrity = safe_display_text(trust.get('hash_integrity', 'unknown'))
+    if isinstance(evidence, list):
+        lines.append(f'Evidence: {len(evidence)} file(s) (hash integrity: {integrity})')
+        for item in evidence[:20]:
+            if isinstance(item, dict):
+                ref = safe_display_text(item.get('ref', '?'))
+                item_integrity = safe_display_text(item.get('integrity', 'unknown'))
+                lines.append(f'  - {ref} [{item_integrity}]')
+        if len(evidence) > 20:
+            lines.append(f'  - ... (+{len(evidence) - 20} more)')
+    else:
+        lines.append('Evidence: unavailable (verification did not complete)')
+
+    reasons = report.get('failure_reasons')
+    if isinstance(reasons, list) and reasons:
+        lines.append(f'Failure reasons ({len(reasons)}):')
+        for reason in reasons:
+            if isinstance(reason, dict):
+                raw_sev = reason.get('severity')
+                sev = raw_sev if raw_sev in ('PASS', 'PARTIAL', 'BLOCKED', 'UNKNOWN') else 'UNKNOWN'
+                code = safe_display_text(reason.get('code', 'unknown'))
+                detail = safe_display_text(reason.get('detail', ''))
+            else:
+                sev, code, detail = 'UNKNOWN', 'unknown', safe_display_text(reason)
+            lines.append(f'  - [{sev}] {code}: {detail}')
+    else:
+        lines.append('Failure reasons: none')
+
+    recovery = report.get('recovery') if isinstance(report.get('recovery'), dict) else {}
+    guidance = recovery.get('guidance')
+    if isinstance(guidance, list) and guidance:
+        lines.append('Guidance:')
+        for item in guidance:
+            lines.append(f'  - {safe_display_text(item)}')
+    elif status != 'PASS':
+        lines.append('Guidance:')
+        lines.append('  - Inspect the failure reasons above and re-run verification after resolving them.')
+    else:
+        lines.append('Guidance: none')
+
+    return '\n'.join(lines)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     sub = parser.add_subparsers(dest='command', required=True)
@@ -611,6 +717,8 @@ def main(argv=None):
     check.add_argument('--evidence-manifest', help='sealed manifest from the seal subcommand')
     check.add_argument('--require-sealed', action='store_true',
                        help='PARTIAL unless every evidence file matches the sealed manifest (hash integrity only)')
+    check.add_argument('--format', choices=('json', 'summary'), default='json',
+                       help='output format: json (default) or human-readable summary')
     sub.add_parser('codes', help='print the stable failure-code registry (JSON)')
     args = parser.parse_args(argv)
     try:
@@ -649,14 +757,17 @@ def main(argv=None):
     except Exception as error:  # fail closed on anything unexpected
         report = blocked_report(f'unexpected error: {type(error).__name__}: {error}')
     text = json.dumps(report, indent=2, sort_keys=True)
-    print(text)
+    if getattr(args, 'format', 'json') == 'summary':
+        print(format_summary(report))
+    else:
+        print(text)
     if getattr(args, 'out', None) and args.command == 'verify':
         try:
             write_new(Path(args.out).expanduser(), text + '\n')
         except OSError as error:
             print(f'cannot write --out: {error}', file=sys.stderr)
             return 2
-    return EXIT[report['status']]
+    return EXIT.get(report.get('status'), 2)
 
 
 if __name__ == '__main__':
