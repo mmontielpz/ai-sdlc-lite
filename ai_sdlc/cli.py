@@ -53,6 +53,7 @@ USAGE = (
     '  status [--repo PATH]         read-only HEAD and active-task report\n'
     '  adapter list|validate|matrix read-only provider adapter declarations (see adapters/README.md)\n'
     '  delivery plan|verify|report read-only delivery preflight (docs/DELIVERY_CONTRACT.md)\n'
+    '  result-template --repo PATH --out F [--baseline-record F] generate fail-closed result.json template\n'
     '  init --repo PATH            preview offline Skill setup; --apply to write; --check to verify\n'
 )
 HEX = frozenset('0123456789abcdef')
@@ -381,6 +382,9 @@ def main(argv=None):
     if command == 'delivery':
         from ai_sdlc import delivery
         return delivery.main(rest)
+    if command == 'result-template':
+        from ai_sdlc import result_template
+        return result_template.main(rest)
     if command == 'init':
         from ai_sdlc import initializer
         return initializer.main(rest)
