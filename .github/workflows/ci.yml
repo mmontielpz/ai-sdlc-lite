@@ -2,9 +2,9 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, develop, master]
+    branches: [develop, master]
   push:
-    branches: [main, develop, master, experiment/consolidation-g5-ci]
+    branches: [develop, master]
   workflow_dispatch:
 
 permissions:
@@ -53,10 +53,11 @@ jobs:
           # New modules need not be listed; they are reported below and must still pass.
           expected_modules = {
               'test_adapter_contract', 'test_cli', 'test_codex_adapter', 'test_controlled_autonomy',
-              'test_delivery', 'test_delivery_executor', 'test_delivery_native_integration',
-              'test_delivery_reporting', 'test_godot_adapter', 'test_init', 'test_install_skill',
-              'test_installer_recovery', 'test_micro_cycles', 'test_native_git',
-              'test_verify_contract', 'test_verify_scope',
+              'test_delivery', 'test_delivery_execute_cli', 'test_delivery_executor',
+              'test_delivery_native_integration', 'test_delivery_recover_cli', 'test_delivery_reporting',
+              'test_first_five_minutes', 'test_godot_adapter', 'test_init', 'test_install_skill',
+              'test_installer_recovery', 'test_micro_cycles', 'test_native_git', 'test_result_template',
+              'test_verify_contract', 'test_verify_scope', 'test_verify_summary',
           }
 
           def walk(items):
