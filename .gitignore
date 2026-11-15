@@ -2,3 +2,6 @@
 # (see SECURITY.md), so do not add broad patterns here.
 __pycache__/
 *.py[cod]
+/build/
+/dist/
+/*.egg-info/
