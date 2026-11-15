@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import re
+import secrets
 import shutil
 import stat
 import subprocess
@@ -30,6 +31,12 @@ MODES = ('100644', '100755')
 ID = re.compile(r'[A-Za-z0-9][A-Za-z0-9._:@-]{0,127}')
 HEX64 = re.compile(r'[0-9a-f]{64}')
 REASON = re.compile(r'[A-Z][A-Z0-9_]{0,63}')
+PROVENANCE_TRAILER = 'AI-SDLC-Provenance'
+HEX32 = re.compile(r'[0-9a-f]{32}')
+
+
+def provenance_token(value):
+    return isinstance(value, str) and HEX32.fullmatch(value) is not None
 
 
 def ident(value):
@@ -470,7 +477,8 @@ class GitAdapter:
             d.require(set(params) == {'files'}, 'INVALID_ARGUMENTS')
             safe = {'files': self._files(params['files'])}
             return safe, copy.deepcopy(safe)
-        d.require(set(params) == {'message', 'files'} and d.text(params['message']) and params['message'] == params['message'].strip(),
+        d.require(set(params) == {'message', 'files'} and d.text(params['message']) and params['message'] == params['message'].strip()
+                  and PROVENANCE_TRAILER + ':' not in params['message'],
                   'INVALID_ARGUMENTS')
         files = self._files(params['files'])
         safe = {'message_sha256': sha(params['message']), 'message_length': len(params['message']), 'files': files}
@@ -521,7 +529,8 @@ class GitAdapter:
         else:
             d.require(state['staged'] == self._expected_staged(safe['files']), 'STAGED_FILES_MISMATCH')
             argv = None  # message is supplied separately and never journaled
-            post = {'parent': state['head_sha'], 'message_sha256': safe['message_sha256'], 'files': safe['files']}
+            post = {'parent': state['head_sha'], 'message_sha256': safe['message_sha256'],
+                    'files': safe['files'], 'provenance': secrets.token_hex(16)}
         return argv, post
 
     def _post_holds(self, operation, post, observed, safe=None):
@@ -532,12 +541,20 @@ class GitAdapter:
         return self._commit_matches(post, observed)
 
     def _commit_matches(self, post, observed):
+        token = post.get('provenance')
+        if not provenance_token(token):
+            return False
         head = observed['head_sha']
         parents = decoded(self._out('rev-list', '--parents', '-n', '1', 'HEAD'), 'ascii').split()
         if parents != [head, post['parent']] or observed['staged']:
             return False
-        message = decoded(self._out('show', '-s', '--format=%B', 'HEAD')).rstrip('\n')
-        if sha(message) != post['message_sha256']:
+        raw_msg = decoded(self._out('show', '-s', '--format=%B', 'HEAD')).rstrip('\n')
+        body, sep, trailer_block = raw_msg.rpartition('\n\n')
+        if sep != '\n\n' or PROVENANCE_TRAILER + ':' in body:
+            return False
+        if trailer_block != PROVENANCE_TRAILER + ': ' + token:
+            return False
+        if sha(body) != post['message_sha256']:
             return False
         changed = self._raw('diff-tree', '--no-commit-id', '--raw', '--no-abbrev', '--no-renames', '-r', '-z', 'HEAD')
         return changed == self._expected_staged(post['files'])
@@ -596,7 +613,8 @@ class GitAdapter:
         detail, result = 'GIT_FAILED', 'failed'
         try:
             if operation == 'commit':
-                self._run('commit', '--no-verify', '--no-gpg-sign', '--cleanup=verbatim', '-m', full['message'], commit=True)
+                commit_message = full['message'] + '\n\n' + PROVENANCE_TRAILER + ': ' + post['provenance']
+                self._run('commit', '--no-verify', '--no-gpg-sign', '--cleanup=verbatim', '-m', commit_message, commit=True)
             else:
                 self._run(*argv)
             observed = self._observe(branch=False)

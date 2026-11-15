@@ -80,11 +80,20 @@ decoded lossily and never escapes as an exception. In `recover()` it leaves the 
 `AMBIGUOUS` (unresolved, never replayed) and the state that could be observed is kept in the
 `recovery` entry; the executor's commit-identity proof rejects it the same way.
 
+Commit operations bind a unique 32-hex-character `AI-SDLC-Provenance: <token>` trailer
+generated before the `begin` journal entry and persisted in `expected_post['provenance']`.
+`message_sha256` hashes the user-supplied commit body (without the trailer), while recovery
+verifies both the exact body hash and the single reserved trailer in the final paragraph.
+Missing, duplicated, body-only, or mismatched trailers, as well as legacy pending commit
+entries without `provenance`, fail closed as `AMBIGUOUS` without replay.
+
 ## Limitations
 
 - The hash chain is tamper-evident, not authenticated: a writer with file access can
   forge a valid chain or drop trailing entries. Anchor the head hash externally if that
-  matters. The authorization identity is a host-asserted string.
+  matters. The authorization identity is a host-asserted string. Likewise, provenance
+  tokens distinguish operations but do not authenticate against writers with access to
+  the journal and Git repository.
 - Single writer: the journal lock does not lock the repository. Concurrent external Git
   use between the final check and the Git call is detected afterwards, not prevented.
 - A failed postcondition after `git add`/`commit` is journaled, but the library never

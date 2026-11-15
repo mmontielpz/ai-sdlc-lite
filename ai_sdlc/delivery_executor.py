@@ -10,7 +10,7 @@ import shutil
 import subprocess
 
 from . import delivery as d
-from .native_git import GitAdapter, decoded
+from .native_git import GitAdapter, PROVENANCE_TRAILER, decoded, provenance_token
 
 
 class Executor:
@@ -188,7 +188,13 @@ class Executor:
             parent = decoded(self._git('rev-list', '--parents', '-n', '1', head), 'ascii').split()
             d.require(parent == [head, base], 'COMMIT_IDENTITY_MISMATCH')
             message = decoded(self._git('show', '-s', '--format=%B', head)).rstrip('\n')
-            d.require(message == self.request['commit']['message'], 'COMMIT_IDENTITY_MISMATCH')
+            expected_message = self.request['commit']['message']
+            if self.git_adapter is not None:
+                _, begin = self.git_adapter.journal.operation(self._operation_id('commit'))
+                token = begin['expected_post'].get('provenance') if begin else None
+                d.require(provenance_token(token), 'COMMIT_IDENTITY_MISMATCH')
+                expected_message = expected_message + '\n\n' + PROVENANCE_TRAILER + ': ' + token
+            d.require(message == expected_message, 'COMMIT_IDENTITY_MISMATCH')
             d.require(self._names('diff-tree', '--no-commit-id', '--name-only', '--no-renames', '-r', '-z', head)
                       == self.request['authorized_files'], 'COMMIT_FILES_MISMATCH')
             self._verify_tree(head)
