@@ -1,0 +1,20 @@
+{
+  "schema": "ai-sdlc-lite-result/1",
+  "task_id": "FIRST-FIVE-MIN-002",
+  "baseline_sha": "<BASELINE_SHA>",
+  "baseline_dirty_paths": [],
+  "baseline_ignored_paths": [],
+  "allowed_paths": ["docs/**"],
+  "ignorable_paths": ["**/__pycache__/**"],
+  "modified_paths": ["docs/missing.md"],
+  "verification": [
+    {
+      "command": "python3 -B -m unittest discover -s tests",
+      "exit_code": 0,
+      "evidence": "out.txt"
+    }
+  ],
+  "required_verification": ["python3 -B -m unittest discover -s tests"],
+  "execution_state": "complete",
+  "claimed_status": "PASS"
+}
