@@ -9,7 +9,7 @@ From a checkout of `ai-sdlc-lite` inside a Python 3.9+ virtual environment:
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
-pip install --no-build-isolation --no-deps -e .
+pip install --no-build-isolation --no-deps .
 ai-sdlc --help
 ```
 

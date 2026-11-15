@@ -16,18 +16,18 @@ ai-sdlc init --repo "$TMP/repo" --apply
 ai-sdlc doctor
 git -C "$TMP/repo" add .
 git -C "$TMP/repo" commit -q -m "Initial baseline"
-BASE=$(git -C "$TMP/repo" rev-parse HEAD)
 ai-sdlc status --repo "$TMP/repo"
+ai-sdlc baseline --repo "$TMP/repo" --out "$TMP/evidence/baseline.json"
 
 # 2. Make a permitted change to src/greeter.py and run tests
 python3 -B -c "p='$TMP/repo/src/greeter.py'; s=open(p).read().replace('name.strip()', '(name or \"\").strip()'); open(p,'w').write(s)"
 (cd "$TMP/repo" && python3 -B -m unittest discover -s tests) > "$TMP/evidence/out.txt" 2>&1
 
 # 3. Verify valid result -> PASS (exit 0)
-sed "s/<BASELINE_SHA>/$BASE/" "$TMP/repo/result.pass.json" > "$TMP/evidence/result.pass.json"
-ai-sdlc verify --repo "$TMP/repo" --result "$TMP/evidence/result.pass.json"
+python3 -B -c "import json; b=json.load(open('$TMP/evidence/baseline.json'))['baseline_sha']; d=json.load(open('$TMP/repo/result.pass.json')); d['baseline_sha']=b; json.dump(d, open('$TMP/evidence/result.pass.json','w'))"
+ai-sdlc verify --repo "$TMP/repo" --result "$TMP/evidence/result.pass.json" --baseline-record "$TMP/evidence/baseline.json"
 
 # 4. Verify invalid result (out-of-scope / undeclared change) -> BLOCKED (exit 2)
-sed "s/<BASELINE_SHA>/$BASE/" "$TMP/repo/result.blocked.json" > "$TMP/evidence/result.blocked.json"
-ai-sdlc verify --repo "$TMP/repo" --result "$TMP/evidence/result.blocked.json"
+python3 -B -c "import json; b=json.load(open('$TMP/evidence/baseline.json'))['baseline_sha']; d=json.load(open('$TMP/repo/result.blocked.json')); d['baseline_sha']=b; json.dump(d, open('$TMP/evidence/result.blocked.json','w'))"
+ai-sdlc verify --repo "$TMP/repo" --result "$TMP/evidence/result.blocked.json" --baseline-record "$TMP/evidence/baseline.json"
 ```

@@ -14,5 +14,31 @@ dependencies = []
 [project.scripts]
 ai-sdlc = "ai_sdlc.cli:main"
 
-[tool.setuptools.packages.find]
-include = ["ai_sdlc*"]
+[tool.setuptools]
+include-package-data = false
+packages = ["ai_sdlc", "ai_sdlc._framework"]
+package-dir = {"ai_sdlc" = "ai_sdlc", "ai_sdlc._framework" = "."}
+
+[tool.setuptools.package-data]
+"ai_sdlc._framework" = [
+    "*.md",
+    "LICENSE",
+    ".agents/skills/ai-sdlc-lite/SKILL.md",
+    "templates/RESULT.md",
+    "scripts/verify_scope.py",
+    "scripts/install_skill.py",
+    "adapters/README.md",
+    "adapters/adapter-contract.schema.json",
+    "adapters/agents/*/*.json",
+    "adapters/agents/*/*.md",
+    "adapters/agents/*/*.py",
+    "adapters/agents/*/examples/*.json",
+    "adapters/godot/README.md",
+    "docs/*.md",
+    "docs/qualification/*.md",
+    "examples/codex-live/*.py",
+    "examples/copilot-live/*.py",
+    "examples/small-fix/*.md",
+    "tasks/AI-SDLC-LITE-011C/RESULT.md",
+    "tasks/AI-SDLC-LITE-UX-002/RESULT.md",
+]

@@ -13,8 +13,9 @@ from pathlib import Path
 import stat
 import sys
 
+from ._root import framework_root
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = framework_root()
 USAGE = ('usage: python3 -B -m ai_sdlc init --repo PATH [--dry-run | --apply | --check]\n'
          'Default: read-only preview. --apply creates only the offline Skill bundle.\n'
          '--check verifies local files only; no provider is probed or authorized.\n')

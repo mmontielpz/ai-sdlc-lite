@@ -22,6 +22,7 @@ class FirstFiveMinutesTests(unittest.TestCase):
         self.assertIn('requires-python = ">=3.9"', text)
         self.assertIn('dependencies = []', text)
         self.assertIn('ai-sdlc = "ai_sdlc.cli:main"', text)
+        self.assertIn('ai_sdlc._framework', text)
 
     def test_quickstart_and_example_files_exist(self):
         self.assertTrue((ROOT / 'docs' / 'QUICKSTART.md').is_file())
@@ -105,3 +106,31 @@ class FirstFiveMinutesTests(unittest.TestCase):
             codes = {item['code'] for item in blocked_report['failure_reasons']}
             self.assertIn('out_of_scope_modification', codes)
             self.assertIn('declared_mismatch', codes)
+
+    def test_installed_package_layout_works_without_source_checkout(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            site_pkg = tmp_path / 'site-packages'
+            shutil.copytree(ROOT / 'ai_sdlc', site_pkg / 'ai_sdlc')
+            framework_dst = site_pkg / 'ai_sdlc' / '_framework'
+            # Mirror the runtime directories/files declared for packaging in pyproject.toml.
+            for folder in ('scripts', 'templates', '.agents', 'adapters', 'docs', 'examples', 'tasks'):
+                shutil.copytree(ROOT / folder, framework_dst / folder)
+            for item in ROOT.iterdir():
+                if item.is_file() and (item.suffix == '.md' or item.name == 'LICENSE'):
+                    shutil.copy2(item, framework_dst / item.name)
+
+            repo = tmp_path / 'ext_repo'
+            repo.mkdir()
+            env = {k: v for k, v in os.environ.items() if not k.startswith('GIT_')}
+            env['PYTHONPATH'] = str(site_pkg)
+            subprocess.run(['git', '-C', str(repo), 'init', '-q'], env=env, check=True)
+
+            doctor = subprocess.run([sys.executable, '-B', '-m', 'ai_sdlc', 'doctor'],
+                                    cwd=tmp_path, env=env, capture_output=True, text=True)
+            self.assertEqual(doctor.returncode, 0, doctor.stdout + doctor.stderr)
+
+            init_preview = subprocess.run([sys.executable, '-B', '-m', 'ai_sdlc', 'init', '--repo', str(repo)],
+                                          cwd=tmp_path, env=env, capture_output=True, text=True)
+            self.assertEqual(init_preview.returncode, 0, init_preview.stdout + init_preview.stderr)
+            self.assertIn('RESULT: PREVIEW', init_preview.stdout)
