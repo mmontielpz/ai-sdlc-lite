@@ -18,6 +18,8 @@ from urllib.parse import unquote, urlsplit
 
 SOURCE = Path(__file__).resolve().parents[1]
 SKILL = Path('.agents/skills/ai-sdlc-lite')
+# Explicit, additive Skill destinations. The default stays SKILL; the bundle bytes are identical for both.
+SKILL_TARGETS = {'agents': SKILL, 'claude-code': Path('.claude/skills/ai-sdlc-lite')}
 MANIFEST = '.install-manifest.json'
 CONTEXT = Path('.ai-sdlc-lite/task-context.json')
 CONFIG_BACKUP = '.ai-sdlc-lite-settings-backup.json'
@@ -646,6 +648,7 @@ def main(argv=None):
     actions.add_argument('--init-task', metavar='ID', help='Initialize pending task records or reference a named existing contract')
     actions.add_argument('--configure-copilot', action='store_true', help='Opt in to sandbox settings; no CLI permission grants')
     actions.add_argument('--rollback-config', action='store_true', help='Restore settings only if unchanged since opt-in')
+    parser.add_argument('--skill-target', choices=sorted(SKILL_TARGETS), default='agents', help='Skill destination for --uninstall only (default: agents)')
     parser.add_argument('--task-contract', help='Existing repository-relative task contract; requires --init-task')
     parser.add_argument('--copilot-home', help='Explicit absolute configuration directory for opt-in/rollback')
     parser.add_argument('--read-instruction', action='append', default=[], help='Exact ancestor AGENTS.md sandbox read-only path; requires opt-in')
@@ -654,6 +657,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         root = target_root(args.target)
+        if args.skill_target != 'agents' and not args.uninstall:
+            raise Blocked('--skill-target is only supported with --uninstall; use `ai_sdlc init --target` to install.')
         if args.task_contract and not args.init_task:
             raise Blocked('--task-contract requires --init-task.')
         if args.read_instruction and not args.configure_copilot:
@@ -669,7 +674,7 @@ def main(argv=None):
         # Recovery validates its own ownership evidence before any removal/restore.
         # It must not depend on active task records, package JSON or development tools.
         if args.uninstall:
-            destination = root / SKILL
+            destination = root / SKILL_TARGETS[args.skill_target]
             no_symlinks(root, destination)
             return uninstall(destination, args.dry_run)
         if args.rollback_config:

@@ -315,9 +315,9 @@ class InitTests(unittest.TestCase):
     def test_symlink_substitution_after_preview_cannot_escape(self):
         original = init._apply
 
-        def swapped(fd, content, installer):
+        def swapped(fd, content, installer, skill):
             (self.repo / '.agents').symlink_to(self.outside, target_is_directory=True)
-            original(fd, content, installer)
+            original(fd, content, installer, skill)
 
         with patch.object(init, '_apply', side_effect=swapped):
             self.assertEqual(self.invoke('--apply')[0], 1)
