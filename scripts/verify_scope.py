@@ -496,8 +496,14 @@ def verify(repo, result_path, out_path=None, baseline_record=None, evidence_mani
                     'baseline_dirty_state is malformed or inconsistent with baseline_dirty_paths')
             else:
                 current = index_state(root)
-                unchanged = {p for p in rec_dirty if p in hashes and p not in changed_dirty
-                             and 'unmerged' not in states[p] and states[p] == dirty_state(root, p, current)}
+                # "Dirty" in the record means relative to HEAD at baseline time. If HEAD has moved (for example the
+                # agent committed pre-existing staged work, which leaves the index entry unchanged), that relation no
+                # longer holds, so nothing is preserved. A recorded unmerged state is never preserved; a current
+                # one cannot equal a recorded non-unmerged state.
+                head_moved = report['head_sha'] != base
+                unchanged = set() if head_moved else {
+                    p for p in rec_dirty if p in hashes and p not in changed_dirty
+                    and 'unmerged' not in states[p] and states[p] == dirty_state(root, p, current)}
                 changed_dirty |= set(rec_dirty) - unchanged
                 preserved_dirty = unchanged
         report['dirty_baseline_changed_since_record'] = sorted(changed_dirty)

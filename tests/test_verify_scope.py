@@ -481,6 +481,93 @@ class EvidenceAndRecoveryTests(Fixture):
         data = self.dirty_contract(['docs/a.md'], ['docs/a.md'], baseline_sha=head)
         self.assert_not_preserved(self.run_with(data, baseline_record=record), 'docs/a.md', 'out_of_scope_modification')
 
+    # --- review round 1 (PR #23): unmerged index states, HEAD transitions, mode limits ---------------------------------
+    def make_conflict(self):
+        env = ['git', '-c', 'user.name=t', '-c', 'user.email=t@example.invalid']
+        run(self.repo, 'checkout', '-q', '-b', 'side')
+        self.write('docs/a.md', 'side\n')
+        run(self.repo, 'commit', '-qam', 'side')
+        run(self.repo, 'checkout', '-q', '-')
+        self.write('docs/a.md', 'main\n')
+        run(self.repo, 'commit', '-qam', 'main')
+        return env
+
+    def test_unmerged_state_appearing_after_the_baseline_is_not_preserved(self):
+        self.write('notes.txt', 'keep\n')                      # unrelated dirty file stays preserved
+        self.write('docs/a.md', 'a2\n')
+        record = self.record()
+        data = self.dirty_contract(['docs/a.md', 'notes.txt'], ['docs/a.md', 'notes.txt'])
+        self.assert_preserved(self.run_with(data, baseline_record=record), ['docs/a.md', 'notes.txt'])
+        oid = run(self.repo, 'rev-parse', 'HEAD:docs/a.md')     # same bytes on disk; only the index becomes unmerged
+        entries = '0 ' + '0' * 40 + '\tdocs/a.md\n' + ''.join(f'100644 {oid} {n}\tdocs/a.md\n' for n in (1, 2, 3))
+        subprocess.run(['git', 'update-index', '--index-info'], cwd=self.repo, input=entries, text=True, check=True)
+        self.assertEqual(vs.index_state(self.repo)['docs/a.md'], 'unmerged')
+        report = self.run_with(data, baseline_record=record)
+        self.assert_not_preserved(report, 'docs/a.md', 'out_of_scope_modification')
+        self.assertNotIn('notes.txt', report['dirty_baseline_changed_since_record'])
+
+    def test_unmerged_state_in_both_record_and_current_index_is_not_preserved(self):
+        env = self.make_conflict()
+        self.assertNotEqual(subprocess.run(env + ['merge', 'side'], cwd=self.repo, capture_output=True).returncode, 0)
+        head = run(self.repo, 'rev-parse', 'HEAD')
+        record = self.record()
+        self.assertIn('unmerged', json.loads(record.read_text())['baseline_dirty_state']['docs/a.md'])
+        data = self.dirty_contract(['docs/a.md'], ['docs/a.md'], baseline_sha=head)
+        self.assert_not_preserved(self.run_with(data, baseline_record=record), 'docs/a.md', 'out_of_scope_modification')
+
+    def test_head_transition_by_commit_all_is_not_preserved(self):
+        self.write('docs/a.md', 'a2\n')                        # unstaged at baseline
+        record = self.record()
+        run(self.repo, 'commit', '-qam', 'agent commits the pre-existing edit')
+        data = self.dirty_contract(['docs/a.md'], ['docs/a.md'])
+        self.assert_not_preserved(self.run_with(data, baseline_record=record), 'docs/a.md', 'out_of_scope_modification')
+
+    def test_head_transition_by_committing_a_staged_baseline_file_is_not_preserved(self):
+        self.write('docs/a.md', 'staged\n')
+        run(self.repo, 'add', 'docs/a.md')                      # staged at baseline; a plain commit keeps the index entry
+        record = self.record()
+        run(self.repo, 'commit', '-qm', 'agent commits the pre-existing staged edit')
+        data = self.dirty_contract(['docs/a.md'], ['docs/a.md'])
+        self.assert_not_preserved(self.run_with(data, baseline_record=record), 'docs/a.md', 'out_of_scope_modification')
+
+    def test_head_transition_keeps_protected_special_and_ancestry_checks(self):
+        self.write('secrets/k.txt', 'dirty\n')
+        run(self.repo, 'add', 'secrets/k.txt')
+        os.symlink('src/app.py', self.repo / 'link')
+        run(self.repo, 'add', 'link')
+        record = self.record()
+        run(self.repo, 'commit', '-qm', 'agent commits both')
+        data = self.dirty_contract(['link', 'secrets/k.txt'], ['link', 'secrets/k.txt'])
+        report = self.run_with(data, baseline_record=record)
+        self.assertEqual(report['status'], 'BLOCKED')
+        self.assertTrue({'protected_path_modified', 'special_file_change'} <= self.codes(report))
+        # history rewritten so the baseline is no longer an ancestor
+        run(self.repo, 'checkout', '-q', '--orphan', 'orphan')
+        run(self.repo, 'commit', '-qm', 'unrelated history')
+        report = self.run_with(self.dirty_contract(['link', 'secrets/k.txt'], ['link', 'secrets/k.txt']),
+                               baseline_record=record)
+        self.assertEqual(report['status'], 'BLOCKED')
+        self.assertIn('baseline_mismatch', self.codes(report))
+
+    def test_only_the_git_owner_execute_bit_is_part_of_dirty_state(self):
+        # Documented limit: group/other permission bits, ownership, ACLs, xattrs and timestamps are not tracked.
+        self.write('notes.txt', 'keep\n')
+        os.chmod(self.repo / 'notes.txt', 0o644)
+        record = self.record()
+        os.chmod(self.repo / 'notes.txt', 0o664)
+        data = self.dirty_contract(['notes.txt'], ['notes.txt'])
+        self.assert_preserved(self.run_with(data, baseline_record=record), ['notes.txt'])
+        os.chmod(self.repo / 'notes.txt', 0o744)               # the owner execute bit is
+        self.assert_not_preserved(self.run_with(data, baseline_record=record), 'notes.txt', 'out_of_scope_modification')
+
+    def test_execute_bit_is_tracked_even_when_git_ignores_file_mode(self):
+        run(self.repo, 'config', 'core.fileMode', 'false')
+        self.write('docs/a.md', 'a2\n')
+        record = self.record()
+        os.chmod(self.repo / 'docs/a.md', 0o755)               # Git itself would not report this change
+        data = self.dirty_contract(['docs/a.md'], ['docs/a.md'])
+        self.assert_not_preserved(self.run_with(data, baseline_record=record), 'docs/a.md', 'out_of_scope_modification')
+
     def test_legacy_record_without_dirty_state_preserves_nothing_and_still_loads(self):
         self.write('notes.txt', 'keep\n')
         record = self.record()
