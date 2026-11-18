@@ -290,15 +290,47 @@ def special_changes(root, base):
     return special
 
 
+def index_state(root):
+    """Map tracked Git index paths to 'mode:oid'; any unmerged (conflict) entry is 'unmerged'."""
+    code, out = git(root, 'ls-files', '-s', '-z')
+    if code != 0:
+        raise Blocked('cannot inspect Git index')
+    state = {}
+    for entry in split_nul(out):
+        meta, _, path = entry.partition('\t')
+        parts = meta.split()
+        if not path or len(parts) < 3:
+            continue
+        state[path] = f'{parts[0]}:{parts[1]}' if parts[2] == '0' and path not in state else 'unmerged'
+    return state
+
+
+def dirty_state(root, rel, index):
+    """Identity of a dirty path beyond its content hash: index entry (mode:oid, or none) and working-tree kind
+    (symlink, regular file with or without the owner execute bit, absent, other)."""
+    path = root / rel
+    if path.is_symlink():
+        kind = 'symlink'
+    elif not path.exists():
+        kind = 'absent'
+    elif not path.is_file():
+        kind = 'other'
+    else:
+        kind = 'exec' if path.stat().st_mode & 0o100 else 'file'
+    return f'index={index.get(rel) or "none"};tree={kind}'
+
+
 def make_baseline(root):
     """Independent baseline record. Run BEFORE the task, by a human or CI, and store it outside the repository."""
     code, head = git(root, 'rev-parse', 'HEAD')
     if code != 0:
         raise Blocked('cannot resolve HEAD')
     dirty = current_dirty(root)
+    idx = index_state(root)
     ignored, truncated = ignored_paths(root)
     record = {'schema': BASELINE_SCHEMA, 'baseline_sha': head.decode().strip(), 'baseline_dirty_paths': dirty,
               'baseline_dirty_sha256': {p: path_digest(root, p) for p in dirty},
+              'baseline_dirty_state': {p: dirty_state(root, p, idx) for p in dirty},
               'baseline_ignored_paths': ignored, 'baseline_ignored_truncated': truncated}
     record['digest'] = canonical_digest(record)
     return record
@@ -438,6 +470,7 @@ def verify(repo, result_path, out_path=None, baseline_record=None, evidence_mani
         raise Blocked('cannot determine baseline ancestry')
 
     # An operator-supplied baseline record overrides, and must agree with, the contract's own claims.
+    preserved_dirty = set()
     if record is not None:
         trust['baseline'] = 'operator-supplied record (digest checked; custody and authenticity not verifiable)'
         rec_dirty = string_list(record, 'baseline_dirty_paths')
@@ -452,8 +485,28 @@ def verify(repo, result_path, out_path=None, baseline_record=None, evidence_mani
             add('PARTIAL', 'ignored_listing_truncated', 'the recorded ignored-file list was truncated')
         baseline_dirty, baseline_ignored = rec_dirty, rec_ignored
         hashes = record.get('baseline_dirty_sha256') if isinstance(record.get('baseline_dirty_sha256'), dict) else {}
-        report['dirty_baseline_changed_since_record'] = sorted(
-            p for p in rec_dirty if hashes.get(p) != path_digest(root, p))
+        changed_dirty = {p for p in rec_dirty if hashes.get(p) != path_digest(root, p)}
+        # A dirty path is "preserved" only if content, index entry and working-tree kind all equal the record. A record
+        # without baseline_dirty_state (older tools) preserves nothing; a malformed or inconsistent one is BLOCKED.
+        if 'baseline_dirty_state' in record:
+            states = record['baseline_dirty_state']
+            if (not isinstance(states, dict) or set(states) != set(rec_dirty)
+                    or any(not isinstance(v, str) for v in states.values())):
+                add('BLOCKED', 'baseline_record_mismatch',
+                    'baseline_dirty_state is malformed or inconsistent with baseline_dirty_paths')
+            else:
+                current = index_state(root)
+                # "Dirty" in the record means relative to HEAD at baseline time. If HEAD has moved (for example the
+                # agent committed pre-existing staged work, which leaves the index entry unchanged), that relation no
+                # longer holds, so nothing is preserved. A recorded unmerged state is never preserved; a current
+                # one cannot equal a recorded non-unmerged state.
+                head_moved = report['head_sha'] != base
+                unchanged = set() if head_moved else {
+                    p for p in rec_dirty if p in hashes and p not in changed_dirty
+                    and 'unmerged' not in states[p] and states[p] == dirty_state(root, p, current)}
+                changed_dirty |= set(rec_dirty) - unchanged
+                preserved_dirty = unchanged
+        report['dirty_baseline_changed_since_record'] = sorted(changed_dirty)
 
     # Actual changes versus the baseline (committed, staged, unstaged, untracked).
     excluded = set()
@@ -473,6 +526,8 @@ def verify(repo, result_path, out_path=None, baseline_record=None, evidence_mani
     for path in actual:
         if in_protected(path):
             add('BLOCKED', 'protected_path_modified', path)
+        elif path in preserved_dirty:
+            pass  # unchanged since the recorded baseline (protected paths were checked first); special files still checked below
         elif is_test(path) or is_gov(path):
             kind = 'governance' if is_gov(path) else 'test'
             if not in_sensitive(path):

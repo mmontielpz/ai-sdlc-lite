@@ -4,6 +4,7 @@ This file records notable project changes. Entries under Unreleased are not rele
 
 ## Unreleased
 
+- Dirty baseline: baseline records add optional `baseline_dirty_state` (Git index entry and working-tree kind per dirty path). With `--baseline-record`, a pre-existing dirty file that is unchanged in content, index entry, executable bit and symlink target is preserved (`PARTIAL`, not `BLOCKED`) when outside `allowed_paths`; any change, unmerged state, missing/malformed state or protected path fails closed. Records without the field behave as before; the baseline schema stays `/1` (AI-SDLC-LITE-G2-DIRTY-BASELINE-004).
 - Verify summary: add `Scope verification`, `Agent-reported checks` and `Independently executed checks` lines so a PASS is not read as proof that checks ran or passed. Presentation only; JSON output, statuses, exit codes and the trust model are unchanged (AI-SDLC-LITE-G2-TRUST-SEMANTICS-001).
 
 ### V1 release candidate preparation — AI-SDLC-LITE-008A

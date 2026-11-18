@@ -309,6 +309,314 @@ class EvidenceAndRecoveryTests(Fixture):
         self.assertEqual(cli('baseline', '--repo', str(self.repo), '--out', str(existing)), 2)
         self.assertEqual(existing.read_text(), 'keep')
 
+    # --- dirty baseline: a pre-existing dirty path is "preserved" only if nothing about it changed -------------------
+    def dirty_contract(self, dirty, modified, **over):
+        data = self.contract(allowed_paths=['src/app.py'], modified_paths=modified, baseline_dirty_paths=dirty,
+                             baseline_ignored_paths=[], claimed_status='PARTIAL')
+        data.update(over)
+        return data
+
+    def edit_record(self, record, change):
+        data = json.loads(record.read_text())
+        change(data)
+        data.pop('digest', None)
+        data['digest'] = vs.canonical_digest(data)
+        record.write_text(json.dumps(data))
+
+    def assert_preserved(self, report, dirty):
+        self.assertEqual(report['status'], 'PARTIAL')
+        self.assertEqual(self.codes(report), {'dirty_baseline'})
+        self.assertEqual(report['dirty_baseline_changed_since_record'], [])
+        self.assertTrue(set(dirty) <= set(report['modified_paths']))
+
+    def assert_not_preserved(self, report, path, *codes):
+        self.assertEqual(report['status'], 'BLOCKED')
+        self.assertIn(path, report['dirty_baseline_changed_since_record'])
+        for code in codes:
+            self.assertIn(code, self.codes(report))
+
+    def test_record_has_dirty_state_and_schema_stays_v1(self):
+        self.write('notes.txt', 'n\n')
+        data = json.loads(self.record().read_text())
+        self.assertEqual(data['schema'], 'ai-sdlc-lite-baseline/1')
+        self.assertEqual(data['baseline_dirty_state'], {'notes.txt': 'index=none;tree=file'})
+
+    def test_untouched_untracked_dirty_file_is_partial_and_edit_or_delete_blocks(self):
+        self.write('notes.txt', 'keep\n')
+        record = self.record()
+        self.write('src/app.py', 'x = 2\n')
+        data = self.dirty_contract(['notes.txt'], ['notes.txt', 'src/app.py'])
+        self.assert_preserved(self.run_with(data, baseline_record=record), ['notes.txt'])
+        self.write('notes.txt', 'clobbered\n')
+        self.assert_not_preserved(self.run_with(data, baseline_record=record), 'notes.txt', 'out_of_scope_modification')
+        (self.repo / 'notes.txt').unlink()
+        self.assert_not_preserved(self.run_with(data, baseline_record=record), 'notes.txt', 'declared_mismatch')
+
+    def test_untracked_dirty_file_that_gets_staged_is_not_preserved(self):
+        self.write('notes.txt', 'keep\n')
+        record = self.record()
+        run(self.repo, 'add', 'notes.txt')
+        data = self.dirty_contract(['notes.txt'], ['notes.txt'])
+        self.assert_not_preserved(self.run_with(data, baseline_record=record), 'notes.txt', 'out_of_scope_modification')
+
+    def test_unstaged_tracked_dirty_file(self):
+        self.write('docs/a.md', 'a2\n')
+        record = self.record()
+        data = self.dirty_contract(['docs/a.md'], ['docs/a.md'])
+        self.assert_preserved(self.run_with(data, baseline_record=record), ['docs/a.md'])
+        self.write('docs/a.md', 'a3\n')
+        self.assert_not_preserved(self.run_with(data, baseline_record=record), 'docs/a.md', 'out_of_scope_modification')
+
+    def test_staged_file_restage_and_unstage_are_not_preserved(self):
+        self.write('docs/a.md', 'v1\n')
+        run(self.repo, 'add', 'docs/a.md')
+        record = self.record()
+        data = self.dirty_contract(['docs/a.md'], ['docs/a.md'])
+        self.assert_preserved(self.run_with(data, baseline_record=record), ['docs/a.md'])
+        self.write('docs/a.md', 'v2\n')
+        run(self.repo, 'add', 'docs/a.md')
+        self.assert_not_preserved(self.run_with(data, baseline_record=record), 'docs/a.md', 'out_of_scope_modification')
+        self.write('docs/a.md', 'v1\n')
+        run(self.repo, 'reset', '-q', 'HEAD', '--', 'docs/a.md')   # same bytes, different index
+        self.assert_not_preserved(self.run_with(data, baseline_record=record), 'docs/a.md', 'out_of_scope_modification')
+
+    def test_staged_deletion_preserved_until_unstaged_or_restored(self):
+        run(self.repo, 'rm', '-q', 'docs/a.md')
+        record = self.record()
+        data = self.dirty_contract(['docs/a.md'], ['docs/a.md'])
+        self.assert_preserved(self.run_with(data, baseline_record=record), ['docs/a.md'])
+        run(self.repo, 'reset', '-q', 'HEAD', '--', 'docs/a.md')   # deletion now unstaged
+        self.assert_not_preserved(self.run_with(data, baseline_record=record), 'docs/a.md', 'out_of_scope_modification')
+        run(self.repo, 'checkout', '-q', 'HEAD', '--', 'docs/a.md')  # restored: no longer differs from the baseline
+        self.assert_not_preserved(self.run_with(data, baseline_record=record), 'docs/a.md', 'declared_mismatch')
+
+    def test_executable_mode_change_defeats_preservation_even_when_content_is_identical(self):
+        self.write('docs/a.md', 'a2\n')
+        record = self.record()
+        data = self.dirty_contract(['docs/a.md'], ['docs/a.md'], allowed_sensitive_paths=['docs/a.md'])
+        self.assert_preserved(self.run_with(data, baseline_record=record), ['docs/a.md'])
+        os.chmod(self.repo / 'docs/a.md', 0o755)
+        # allowed_sensitive_paths would waive special_file_change; the changed state must still block.
+        self.assert_not_preserved(self.run_with(data, baseline_record=record), 'docs/a.md', 'out_of_scope_modification')
+        plain = self.dirty_contract(['docs/a.md'], ['docs/a.md'])
+        self.assert_not_preserved(self.run_with(plain, baseline_record=record), 'docs/a.md', 'special_file_change')
+
+    def test_dirty_symlink_and_target_modification(self):
+        os.symlink('src/app.py', self.repo / 'link')
+        record = self.record()
+        # A pre-existing symlink is still a special file: preserved, but approval is still required (fail closed).
+        plain = self.dirty_contract(['link'], ['link'])
+        report = self.run_with(plain, baseline_record=record)
+        self.assertEqual(report['status'], 'BLOCKED')
+        self.assertEqual(report['dirty_baseline_changed_since_record'], [])
+        self.assertIn('special_file_change', self.codes(report))
+        self.assertNotIn('out_of_scope_modification', self.codes(report))
+        approved = self.dirty_contract(['link'], ['link'], allowed_sensitive_paths=['link'])
+        self.assert_preserved(self.run_with(approved, baseline_record=record), ['link'])
+        (self.repo / 'link').unlink()
+        os.symlink('docs/a.md', self.repo / 'link')            # retarget
+        self.assert_not_preserved(self.run_with(approved, baseline_record=record), 'link', 'out_of_scope_modification')
+        (self.repo / 'link').unlink()
+        self.write('link', 'now a regular file\n')           # type change
+        self.assert_not_preserved(self.run_with(approved, baseline_record=record), 'link', 'out_of_scope_modification')
+
+    def test_governance_and_test_paths(self):
+        self.write('AGENTS.md', 'changed rules\n')
+        self.write('tests/test_app.py', 'pass  # edited\n')
+        record = self.record()
+        data = self.dirty_contract(['AGENTS.md', 'tests/test_app.py'], ['AGENTS.md', 'tests/test_app.py'])
+        self.assert_preserved(self.run_with(data, baseline_record=record), ['AGENTS.md', 'tests/test_app.py'])
+        self.write('AGENTS.md', 'rules rewritten by agent\n')
+        report = self.run_with(data, baseline_record=record)
+        self.assert_not_preserved(report, 'AGENTS.md', 'governance_path_modified_unapproved')
+        self.assertNotIn('tests/test_app.py', report['dirty_baseline_changed_since_record'])
+
+    def test_preservation_does_not_waive_checks_on_other_paths(self):
+        self.write('notes.txt', 'keep\n')
+        record = self.record()
+        self.write('tests/test_app.py', 'pass  # agent edit\n')   # not dirty at baseline: normal test-path rule
+        self.write('docs/a.md', 'agent edit\n')                   # not dirty at baseline: out of scope
+        data = self.dirty_contract(['notes.txt'], ['notes.txt', 'tests/test_app.py', 'docs/a.md'])
+        report = self.run_with(data, baseline_record=record)
+        self.assertEqual(report['status'], 'BLOCKED')
+        self.assertEqual(report['dirty_baseline_changed_since_record'], [])
+        self.assertIn('test_path_modified_unapproved', self.codes(report))
+        self.assertIn('out_of_scope_modification', self.codes(report))
+        details = ' '.join(r['detail'] for r in report['failure_reasons'])
+        self.assertNotIn('notes.txt', ' '.join(r['detail'] for r in report['failure_reasons']
+                                               if r['code'] == 'out_of_scope_modification'), details)
+
+    def test_protected_dirty_path_is_blocked_even_when_preserved(self):
+        self.write('secrets/k.txt', 'dirty secret\n')
+        record = self.record()
+        data = self.dirty_contract(['secrets/k.txt'], ['secrets/k.txt'])
+        report = self.run_with(data, baseline_record=record)
+        self.assertEqual(report['status'], 'BLOCKED')
+        self.assertIn('protected_path_modified', self.codes(report))
+
+    def test_ignorable_and_ignored_paths_do_not_change_preservation(self):
+        (self.repo / '.git' / 'info' / 'exclude').write_text('out/\njunk/\n')
+        self.write('notes.txt', 'keep\n')
+        record = self.record()
+        self.write('out/cache.bin', 'c\n')
+        data = self.dirty_contract(['notes.txt'], ['notes.txt'], ignorable_paths=['out/**'])
+        self.assert_preserved(self.run_with(data, baseline_record=record), ['notes.txt'])
+        self.write('junk/x.bin', 'x\n')
+        report = self.run_with(data, baseline_record=record)
+        self.assertEqual(report['status'], 'BLOCKED')
+        self.assertIn('ignored_path_unapproved', self.codes(report))
+        self.assertEqual(report['dirty_baseline_changed_since_record'], [])
+
+    def test_unmerged_dirty_path_is_never_preserved(self):
+        env = ['git', '-c', 'user.name=t', '-c', 'user.email=t@example.invalid']
+        run(self.repo, 'checkout', '-q', '-b', 'side')
+        self.write('docs/a.md', 'side\n')
+        run(self.repo, 'commit', '-qam', 'side')
+        run(self.repo, 'checkout', '-q', '-')
+        self.write('docs/a.md', 'main\n')
+        run(self.repo, 'commit', '-qam', 'main')
+        self.assertNotEqual(subprocess.run(env + ['merge', 'side'], cwd=self.repo, capture_output=True).returncode, 0)
+        head = run(self.repo, 'rev-parse', 'HEAD')
+        record = self.record()
+        data = self.dirty_contract(['docs/a.md'], ['docs/a.md'], baseline_sha=head)
+        self.assert_not_preserved(self.run_with(data, baseline_record=record), 'docs/a.md', 'out_of_scope_modification')
+
+    # --- review round 1 (PR #23): unmerged index states, HEAD transitions, mode limits ---------------------------------
+    def make_conflict(self):
+        env = ['git', '-c', 'user.name=t', '-c', 'user.email=t@example.invalid']
+        run(self.repo, 'checkout', '-q', '-b', 'side')
+        self.write('docs/a.md', 'side\n')
+        run(self.repo, 'commit', '-qam', 'side')
+        run(self.repo, 'checkout', '-q', '-')
+        self.write('docs/a.md', 'main\n')
+        run(self.repo, 'commit', '-qam', 'main')
+        return env
+
+    def test_unmerged_state_appearing_after_the_baseline_is_not_preserved(self):
+        self.write('notes.txt', 'keep\n')                      # unrelated dirty file stays preserved
+        self.write('docs/a.md', 'a2\n')
+        record = self.record()
+        data = self.dirty_contract(['docs/a.md', 'notes.txt'], ['docs/a.md', 'notes.txt'])
+        self.assert_preserved(self.run_with(data, baseline_record=record), ['docs/a.md', 'notes.txt'])
+        oid = run(self.repo, 'rev-parse', 'HEAD:docs/a.md')     # same bytes on disk; only the index becomes unmerged
+        entries = '0 ' + '0' * 40 + '\tdocs/a.md\n' + ''.join(f'100644 {oid} {n}\tdocs/a.md\n' for n in (1, 2, 3))
+        subprocess.run(['git', 'update-index', '--index-info'], cwd=self.repo, input=entries, text=True, check=True)
+        self.assertEqual(vs.index_state(self.repo)['docs/a.md'], 'unmerged')
+        report = self.run_with(data, baseline_record=record)
+        self.assert_not_preserved(report, 'docs/a.md', 'out_of_scope_modification')
+        self.assertNotIn('notes.txt', report['dirty_baseline_changed_since_record'])
+
+    def test_unmerged_state_in_both_record_and_current_index_is_not_preserved(self):
+        env = self.make_conflict()
+        self.assertNotEqual(subprocess.run(env + ['merge', 'side'], cwd=self.repo, capture_output=True).returncode, 0)
+        head = run(self.repo, 'rev-parse', 'HEAD')
+        record = self.record()
+        self.assertIn('unmerged', json.loads(record.read_text())['baseline_dirty_state']['docs/a.md'])
+        data = self.dirty_contract(['docs/a.md'], ['docs/a.md'], baseline_sha=head)
+        self.assert_not_preserved(self.run_with(data, baseline_record=record), 'docs/a.md', 'out_of_scope_modification')
+
+    def test_head_transition_by_commit_all_is_not_preserved(self):
+        self.write('docs/a.md', 'a2\n')                        # unstaged at baseline
+        record = self.record()
+        run(self.repo, 'commit', '-qam', 'agent commits the pre-existing edit')
+        data = self.dirty_contract(['docs/a.md'], ['docs/a.md'])
+        self.assert_not_preserved(self.run_with(data, baseline_record=record), 'docs/a.md', 'out_of_scope_modification')
+
+    def test_head_transition_by_committing_a_staged_baseline_file_is_not_preserved(self):
+        self.write('docs/a.md', 'staged\n')
+        run(self.repo, 'add', 'docs/a.md')                      # staged at baseline; a plain commit keeps the index entry
+        record = self.record()
+        run(self.repo, 'commit', '-qm', 'agent commits the pre-existing staged edit')
+        data = self.dirty_contract(['docs/a.md'], ['docs/a.md'])
+        self.assert_not_preserved(self.run_with(data, baseline_record=record), 'docs/a.md', 'out_of_scope_modification')
+
+    def test_head_transition_keeps_protected_special_and_ancestry_checks(self):
+        self.write('secrets/k.txt', 'dirty\n')
+        run(self.repo, 'add', 'secrets/k.txt')
+        os.symlink('src/app.py', self.repo / 'link')
+        run(self.repo, 'add', 'link')
+        record = self.record()
+        run(self.repo, 'commit', '-qm', 'agent commits both')
+        data = self.dirty_contract(['link', 'secrets/k.txt'], ['link', 'secrets/k.txt'])
+        report = self.run_with(data, baseline_record=record)
+        self.assertEqual(report['status'], 'BLOCKED')
+        self.assertTrue({'protected_path_modified', 'special_file_change'} <= self.codes(report))
+        # history rewritten so the baseline is no longer an ancestor
+        run(self.repo, 'checkout', '-q', '--orphan', 'orphan')
+        run(self.repo, 'commit', '-qm', 'unrelated history')
+        report = self.run_with(self.dirty_contract(['link', 'secrets/k.txt'], ['link', 'secrets/k.txt']),
+                               baseline_record=record)
+        self.assertEqual(report['status'], 'BLOCKED')
+        self.assertIn('baseline_mismatch', self.codes(report))
+
+    def test_only_the_git_owner_execute_bit_is_part_of_dirty_state(self):
+        # Documented limit: group/other permission bits, ownership, ACLs, xattrs and timestamps are not tracked.
+        self.write('notes.txt', 'keep\n')
+        os.chmod(self.repo / 'notes.txt', 0o644)
+        record = self.record()
+        os.chmod(self.repo / 'notes.txt', 0o664)
+        data = self.dirty_contract(['notes.txt'], ['notes.txt'])
+        self.assert_preserved(self.run_with(data, baseline_record=record), ['notes.txt'])
+        os.chmod(self.repo / 'notes.txt', 0o744)               # the owner execute bit is
+        self.assert_not_preserved(self.run_with(data, baseline_record=record), 'notes.txt', 'out_of_scope_modification')
+
+    def test_execute_bit_is_tracked_even_when_git_ignores_file_mode(self):
+        run(self.repo, 'config', 'core.fileMode', 'false')
+        self.write('docs/a.md', 'a2\n')
+        record = self.record()
+        os.chmod(self.repo / 'docs/a.md', 0o755)               # Git itself would not report this change
+        data = self.dirty_contract(['docs/a.md'], ['docs/a.md'])
+        self.assert_not_preserved(self.run_with(data, baseline_record=record), 'docs/a.md', 'out_of_scope_modification')
+
+    def test_legacy_record_without_dirty_state_preserves_nothing_and_still_loads(self):
+        self.write('notes.txt', 'keep\n')
+        record = self.record()
+        self.edit_record(record, lambda d: d.pop('baseline_dirty_state'))
+        data = self.dirty_contract(['notes.txt'], ['notes.txt'])
+        report = self.run_with(data, baseline_record=record)
+        self.assertEqual(report['status'], 'BLOCKED')
+        self.assertIn('out_of_scope_modification', self.codes(report))
+        self.assertEqual(report['dirty_baseline_changed_since_record'], [])   # the content hash check still works
+
+    def test_malformed_or_inconsistent_dirty_state_is_blocked(self):
+        self.write('notes.txt', 'keep\n')
+        data = self.dirty_contract(['notes.txt'], ['notes.txt'])
+        for change in (lambda d: d.update(baseline_dirty_state='index=none;tree=file'),
+                       lambda d: d.update(baseline_dirty_state=[]),
+                       lambda d: d.update(baseline_dirty_state={}),
+                       lambda d: d.update(baseline_dirty_state={'notes.txt': 5}),
+                       lambda d: d.update(baseline_dirty_state={'notes.txt': 'index=none;tree=file', 'x': 'y'})):
+            record = self.record(name=f'b{id(change)}.json')
+            self.edit_record(record, change)
+            report = self.run_with(data, baseline_record=record)
+            self.assertEqual(report['status'], 'BLOCKED')
+            self.assertIn('baseline_record_mismatch', self.codes(report))
+            self.assertIn('out_of_scope_modification', self.codes(report))
+
+    def test_missing_content_hash_or_state_mismatch_is_not_preserved(self):
+        self.write('notes.txt', 'keep\n')
+        data = self.dirty_contract(['notes.txt'], ['notes.txt'])
+        record = self.record(name='nohash.json')
+        self.edit_record(record, lambda d: d.update(baseline_dirty_sha256={}))
+        self.assertEqual(self.run_with(data, baseline_record=record)['status'], 'BLOCKED')
+        record = self.record(name='wrongstate.json')
+        self.edit_record(record, lambda d: d['baseline_dirty_state'].update({'notes.txt': 'index=100644:abc;tree=file'}))
+        self.assert_not_preserved(self.run_with(data, baseline_record=record), 'notes.txt', 'out_of_scope_modification')
+
+    def test_deleted_dirty_path_without_recorded_hash_is_not_preserved(self):
+        run(self.repo, 'rm', '-q', 'docs/a.md')
+        record = self.record()
+        self.edit_record(record, lambda d: d.update(baseline_dirty_sha256={}))   # absent file: None == None would match
+        report = self.run_with(self.dirty_contract(['docs/a.md'], ['docs/a.md']), baseline_record=record)
+        self.assertEqual(report['status'], 'BLOCKED')
+        self.assertIn('out_of_scope_modification', self.codes(report))
+
+    def test_without_a_baseline_record_nothing_is_preserved(self):
+        self.write('notes.txt', 'keep\n')
+        report = self.run_with(self.dirty_contract(['notes.txt'], ['notes.txt']))
+        self.assertEqual(report['status'], 'BLOCKED')
+        self.assertIn('out_of_scope_modification', self.codes(report))
+
     # --- evidence trust
     def seal(self, *refs):
         out = self.meta / 'manifest.json'
