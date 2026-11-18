@@ -4,9 +4,15 @@ Reconstructed from V2-04E and mission AI-SDLC-LITE-V2-04F-CODEX-CLI-001;
 this is not a recovery of isolated commit 29d98d0.
 
 `ai_sdlc.delivery_executor.Executor(repo, plan, approve, journal, remote=None)`
-consumes the unchanged `ai-sdlc-delivery/1` sealed plan. The existing offline
-CLI remains read-only. There is no execution CLI and no provider-specific
-transport, credential discovery, inference, automatic merge or retry loop.
+consumes the unchanged `ai-sdlc-delivery/1` sealed plan. The offline commands
+`delivery plan|verify|report` remain read-only. A separate `delivery execute`
+command performs a local stage and commit only: the plan's operations must be
+exactly `commit`, commit signing must be `forbidden`, remote operations are
+refused, and a `YES` approval typed at a trusted terminal is required.
+`delivery recover` is observe-only. Push and pull-request creation exist only in
+the library API described below; the CLI does not expose them. There is no
+provider-specific transport, credential discovery, inference, automatic merge or
+retry loop.
 
 The host invokes `commit()`, `push()` or `pull_request()`. Each mutable operation
 (stage, commit, push, PR creation) requires a separate trusted approval callback

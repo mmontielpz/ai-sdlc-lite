@@ -6,6 +6,32 @@
 
 **Product:** a Universal Coding Agent Skill plus a lightweight verification CLI (`ai-sdlc init | doctor | verify`). It must stay light, open-source friendly, agent-agnostic, platform-independent and project-agnostic. No mandatory browser, container, database or orchestration server. FOB and any other project are validation cases, never the architecture.
 
+## Product Baseline (PB) track — added 2026-11-18
+
+**Additive; supersedes nothing.** This track records owner decisions made on 2026-11-18 and does not renumber, complete, reprioritize or remove any N/GQ/S/P/DX item, release gate (G1–G10) or decision (D1–D14), except where an amendment is stated here. Planning artifacts: [docs/product/](docs/product/README.md) (proposals unless stated).
+
+**Owner-approved direction:**
+- Claude Code is the only targeted provider for V1–V3. Existing Codex and Copilot adapters are preserved and not expanded (no Antigravity adapter exists); no qualification commitment for any of the three. No universal provider SDK or abstraction.
+- Project configuration uses `.ai-sdlc-lite/`.
+- Godot/FOB/Studio are excluded from the V1 critical path (the optional adapter and the N/GQ items are neither removed nor re-ordered by this note).
+- Linux first; other platforms remain unqualified.
+- Preview and Stable remain separate qualification targets; branch policy, tagging, publication and platform support are **not** decided here.
+
+**Amendment to D6 (owner decision OD-01, 2026-11-18).** *Original:* "Which agents are in V1.0 scope; policy for unqualified ones — recommendation: Copilot and Codex first; others 'not verified' until evidenced." *Amended:* For V1–V3 the only targeted agent is **Claude Code**. Copilot, Codex and Antigravity carry no qualification commitment; existing adapters, declarations and historical evidence are preserved and described as "not verified (not in committed scope)". An agent is named "supported" only with a dated VERIFIED smoke row for that exact agent, platform and version (release gate G5; [QUALIFICATION_MATRIX.md](QUALIFICATION_MATRIX.md)). Removing an existing adapter requires a separate decision. **D2:** the project directory is `.ai-sdlc-lite/`.
+
+**Effect on existing items (status notes; no item is marked complete or removed):**
+
+| Item | Note |
+| --- | --- |
+| CODEX-002 | Implemented (adapter declaration and validator); preserved. |
+| CODEX-003, CODEX-004 | Not committed under D6 as amended; remain NOT RUN. |
+| GQ-RUNTIME (and GQ-SAFETY onward) | Listed dependency on CODEX-004 is **unresolved** pending an owner decision; not on the V1 critical path. |
+| N07 Claude Code live qualification | Retained; it is the qualification of the targeted provider. Not run. |
+| DX-002, DX-003, DX-005 (first components) | Implemented in code (see the status update in [DX_ARCHITECTURE.md](DX_ARCHITECTURE.md)); implemented is not qualified. |
+| "Universal" wording in this file | Predates the decision; read as "agent-neutral core, Claude Code first". |
+
+Release gates G1–G10 below are unchanged.
+
 ## 0. Canonical candidate baseline
 
 This sanitized roadmap preserves milestone definitions and dependencies.
@@ -294,11 +320,11 @@ Each slice is independently testable and approved separately. "Test" is the evid
 | ID | Decision | Recommendation |
 |---|---|---|
 | D1 | CLI packaging: single stdlib file/zipapp and `python -m ai_sdlc` versus a PyPI package | single stdlib module first; decide on PyPI after P4 |
-| D2 | Project-adapter location and format (`.ai-sdlc/project.json` versus root file) | one JSON file, one directory, nothing else generated |
+| D2 | Project-adapter location and format (`.ai-sdlc/project.json` versus root file; **directory is `.ai-sdlc-lite/`**, owner decision 2026-11-18, see PB track) | one JSON file, one directory, nothing else generated |
 | D3 | Authorization and budget for live agent runs; permission for read-only Agy identity checks | smoke only, small fixed budget per agent |
 | D4 | Default profile and Strict behaviour (clean baseline required? CI snippet?) | Standard default |
 | D5 | May `verify` ever execute declared commands (S18 risk)? | no in Quick and Standard; Strict only from an owner-approved allowlist |
-| D6 | Which agents are in V1.0 scope; policy for unqualified ones | Copilot and Codex first; others "not verified" until evidenced |
+| D6 | Which agents are in V1.0 scope; policy for unqualified ones (**amended 2026-11-18 by owner decision OD-01: Claude Code only; see PB track**) | Copilot and Codex first; others "not verified" until evidenced |
 | D7 | Multi-repository model (one contract per repository, or a manifest) | one contract per repo; revisit after P5 |
 | D8 | Target public repository, branch policy, licence confirmation | decide before CI work (S02) |
 | D9 | Who performs independent evidence (G3, G10) | a person other than the implementing agent |

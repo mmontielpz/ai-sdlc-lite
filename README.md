@@ -8,13 +8,39 @@ Use your existing agent, project tools, and checks. Start with a short request, 
 
 [Getting Started](#quickstart) · [Workflow](WORKFLOW.md) · [Examples](#examples) · [Qualification](QUALIFICATION.md#ai-sdlc-lite-012a-current-evidence-addendum) · [Limitations](#supported-agent-approach-and-limitations) · [Contributing](CONTRIBUTING.md)
 
-**Status: EXPERIMENTAL V1 — publicly available, no release.** Installer-level tests pass (68 tests). Private vulnerability reporting is enabled and API-verified (see [SECURITY.md](SECURITY.md)). Native GitHub Copilot CLI Skill installation from the raw URL below was verified (PASS, Copilot CLI 1.0.109). One live Copilot CLI task was observed to PASS (6/6 tests of the [workshop starter](https://github.com/mmontielpz/ai-sdlc-lite-workshop-starter) task; a single operator-observed run, not a benchmark), but this is **not** full qualification. Desktop-app installation is NOT TESTED. No production-readiness or measured token-savings claims are established. Human release acceptance is PENDING.
+**Status: EXPERIMENTAL V1 — publicly available, no release.** The automated test suite runs in CI on Linux (Ubuntu 24.04) with Python 3.9 and 3.14; see the repository's CI status for the current result. macOS and Windows are NOT TESTED. Private vulnerability reporting is enabled and API-verified (see [SECURITY.md](SECURITY.md)). Native GitHub Copilot CLI Skill installation from the raw URL below was verified (PASS, Copilot CLI 1.0.109). One live Copilot CLI task was observed to PASS (6/6 tests of the [workshop starter](https://github.com/mmontielpz/ai-sdlc-lite-workshop-starter) task; a single operator-observed run, not a benchmark), but this is **not** full qualification. Desktop-app installation is NOT TESTED. No production-readiness or measured token-savings claims are established. Human release acceptance is PENDING.
+
+**Strategy (owner decision, 2026-11-18):** Claude Code is the only provider targeted for V1–V3. It is **not yet qualified**: no Claude Code smoke or deep run has been recorded, and discovery of the installed Skill bundle by Claude Code is UNVERIFIED. The Codex and GitHub Copilot CLI adapters and their historical evidence are preserved but not expanded; Antigravity has no adapter (only notes). All three are "not verified (not in committed scope)". The core stays agent-neutral. Planning artifacts: [docs/product/](docs/product/README.md).
+
+### Current state at a glance
+
+| Area | State |
+| --- | --- |
+| Scope and evidence verifier (`verify`, `baseline`, `seal`, `result-template`), including honest summary wording and preserved dirty-baseline handling | Implemented; unit-tested (CI: Linux, Python 3.9 and 3.14); Experimental |
+| Offline Skill bundle (`init`, `doctor`, `status`) | Implemented; unit-tested; discovery by Claude Code NOT TESTED |
+| Delivery (`delivery plan\|verify\|report`; `execute` = local stage and commit only; `recover` = observe-only) | Implemented; unit-tested; not exercised in real use; Experimental |
+| Claude Code qualification (smoke, deep) | NOT TESTED (not run) |
+| Codex, Copilot CLI, Antigravity | Codex and Copilot adapters and historical evidence preserved (no Antigravity adapter exists); not verified; not in committed scope |
+| Independent execution of checks | Not implemented: the verifier never runs commands |
+| Repository discovery and audit, governance declarations (`.ai-sdlc-lite/project.json`), task contracts | Not implemented; planned in the Product Baseline track |
+| Recommendations, feature contracts, run receipts, metrics, multi-repository | Deferred |
+| macOS and Windows | NOT TESTED; unqualified |
+| Godot adapter and FOB/Studio work | Optional configuration-level adapter; not on the V1 critical path |
 
 ## Quickstart
 
 Open your project with its AI-SDLC Lite documents available. For first-time setup, follow [Adopt in an existing repository](#adopt-in-an-existing-repository), preserving existing instructions and work.
 
-If the native Skill is available, invoke it using your client's supported selection. In Codex:
+Offline setup that does not depend on any agent (a Git repository and Python 3.9+; from a checkout of this repository):
+
+```sh
+python3 -B -m ai_sdlc init --repo /absolute/path/to/repo --apply
+python3 -B -m ai_sdlc init --repo /absolute/path/to/repo --check
+```
+
+`init` writes only the Skill bundle under `.agents/skills/ai-sdlc-lite/`. Whether Claude Code discovers that location is UNVERIFIED; until it is qualified, point Claude Code at [WORKFLOW.md](WORKFLOW.md) and the repository's `AGENTS.md` explicitly.
+
+The agent-specific examples below are historical evidence for products that are not in the committed provider scope. If the native Skill is available, invoke it using your client's supported selection. In Codex:
 
 > Use $ai-sdlc-lite. Fix [observable problem]. Inspect first and propose the smallest useful slice, allowed changes, and exact checks. Stop for plan approval.
 
@@ -108,6 +134,8 @@ uses sorted relative paths, SHA-256 hashes and stable result/reason identifiers;
 untrusted paths are JSON-escaped. No `--force` or provider setup flag is offered.
 Provider-specific installation and configuration remain separate opt-in workflows
 described below.
+
+> **Copilot sections (through "Safe uninstall") are preserved historical and experimental material.** GitHub Copilot CLI is not in the committed provider scope (Claude Code only; owner decision 2026-11-18). What they describe was observed on the stated versions only. The raw URL below follows `master`, which trails `develop`; branch policy is an open owner decision.
 
 ### Native Copilot Skill install (no Python)
 
@@ -232,7 +260,7 @@ Follow [WORKFLOW.md](WORKFLOW.md) for inspection, plan approval, scoped executio
 
 ## Expected repository structure
 
-The committed baseline contains 23 project files. The current working tree has 34 files, including the installer, four framework test files and results for 019B, 019D, 020A, 020B, 020C micro-cycles and 021B. Root task/result files are reusable templates; example and task records preserve execution evidence.
+The repository contains the Markdown workflow documents, the `ai_sdlc/` CLI package, `scripts/` (verifier and installer), adapters, tests, examples, and historical task records under `tasks/`. File counts are intentionally not recorded here; see the repository listing. Root task/result files are reusable templates; example and task records preserve execution evidence.
 
 ```text
 README.md
@@ -272,12 +300,13 @@ The [qualification record](QUALIFICATION.md#evidence-attribution-and-qualificati
 
 ## Supported agent approach and limitations
 
-The methodology is the task, controls, approvals, and evidence. Codex, GitHub Copilot CLI, and Claude Code are separate products that can act as development agents. This project intends to use Codex for development and Copilot CLI for workshop execution; neither is a dependency of the core process. Claude Code is another possible execution tool.
+The methodology is the task, controls, approvals, and evidence. Codex, GitHub Copilot CLI, and Claude Code are separate products that can act as development agents. The only provider targeted for V1–V3 is Claude Code (owner decision, 2026-11-18); it is not yet qualified. The Codex and GitHub Copilot CLI adapters and their historical evidence are preserved (no Antigravity adapter exists); Codex, Copilot CLI and Antigravity are not in the committed scope and are "not verified". No agent is a dependency of the core process.
 
 Start with one agent. Discovery, permissions, and usage reporting depend on the client, version, and environment.
 
 | Capability | Qualification |
 | --- | --- |
+| Claude Code (targeted provider): installation of the Skill bundle, discovery, bounded task, `verify` | NOT TESTED: no smoke or deep run recorded. A read-only `claude --version` check on the author's workstation reported 2.1.327; that is not a qualification. |
 | Explicit Codex Skill invocation and bounded local delivery | Demonstrated in the inspected environment; includes a recovered scope incident and the accepted formatter pilot. |
 | Copilot CLI 1.0.109 Skill discovery and coding slice | Owner-reported success; not an independently repeated compatibility qualification. |
 | GitHub task-to-merge workflow | Documented optional mapping; execution not qualified. Local tasks require no GitHub. |
