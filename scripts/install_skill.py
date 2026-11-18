@@ -110,7 +110,7 @@ def workspace(root):
 def preflight(root):
     """Report bounded metadata, never secret values or inferred production safety."""
     print(f'Working directory: {Path.cwd()}; execution target: {root}')
-    print(f'Installed Skill: {(root / SKILL / "SKILL.md").is_file()}')
+    print('Installed Skill: ' + str(any((root / skill / 'SKILL.md').is_file() for skill in SKILL_TARGETS.values())))
     for name in ('copilot', 'node', 'npm'):
         executable = shutil.which(name)
         if executable:
@@ -331,6 +331,32 @@ def reference_bytes(name):
     return content
 
 
+def installed_skill(root):
+    """Return the relative destination of the verified installed Skill bundle, or fail closed.
+
+    Only the fixed SKILL_TARGETS destinations are ever considered; no caller-supplied path is trusted.
+    Every destination that exists must be an intact, manifest-owned installation (a missing, partial,
+    edited or symlinked one is refused even when another target is valid). When more than one is intact,
+    the legacy default target is used so the result is deterministic and existing behaviour is unchanged.
+    """
+    intact = []
+    for relative in SKILL_TARGETS.values():
+        destination = root / relative
+        no_symlinks(root, destination)
+        if not os.path.lexists(destination):
+            continue
+        if not destination.is_dir():
+            raise Blocked('Skill destination is not a directory.')
+        owned = read_manifest(destination)
+        if inventory(destination) != set(owned) | {MANIFEST} or any(
+                digest((destination / name).read_bytes()) != sha for name, sha in owned.items()):
+            raise Blocked('Installed Skill differs from its ownership manifest.')
+        intact.append(relative)
+    if not intact:
+        raise Blocked('Install the project Skill before initializing task context.')
+    return intact[0]
+
+
 def initialize_task(root, task_id, contract, dry_run):
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,79}', task_id):
         raise Blocked('Task ID must contain only letters, digits, underscores or hyphens.')
@@ -351,6 +377,7 @@ def initialize_task(root, task_id, contract, dry_run):
             raise Blocked('Existing task context is incomplete; no automatic repair.')
         print('READY: existing task context preserved, including subsequent record edits.')
         return 0
+    skill = installed_skill(root)
     additions = {}
     for name in ('TASK.md', 'CHECKLIST.md', 'RESULT.md'):
         if name == 'TASK.md' and contract:
@@ -360,14 +387,12 @@ def initialize_task(root, task_id, contract, dry_run):
             raise Blocked(f'Existing task record refused: {path}')
         text = reference_bytes(name).decode('utf-8')
         # Rebase only the shared README link; task records link to each other locally.
-        readme = os.path.relpath(root / SKILL / 'framework/README.md', directory).replace(os.sep, '/')
+        readme = os.path.relpath(root / skill / 'framework/README.md', directory).replace(os.sep, '/')
         text = text.replace('](README.md)', f']({readme})').replace('<unique ID>', task_id)
         if name == 'CHECKLIST.md' and contract:
             ref = os.path.relpath(existing_contract, directory).replace(os.sep, '/')
             text = text.replace('](TASK.md)', f']({ref})')
         additions[path] = text.encode()
-    if not (root / SKILL / 'framework/README.md').is_file():
-        raise Blocked('Install the project Skill before initializing task context.')
     for path, content in additions.items():
         print(f'  CREATE {path} sha256={digest(content)}')
     marker_bytes = (json.dumps(record, indent=2) + '\n').encode()
