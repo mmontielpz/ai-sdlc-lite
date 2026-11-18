@@ -13,7 +13,7 @@ OD-03: existing gates are preserved; none is weakened, replaced or bypassed. Gat
 | **G4** Recovery tests | interrupted-task and rollback fixtures for the CLI, not only the installer | none | CLI fixtures (init, result-template, baseline, new commands' `--out`) | required | required | NOT MET |
 | **G5** Agent qualification | each agent named supported has a VERIFIED smoke row; unlisted ones say "not verified" | **none in text; narrows the set**: only Claude Code can be named supported | Claude Code: dated VERIFIED smoke row for exact agent+platform+version (matrix rule 3). Copilot/Codex/Antigravity: "not verified (not in committed scope)" — existing PARTIAL history stays recorded, never promoted | required (Claude Code smoke) | required (Claude Code smoke; deep only if "qualified" is claimed) | NOT MET (Claude Code: no row) |
 | **G6** Platform qualification | Linux, macOS, Windows each VERIFIED or explicitly excluded | none (platform support **not approved**, OD-05) | Preview: Linux VERIFIED, macOS/Windows **explicitly excluded** in release notes; Stable: owner decides per platform | required (exclusion statement) | required (verified or excluded, owner-decided) | NOT MET (Linux suite only) |
-| **G7** Multi-project validation | ≥4 unlike use cases, one brownfield | none (all runs with Claude Code) | Preview: 2 completed dogfood runs + the independent run; Stable: ≥4 unlike use cases incl. brownfield, matrix rows | partial (see §3) | required in full | NOT MET |
+| **G7** Multi-project validation | ≥4 unlike use cases, one brownfield | none (all runs with Claude Code) | Public Preview and Stable: ≥4 unlike use cases incl. one brownfield, matrix rows. Internal V1 Experimental dogfood runs count as evidence but do not by themselves meet G7 | required in full (see §3) | required in full | NOT MET |
 | **G8** CI | automated matrix on the public repository | none | CI runs deterministic tests (3.9, 3.14) — live agents cannot run in CI (paid/auth), so agent evidence is human-recorded (G3/G5) | required (Linux matrix) | required (+ any platforms the owner includes) | PARTIAL (Linux 3.9/3.14 observed passing) |
 | **G9** Security reporting route | verified working private route (`SECURITY.md`) | none | re-verify at release time; record the observation | required | required | NOT MET (reported enabled earlier; must be re-verified) |
 | **G10** Docs and install validation | clean-room install and first task by a new reader | **clarify**: first task is performed with Claude Code | a person other than the implementing agent follows the docs from a clean directory to a verified result with Claude Code; transcript recorded | required | required | NOT MET |
@@ -37,13 +37,20 @@ No conflict requires weakening, replacing or bypassing a gate.
 | | **Preview** | **Stable** |
 |---|---|---|
 | Purpose | first public tagged release with an explicit limitations statement (ROADMAP P6 allows this) | meets every gate without a limitations carve-out for gates |
-| Gates | G1, G2, G3 (≥1 independent run), G4, G5 (Claude Code smoke), G6 (exclusion statement), G7 **partial** (see below), G8 (Linux), G9, G10 | G1–G10 all fully |
-| G7 meaning | ≥2 dogfood runs + 1 independent clean-room run; stated as partial | ≥4 unlike use cases incl. brownfield |
+| Gates | G1, G2, G3 (≥1 independent run), G4, G5 (Claude Code smoke), G6 (exclusion statement), G7 **in full** (≥4 unlike use cases incl. one brownfield), G8 (Linux), G9, G10 | G1–G10 all fully |
+| G7 meaning | original requirement, unchanged: ≥4 unlike use cases incl. one brownfield | same |
 | Claude Code claim | "smoke-tested with Claude Code <version> on Linux on <date>" | same, plus deep qualification only if "qualified" is claimed |
 | Must say | not verified: macOS/Windows, other agents, independent execution, OS isolation, delivery executor in real use | the remaining not-verified list, if any |
 | Forbidden in both | "certified", "secure", "universal", "supports <agent/platform/version>" without its row, productivity/cost claims, "independently executed" for anything not run by a tool |
 
-G7 "partial" for Preview is a **reduction of the G7 bar**, so it is explicitly marked **PROPOSED, needs the owner's approval**, and Preview must then state that G7 is not met. (Alternative with no reduction: Preview is not released until G7 is fully met, i.e. Preview == Stable on G7.) Decision O-G7 below.
+### 3.1 Release tiers and what each claims
+| Tier | What it is | G1–G10 release compliance claimed? |
+|---|---|---|
+| **V1 Experimental** | internal, controlled dogfood and the minimum Claude Code qualification work (ROADMAP/PB track); not a public release | **No.** It claims no G1–G10 release compliance. Evidence gathered (dogfood runs, smoke rows) is recorded and may later count toward gates, but the tier itself is not gate-compliant. |
+| **Public Preview** | first public tagged release (ROADMAP P6) | Only when every Preview-required row in §1 is evidenced, **including G7 in full**. A partial G7 is not sufficient for a gate-compliant Preview. |
+| **Stable** | all gates fully | Yes, when G1–G10 are all met. |
+
+The original G7 requirement (at least four unlike use cases, including one brownfield) is preserved for both Preview and Stable. An earlier draft proposed treating G7 as "partial" for Preview. That idea is **withdrawn from this document** and is not part of the current release policy. Any future proposal to relax a Preview gate is **unapproved, outside the current release policy**, and would require a separate explicit owner decision recorded in ROADMAP; until then no document may describe a release with partial G7 as gate-compliant. A release that does not meet every Preview-required row may be published only under a different name (such as V1 Experimental) and must not claim G1–G10 compliance.
 
 ## 4. Proposed PB acceptance criteria (additions, not replacements)
 Independent of G1–G10, the product acceptance criteria from PB-002 (determinism of discovery, adversarial fixtures, no execution/network/model calls, schema validators + goldens, governance override rules, task lint, trust wording, compatibility checklist, docs truth) remain **proposed** criteria supporting G1/G2/G10. They are additive evidence for the gates above, not owner-approved gates.
@@ -57,7 +64,7 @@ Independent of G1–G10, the product acceptance criteria from PB-002 (determinis
 | RG-4 | **Platform support** (G6) per OS | owner |
 | RG-5 | **Claude Code support window** (tested version only vs range) | P-3 |
 | RG-6 | **Authorization/budget for live smoke runs** (D3) | owner |
-| RG-7 | **O-G7**: accept "G7 partial" for Preview or keep Preview == full G7 | owner (changes the bar) |
+| RG-7 | *Closed in this document:* Preview requires full G7. Any relaxation is a separate, unapproved proposal and not current policy | owner only, if ever raised |
 | RG-8 | Who is the independent person for G3/G10 and when | owner |
 
 ## 6. Go / no-go
