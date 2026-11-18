@@ -4,6 +4,10 @@
 
 **Product:** a Universal Coding Agent Skill plus a lightweight verification CLI. Stdlib Python 3 and Git only. No browser, container, database, server or orchestrator is required or planned.
 
+## Product Baseline track (added 2026-11-18)
+
+Owner decisions (2026-11-18) added without superseding the earlier plan: **Claude Code is the only targeted provider for V1–V3**; existing Codex and Copilot adapters are preserved and not expanded (no Antigravity adapter exists); project configuration uses `.ai-sdlc-lite/` (the directory the code already uses for `task-context.json`); Godot/FOB/Studio are off the V1 critical path; Linux first, other platforms unqualified. The layering rule stands: verifier, contracts and schemas stay agent-neutral; Claude Code specifics are confined to its adapter declaration, one installer target mapping and Skill text, not a provider abstraction. "Universal" wording below predates this decision and is read accordingly. See [docs/product/](docs/product/README.md); release gates G1–G10 and decisions D1–D14 are unchanged except the D6 amendment recorded in [ROADMAP.md](ROADMAP.md).
+
 ## One canonical source
 
 The canonical definition is the Markdown contract set (`AGENTS.md`, `WORKFLOW.md`, `TASK.md`, `CHECKLIST.md`, `RESULT.md`, `RESULT_CONTRACT.md`) plus the single-file Skill `.agents/skills/ai-sdlc-lite/SKILL.md`. Agent adapters and project adapters are **derived or referenced, never separately maintained**. A drift test (the existing `test_skill_source_bundle_consistency` is the model) must fail if an adapter diverges from the canonical text.
@@ -41,7 +45,7 @@ Codex and Godot adapters independently reference the same BOV contracts and veri
 
 **Result contract** (`ai-sdlc-lite-result/1`, *exists*, see [RESULT_CONTRACT.md](RESULT_CONTRACT.md)): task id, baseline SHA, allowed, sensitive and protected paths, declared changes, verification commands with exit codes and evidence, claimed status. Verification output is `ai-sdlc-lite-verification/1` with exit codes 0 PASS, 1 PARTIAL, 2 BLOCKED. Both schemas carry a version string; any breaking change needs a new version and a migration note.
 
-**Project adapter** (target): one optional JSON file, `.ai-sdlc/project.json` (path is a decision, see ROADMAP), consumed by `init`, `doctor` and `verify`:
+**Project adapter** (target): one optional JSON file, `.ai-sdlc-lite/project.json` (directory per owner decision, 2026-11-18; earlier text said `.ai-sdlc/`), consumed by `init`, `doctor` and `verify`:
 
 This remains a future proposal. V2-04 init generates no project adapter or task
 context and consumes neither. It uses `scripts/install_skill.py` for the canonical

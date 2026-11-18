@@ -2,6 +2,10 @@
 
 **Status: PLAN with current evidence recorded honestly.** A cell is **VERIFIED** only when a dated record cites a command, environment and result. Otherwise it is PARTIAL, NOT RUN or UNKNOWN. An unlisted combination is NOT VERIFIED and must not be advertised as supported. Historical evidence lives in [QUALIFICATION.md](QUALIFICATION.md) (append-only); this file defines what V1.0 must still prove. See [ROADMAP.md](ROADMAP.md).
 
+## Dated notes (prior rows are never edited)
+
+**2026-11-18.** (1) Owner decision OD-01 amends D6: Claude Code is the only agent targeted for V1–V3; Copilot, Codex and Antigravity carry no qualification commitment and are "not verified (not in committed scope)". Their rows below remain as historical evidence. The "Codex × Linux first" priority text below predates this decision. (2) Claude Code: smoke NOT RUN, deep NOT RUN. A read-only `claude --version` on the author's workstation reported 2.1.327; this is an observed version string only, not discovery, install or qualification evidence. (3) The README's "one live Copilot CLI task observed to PASS" is an owner-observed single run; the Copilot row's smoke column (NOT RUN) records that no repeatable, recorded smoke exists. They describe different evidence and are both retained. (4) Platforms: Linux only (CI: Ubuntu 24.04, Python 3.9 and 3.14, unit tests); macOS and Windows NOT RUN. (5) Release gates G1–G10 and the reporting rules below are unchanged.
+
 ## Smoke versus deep
 
 | Level | Purpose | Cost | Pass means |

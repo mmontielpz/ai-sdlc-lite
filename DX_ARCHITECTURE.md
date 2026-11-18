@@ -1,5 +1,7 @@
 # Automation-first developer experience proposal
 
+> **Status update (2026-11-18).** The slices below are design text; parts exist in code. Implemented: the `python3 -m ai_sdlc` entry point, offline `doctor`, verifier passthrough and read-only `status` (DX-002); `init` over the existing installer (DX-003, without Codex discovery evidence); and the first delivery components, `delivery plan|verify|report`, the executor library and native Git adapter, `delivery execute` (local stage and commit only) and observe-only `delivery recover` (DX-005, first components). Not implemented: mission preparation and run receipts (DX-004), push/PR delivery through the CLI, metrics (DX-006). Codex-specific proposals in this document are **not committed**: Claude Code is the only provider targeted for V1–V3 (owner decision OD-01, see [ROADMAP.md](ROADMAP.md#product-baseline-pb-track--added-2026-11-18)). Nothing here was re-evaluated or removed.
+
 Status: DESIGN ONLY. This sanitized proposal describes technical interfaces and
 future gates; it is not a historical execution report or approval to implement.
 The local candidate descends from the existing public baseline and has no private
