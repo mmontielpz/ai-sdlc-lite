@@ -310,7 +310,7 @@ def local_path(root, value):
         raise Blocked('Task context must remain inside the target repository.')
     path = root / relative
     no_symlinks(root, path)
-    if path == root / SKILL or path.is_relative_to(root / SKILL):
+    if any(path == root / skill or path.is_relative_to(root / skill) for skill in SKILL_TARGETS.values()):
         raise Blocked('Bundled references cannot be active task records.')
     return path
 

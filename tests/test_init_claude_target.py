@@ -150,6 +150,21 @@ class ClaudeTargetTests(unittest.TestCase):
         self.assertEqual(self.uninstall('--skill-target', 'claude-code')[0], 1)
         self.assertEqual((self.repo / CLAUDE / 'SKILL.md').read_bytes(), b'edited\n')
 
+    def test_bundled_claude_references_cannot_be_active_task_records(self):
+        self.invoke('--apply')
+        self.invoke('--target', 'claude-code', '--apply')
+        spec = importlib.util.spec_from_file_location('install_skill_t', ROOT / 'scripts/install_skill.py')
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        for base in ('.agents', '.claude'):
+            out = io.StringIO()
+            with redirect_stdout(out), redirect_stderr(out):
+                code = mod.main(['--target', str(self.repo), '--init-task', 'T1', '--task-contract',
+                                 base + '/skills/ai-sdlc-lite/framework/TASK.md'])
+            self.assertEqual(code, 1, base)
+            self.assertIn('Bundled references cannot be active task records', out.getvalue(), base)
+        self.assertFalse((self.repo / '.ai-sdlc-lite').exists())
+
     def test_skill_target_flag_requires_uninstall(self):
         spec = importlib.util.spec_from_file_location('install_skill_v', ROOT / 'scripts/install_skill.py')
         mod = importlib.util.module_from_spec(spec)
