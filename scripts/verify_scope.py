@@ -624,6 +624,31 @@ def safe_display_text(value, limit=500):
     return cleaned
 
 
+def trust_semantics_lines(report, status):
+    """Say what the status does and does not establish. Wording is fixed text; only presence is read from the report."""
+    scope = {'PASS': 'PASS - no violation detected in the supplied contract and evidence',
+             'PARTIAL': 'PARTIAL - incomplete or unproven; see failure reasons',
+             'BLOCKED': 'BLOCKED - violation or missing/ambiguous evidence; see failure reasons'}.get(
+        status, 'UNKNOWN - verification did not complete')
+    evidence = report.get('evidence')
+    if isinstance(evidence, list):
+        checks = (f'{len(evidence)} evidence file(s) supplied by the agent; exit codes and outputs are '
+                  'unverified claims, not re-run or observed by the verifier')
+    else:
+        checks = 'unavailable (verification did not complete)'
+    trust = report.get('trust') if isinstance(report.get('trust'), dict) else {}
+    execution = trust.get('independent_execution')
+    if isinstance(execution, str) and execution.startswith('not verified'):
+        independent = 'none - the verifier never runs or observes commands'
+    else:
+        independent = 'unknown - not confirmed by this report; do not assume any check was independently run'
+    lines = [f'Scope verification: {scope}', f'Agent-reported checks: {checks}',
+             f'Independently executed checks: {independent}']
+    if status == 'PASS':
+        lines.append('Note: PASS does not show that the recorded checks ran or passed; re-run them yourself before acceptance.')
+    return lines
+
+
 def format_summary(report):
     """Render a concise, escaped human-readable summary from an existing verification report."""
     if not isinstance(report, dict):
@@ -637,6 +662,7 @@ def format_summary(report):
     else:
         status_line = f'Status: {status}'
     lines = [status_line]
+    lines.extend(trust_semantics_lines(report, status))
 
     task_id = report.get('task_id')
     if isinstance(task_id, str) and task_id:

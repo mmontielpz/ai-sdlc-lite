@@ -210,6 +210,97 @@ class VerifySummaryTests(unittest.TestCase):
         self.assertIn('src/line\\nbreak.py', rendered)
         self.assertIn('bad\\x1b[2Jpath\\u202e\\nStatus: PASS', rendered)
 
+    # ---- trust semantics: the summary must say what the status does and does not establish --------------------------
+
+    LABELS = ('Scope verification:', 'Agent-reported checks:', 'Independently executed checks:')
+
+    def summary(self, contract, name='result.json'):
+        path = self.write_result(contract, name=name)
+        res = run_ai_sdlc('verify', '--repo', str(self.repo), '--result', str(path), '--format', 'summary')
+        return res
+
+    def assert_never_implies_independence(self, text):
+        self.assertIn('Independently executed checks: none', text)
+        for label in self.LABELS:
+            self.assertIn(label, text)
+        self.assertNotIn('verified independently', text.lower())
+        self.assertNotIn('checks passed', text.lower())
+
+    def test_agent_reported_pass_states_scope_only_and_not_rerun(self):
+        self.write_repo('src/app.py', 'x = 2\n')
+        res = self.summary(self.base_contract())
+        self.assertEqual(res.returncode, 0)
+        self.assertTrue(res.stdout.startswith('Status: PASS (computed: PASS, claimed: PASS)'))
+        self.assertIn('Scope verification: PASS - no violation detected in the supplied contract and evidence', res.stdout)
+        self.assertIn('exit codes and outputs are unverified claims, not re-run or observed by the verifier', res.stdout)
+        self.assertIn('Note: PASS does not show that the recorded checks ran or passed', res.stdout)
+        self.assert_never_implies_independence(res.stdout)
+
+    def test_fabricated_check_evidence_still_passes_but_summary_does_not_vouch_for_it(self):
+        # The code under "test" would fail, the contract and out.txt claim success: the verifier cannot know.
+        self.write_repo('src/app.py', 'raise SystemExit(1)\n')
+        (self.meta / 'out.txt').write_text('OK (fabricated)\n', encoding='utf-8')
+        res = self.summary(self.base_contract())
+        self.assertEqual(res.returncode, 0)  # trust model unchanged: structure is consistent, so PASS
+        self.assertTrue(res.stdout.startswith('Status: PASS'))
+        self.assertIn('not re-run or observed by the verifier', res.stdout)
+        self.assertIn('Note: PASS does not show that the recorded checks ran or passed', res.stdout)
+        self.assert_never_implies_independence(res.stdout)
+
+    def test_blocked_summary_has_no_pass_wording(self):
+        self.write_repo('secrets/k.txt', 'changed\n')
+        res = self.summary(self.base_contract(modified_paths=['secrets/k.txt']))
+        self.assertEqual(res.returncode, 2)
+        self.assertIn('Scope verification: BLOCKED', res.stdout)
+        self.assertNotIn('Scope verification: PASS', res.stdout)
+        self.assertNotIn('Note: PASS', res.stdout)
+        self.assert_never_implies_independence(res.stdout)
+
+    def test_partial_summary_has_no_pass_wording(self):
+        self.write_repo('src/app.py', 'x = 2\n')
+        res = self.summary(self.base_contract(
+            claimed_status='PARTIAL',
+            verification=[{'command': 'python3 -m unittest', 'exit_code': 1, 'evidence': 'out.txt'}]))
+        self.assertEqual(res.returncode, 1)
+        self.assertIn('Scope verification: PARTIAL', res.stdout)
+        self.assertNotIn('Scope verification: PASS', res.stdout)
+        self.assertNotIn('Note: PASS', res.stdout)
+        self.assert_never_implies_independence(res.stdout)
+
+    def test_missing_or_incomplete_evidence_is_reported_without_overclaiming(self):
+        self.write_repo('src/app.py', 'x = 2\n')
+        missing = self.summary(self.base_contract(
+            verification=[{'command': 'python3 -m unittest', 'exit_code': 0, 'evidence': 'missing.txt'}]))
+        self.assertEqual(missing.returncode, 2)
+        self.assertIn('Scope verification: BLOCKED', missing.stdout)
+        self.assertIn('Agent-reported checks: 0 evidence file(s)', missing.stdout)
+        self.assert_never_implies_independence(missing.stdout)
+
+        bad = self.meta / 'bad.json'
+        bad.write_text('{not valid json', encoding='utf-8')
+        res = run_ai_sdlc('verify', '--repo', str(self.repo), '--result', str(bad), '--format', 'summary')
+        self.assertEqual(res.returncode, 2)
+        self.assertIn('Agent-reported checks: unavailable (verification did not complete)', res.stdout)
+        self.assertNotIn('Scope verification: PASS', res.stdout)
+
+    def test_reports_without_trust_information_never_claim_independence_either_way(self):
+        for report in ({}, {'status': 'PASS'}, {'status': 'PASS', 'trust': {'independent_execution': 'yes'}}):
+            text = vs.format_summary(report)
+            self.assertIn('Independently executed checks: unknown', text)
+            self.assertNotIn('Independently executed checks: none', text)
+            self.assertNotIn('verified independently', text.lower())
+        self.assertIn('Scope verification: UNKNOWN', vs.format_summary({}))
+
+    def test_json_report_unchanged_by_summary_wording(self):
+        self.write_repo('src/app.py', 'x = 2\n')
+        path = self.write_result(self.base_contract())
+        res = run_ai_sdlc('verify', '--repo', str(self.repo), '--result', str(path))
+        report = json.loads(res.stdout)
+        self.assertTrue(report['trust']['independent_execution'].startswith('not verified'))
+        self.assertEqual(report['evidence'][0]['execution'], 'not-verified')
+        for label in self.LABELS:
+            self.assertNotIn(label, res.stdout)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -4,6 +4,8 @@ This file records notable project changes. Entries under Unreleased are not rele
 
 ## Unreleased
 
+- Verify summary: add `Scope verification`, `Agent-reported checks` and `Independently executed checks` lines so a PASS is not read as proof that checks ran or passed. Presentation only; JSON output, statuses, exit codes and the trust model are unchanged (AI-SDLC-LITE-G2-TRUST-SEMANTICS-001).
+
 ### V1 release candidate preparation — AI-SDLC-LITE-008A
 
 This is candidate documentation, not a published version or release date. Human release acceptance is PENDING; release readiness is BLOCKED until a working private reporting route is verified. The checkout has NO COMMIT and no version tag.
