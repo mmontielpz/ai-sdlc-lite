@@ -110,7 +110,10 @@ def workspace(root):
 def preflight(root):
     """Report bounded metadata, never secret values or inferred production safety."""
     print(f'Working directory: {Path.cwd()}; execution target: {root}')
-    print('Installed Skill: ' + str(any((root / skill / 'SKILL.md').is_file() for skill in SKILL_TARGETS.values())))
+    # Existence only: preflight never validates, so it never reports a destination as valid or invalid.
+    states = ', '.join(f'{name}={"PRESENT" if (root / skill / "SKILL.md").is_file() else "ABSENT"}'
+                       for name, skill in SKILL_TARGETS.items())
+    print(f'Skill destinations (SKILL.md existence only; integrity NOT validated by preflight): {states}')
     for name in ('copilot', 'node', 'npm'):
         executable = shutil.which(name)
         if executable:
@@ -360,6 +363,9 @@ def installed_skill(root):
 def initialize_task(root, task_id, contract, dry_run):
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,79}', task_id):
         raise Blocked('Task ID must contain only letters, digits, underscores or hyphens.')
+    # Every successful invocation, including re-runs over an existing matching context, first requires
+    # every present Skill installation to be intact; nothing is repaired, migrated or written on refusal.
+    skill = installed_skill(root)
     directory = root / 'tasks' / task_id
     no_symlinks(root, directory)
     record = {'task_id': task_id, 'contract': contract or f'tasks/{task_id}/TASK.md',
@@ -377,7 +383,6 @@ def initialize_task(root, task_id, contract, dry_run):
             raise Blocked('Existing task context is incomplete; no automatic repair.')
         print('READY: existing task context preserved, including subsequent record edits.')
         return 0
-    skill = installed_skill(root)
     additions = {}
     for name in ('TASK.md', 'CHECKLIST.md', 'RESULT.md'):
         if name == 'TASK.md' and contract:

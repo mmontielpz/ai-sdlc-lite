@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import unittest.mock
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -154,6 +155,65 @@ class InitTaskTargetTests(unittest.TestCase):
         self.assertEqual(snap, snapshot(self.repo))
         self.assertEqual(self.init_task(task='OTHER')[0], 1)  # conflicting context still refused
         self.assertEqual(snap, snapshot(self.repo))
+
+    def test_existing_matching_context_still_requires_intact_installations(self):
+        self.install('claude-code')
+        self.assertEqual(self.init_task()[0], 0)
+        records = snapshot(self.repo)
+        self.assertEqual(self.init_task()[0], 0)  # idempotent while intact
+        self.assertEqual(records, snapshot(self.repo))
+        (self.repo / CLAUDE / 'framework/README.md').write_bytes(b'tampered\n')
+        tampered = snapshot(self.repo)
+        code, out = self.init_task()
+        self.assertEqual(code, 1, out)
+        self.assertIn('differs from its ownership manifest', out)
+        self.assertEqual(tampered, snapshot(self.repo))  # records and approval status untouched, nothing repaired
+
+    def test_existing_matching_context_with_partial_or_symlinked_installation_is_refused(self):
+        self.install('agents')
+        self.assertEqual(self.init_task()[0], 0)
+        (self.repo / LEGACY / 'framework/WORKFLOW.md').unlink()
+        before = snapshot(self.repo)
+        self.assertEqual(self.init_task()[0], 1)
+        self.assertEqual(before, snapshot(self.repo))
+        outside = Path(self.temp.name) / 'outside'
+        outside.mkdir()
+        (self.repo / '.claude').symlink_to(outside, target_is_directory=True)
+        self.assertEqual(self.init_task()[0], 1)
+        self.assertEqual([], list(outside.iterdir()))
+
+    def test_existing_context_with_invalid_other_target_is_refused_even_if_legacy_valid(self):
+        self.install('agents')
+        self.assertEqual(self.init_task()[0], 0)
+        self.install('claude-code')
+        (self.repo / CLAUDE / 'SKILL.md').write_bytes(b'tampered\n')
+        before = snapshot(self.repo)
+        self.assertEqual(self.init_task()[0], 1)
+        self.assertEqual(before, snapshot(self.repo))
+
+    def preflight_text(self):
+        out = io.StringIO()
+        with redirect_stdout(out), unittest.mock.patch.object(installer.shutil, 'which', return_value=None):
+            installer.preflight(self.repo)
+        return out.getvalue()
+
+    def test_preflight_reports_existence_only_and_is_read_only(self):
+        before = snapshot(self.repo)
+        text = self.preflight_text()
+        self.assertIn('agents=ABSENT, claude-code=ABSENT', text)
+        self.install('claude-code')
+        installed = snapshot(self.repo)
+        text = self.preflight_text()
+        self.assertIn('agents=ABSENT, claude-code=PRESENT', text)
+        self.assertIn('integrity NOT validated by preflight', text)
+        (self.repo / CLAUDE / 'framework/README.md').write_bytes(b'tampered\n')
+        tampered = snapshot(self.repo)
+        text = self.preflight_text()  # still existence only: no VALID/INVALID claim without validating
+        self.assertIn('claude-code=PRESENT', text)
+        for word in ('VALIDATED', 'INVALID', 'VALID '):
+            self.assertNotIn(word, text)
+        self.assertEqual(tampered, snapshot(self.repo))
+        self.assertNotEqual(before, installed)
 
 
 if __name__ == '__main__':
