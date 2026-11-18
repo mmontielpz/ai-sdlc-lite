@@ -38,7 +38,14 @@ python3 -B -m ai_sdlc init --repo /absolute/path/to/repo --apply
 python3 -B -m ai_sdlc init --repo /absolute/path/to/repo --check
 ```
 
-`init` writes only the Skill bundle under `.agents/skills/ai-sdlc-lite/`. Whether Claude Code discovers that location is UNVERIFIED; until it is qualified, point Claude Code at [WORKFLOW.md](WORKFLOW.md) and the repository's `AGENTS.md` explicitly.
+`init` writes only the Skill bundle under `.agents/skills/ai-sdlc-lite/` by default. A bounded observation (Claude Code 2.1.327, Linux, `-p` mode; see the record in `docs/qualification/CLAUDE-C1B-runtime-discovery.md`) found that Claude Code lists Skills under `.claude/skills/` but not under `.agents/skills/`. For Claude Code, select the additive target explicitly:
+
+```sh
+python3 -B -m ai_sdlc init --repo /absolute/path/to/repo --target claude-code --apply
+python3 -B -m ai_sdlc init --repo /absolute/path/to/repo --target claude-code --check
+```
+
+This installs the identical bundle under `.claude/skills/ai-sdlc-lite/`, never writes `CLAUDE.md`, and keeps the default target unchanged. Install before taking a verifier baseline, because `.claude/` is a governance-sensitive path. This is an observation, not a qualification: Claude Code smoke and deep runs are NOT RUN, and the full bundle has not been exercised in a live session. Existing installs under `.agents/skills/` are unaffected; `python3 scripts/install_skill.py --target REPO --uninstall --skill-target claude-code` removes the new target (unchanged owned files only).
 
 The agent-specific examples below are historical evidence for products that are not in the committed provider scope. If the native Skill is available, invoke it using your client's supported selection. In Codex:
 

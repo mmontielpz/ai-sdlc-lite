@@ -16,8 +16,10 @@ import sys
 from ._root import framework_root
 
 ROOT = framework_root()
-USAGE = ('usage: python3 -B -m ai_sdlc init --repo PATH [--dry-run | --apply | --check]\n'
-         'Default: read-only preview. --apply creates only the offline Skill bundle.\n'
+USAGE = ('usage: python3 -B -m ai_sdlc init --repo PATH [--target agents|claude-code] [--dry-run | --apply | --check]\n'
+         'Default: read-only preview of the agents target (.agents/skills/ai-sdlc-lite).\n'
+         '--target claude-code selects .claude/skills/ai-sdlc-lite; the bundle is identical.\n'
+         '--apply creates only the offline Skill bundle.\n'
          '--check verifies local files only; no provider is probed or authorized.\n')
 MAX_MANIFEST = 1 << 20
 MAX_ENTRIES = 20000
@@ -161,20 +163,20 @@ def _validate_existing(fd, content, hashes, installer):
                 raise Refused('installation_content_conflict')
 
 
-def _existing(fd, content, hashes, installer):
+def _existing(fd, content, hashes, installer, skill):
     try:
         # Probe ancestors separately, so a file disappearing during validation
         # cannot turn an incomplete installation into an absent destination.
-        with _directory(fd, installer.SKILL.parts[:-1]):
+        with _directory(fd, skill.parts[:-1]):
             pass
     except FileNotFoundError:
         return False
-    with _directory(fd, installer.SKILL.parts[:-1]) as parent:
+    with _directory(fd, skill.parts[:-1]) as parent:
         try:
-            os.stat(installer.SKILL.name, dir_fd=parent, follow_symlinks=False)
+            os.stat(skill.name, dir_fd=parent, follow_symlinks=False)
         except FileNotFoundError:
             return False
-        with _directory(parent, (installer.SKILL.name,)) as destination:
+        with _directory(parent, (skill.name,)) as destination:
             _validate_existing(destination, content, hashes, installer)
     return True
 
@@ -190,11 +192,11 @@ def _write_file(fd, name, data):
             os.fsync(stream.fileno())
 
 
-def _apply(fd, content, installer):
-    with _directory(fd, installer.SKILL.parts[:-1], create=True) as parent:
+def _apply(fd, content, installer, skill):
+    with _directory(fd, skill.parts[:-1], create=True) as parent:
         # A destination appearing after preview is a conflict, even if empty.
-        os.mkdir(installer.SKILL.name, mode=0o755, dir_fd=parent)
-        with _directory(parent, (installer.SKILL.name,)) as destination:
+        os.mkdir(skill.name, mode=0o755, dir_fd=parent)
+        with _directory(parent, (skill.name,)) as destination:
             installer.write_bundle(content, lambda name, data: _write_file(destination, name, data))
 
 
@@ -203,10 +205,10 @@ def main(argv):
     if args in (['--help'], ['-h']):
         sys.stdout.write(USAGE)
         return 0
-    repo, mode, seen = None, 'preview', set()
+    repo, mode, seen, target = None, 'preview', set(), 'agents'
     while args:
         flag = args.pop(0)
-        if flag in seen or flag not in ('--repo', '--dry-run', '--apply', '--check'):
+        if flag in seen or flag not in ('--repo', '--target', '--dry-run', '--apply', '--check'):
             sys.stderr.write('BLOCKED: usage\n' + USAGE)
             return 2
         seen.add(flag)
@@ -215,6 +217,11 @@ def main(argv):
                 sys.stderr.write('BLOCKED: usage\n' + USAGE)
                 return 2
             repo = args.pop(0)
+        elif flag == '--target':
+            if not args or args[0] not in ('agents', 'claude-code'):
+                sys.stderr.write('BLOCKED: usage\n' + USAGE)
+                return 2
+            target = args.pop(0)
         else:
             if len(seen & {'--dry-run', '--apply', '--check'}) > 1:
                 sys.stderr.write('BLOCKED: usage\n' + USAGE)
@@ -229,19 +236,20 @@ def main(argv):
             raise Refused('unsupported_filesystem_primitives')
         root = _target(repo)
         installer = _installer()
+        skill = installer.SKILL_TARGETS[target]
         content, hashes = installer.bundle_content()
         anchor = os.open(root.anchor, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
         try:
             with _directory(anchor, root.parts[1:]) as fd:
                 _validate_git(fd)
-                exists = _existing(fd, content, hashes, installer)
+                exists = _existing(fd, content, hashes, installer, skill)
                 if mode == 'check' and not exists:
                     raise Refused('installation_missing')
                 print('AI-SDLC INIT 1')
                 print('repository: ' + json.dumps(str(root), ensure_ascii=True))
                 print('working tree state: UNKNOWN (not inspected)')
                 for name, data in sorted(content.items()):
-                    rel = (installer.SKILL / name).as_posix()
+                    rel = (skill / name).as_posix()
                     print('%s %s sha256=%s' % ('UNCHANGED' if exists else 'CREATE',
                                               json.dumps(rel, ensure_ascii=True), installer.digest(data)))
                 print('Provider discovery, permissions and task approval: UNVERIFIED')
@@ -252,8 +260,8 @@ def main(argv):
                     print('RESULT: UNCHANGED')
                 elif mode == 'apply':
                     started = True
-                    _apply(fd, content, installer)
-                    if not _existing(fd, content, hashes, installer):
+                    _apply(fd, content, installer, skill)
+                    if not _existing(fd, content, hashes, installer, skill):
                         raise Refused('installation_missing')
                     print('RESULT: INITIALIZED')
                 else:

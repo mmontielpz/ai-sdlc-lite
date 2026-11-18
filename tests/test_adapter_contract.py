@@ -32,10 +32,11 @@ CAPABILITIES = ('version_detect', 'skill_install', 'skill_discovery', 'skill_inv
                 'native_approval', 'usage_reporting')
 STATUSES = ('SUPPORTED', 'NOT_QUALIFIED', 'UNKNOWN', 'UNSUPPORTED')
 NEEDED = ('AGENTS.md', '.agents/skills/ai-sdlc-lite/SKILL.md', 'QUALIFICATION.md', 'QUALIFICATION_MATRIX.md', 'README.md',
-          'scripts/install_skill.py', 'adapters/agents/codex/README.md', 'adapters/agents/codex/examples/declaration.json')
+          'scripts/install_skill.py', 'adapters/agents/codex/README.md', 'adapters/agents/codex/examples/declaration.json',
+          'docs/qualification/CLAUDE-C1B-runtime-discovery.md')
 S, N, U = 'SUPPORTED', 'NOT_QUALIFIED', 'UNKNOWN'
 EXPECTED = {  # the locked classification; any change must be a deliberate, evidence-backed edit
-    'claude-code': dict.fromkeys(CAPABILITIES, U),
+    'claude-code': {**dict.fromkeys(CAPABILITIES, U), 'version_detect': S, 'skill_discovery': S},
     'copilot': {'version_detect': S, 'skill_install': S, 'skill_discovery': S, 'skill_invocation': N,
                 'instruction_file': N, 'noninteractive_run': U, 'structured_output': U, 'resume': U, 'cancellation': U,
                 'timeout': U, 'native_sandbox': N, 'native_approval': N, 'usage_reporting': U},
@@ -171,7 +172,7 @@ class ShippedDeclarations(Project):
         self.assertEqual(load('codex')['provider_version']['observed'], existing['cli_version'])
         self.assertEqual(load('codex')['instruction_files'], existing['instruction_paths'])
         self.assertEqual(load('codex')['skill']['source_path'], existing['skill_path'])
-        self.assertIsNone(load('claude-code')['provider_version']['observed'])
+        self.assertEqual(load('claude-code')['provider_version']['observed'], '2.1.327')
 
     def test_declarations_do_not_exceed_the_qualification_matrix(self):
         text = (ROOT / 'QUALIFICATION_MATRIX.md').read_text(encoding='utf-8')
@@ -186,7 +187,9 @@ class ShippedDeclarations(Project):
         self.assertIn('0.167.2', rows['OpenAI Codex'])
         self.assertIn('UNVERIFIED', cells['OpenAI Codex'][4])
         claude = json.loads((ROOT / 'adapters/agents/claude-code/provider-adapter.json').read_text(encoding='utf-8'))
-        self.assertEqual({e['status'] for e in claude['capabilities'].values()}, {'UNKNOWN'})
+        self.assertEqual({n for n, e in claude['capabilities'].items() if e['status'] != 'UNKNOWN'},
+                         {'version_detect', 'skill_discovery'})
+        self.assertEqual(claude['qualification'], {'smoke': 'NOT_RUN', 'deep': 'NOT_RUN'})
 
 
 class StatusEvidenceConsistency(Project):
@@ -587,7 +590,7 @@ class MatrixAndCli(unittest.TestCase):
             self.assertEqual(document['providers'][provider]['qualification'], {'smoke': 'NOT_RUN', 'deep': 'NOT_RUN'})
         self.assertIs(document['execution_authorized'], False)
         self.assertIs(document['version_probed'], False)
-        self.assertEqual(document['providers']['claude-code']['observed_version'], None)
+        self.assertEqual(document['providers']['claude-code']['observed_version'], '2.1.327')
 
     def test_list_and_validate_succeed_from_anywhere(self):
         with tempfile.TemporaryDirectory() as elsewhere:
@@ -598,7 +601,7 @@ class MatrixAndCli(unittest.TestCase):
                 self.assertIn('RESULT: VALID', from_root[1])
                 self.assertIn('no provider was executed or probed', from_root[1])
         out = run_cli('adapter', 'list')[1]
-        self.assertIn('claude-code: ADAPTER_DECLARATION_VALID; observed version none', out)
+        self.assertIn('claude-code: ADAPTER_DECLARATION_VALID; observed version 2.1.327', out)
         self.assertIn('copilot: ADAPTER_DECLARATION_VALID; observed version 1.0.109', out)
         self.assertIn('codex: ADAPTER_DECLARATION_VALID; observed version 0.167.2', out)
 

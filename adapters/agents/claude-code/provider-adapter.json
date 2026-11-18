@@ -1,14 +1,14 @@
 {
   "schema": "ai-sdlc-adapter/1",
   "provider": "claude-code",
-  "provider_version": {"observed": null, "compatibility_claim": "none"},
-  "platforms_observed": [],
+  "provider_version": {"observed": "2.1.327", "compatibility_claim": "none"},
+  "platforms_observed": ["linux"],
   "instruction_files": [],
   "skill": {"source_path": ".agents/skills/ai-sdlc-lite/SKILL.md"},
   "capabilities": {
-    "version_detect": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "No version or availability record exists in this repository."},
+    "version_detect": {"status": "SUPPORTED", "basis": "observed", "evidence": ["docs/qualification/CLAUDE-C1B-runtime-discovery.md"], "note": "claude --version reported 2.1.327 on Linux; this records an observed string only."},
     "skill_install": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "No Skill install evidence is recorded."},
-    "skill_discovery": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "No Skill discovery evidence is recorded."},
+    "skill_discovery": {"status": "SUPPORTED", "basis": "observed", "evidence": ["docs/qualification/CLAUDE-C1B-runtime-discovery.md"], "note": "On 2.1.327 (Linux, -p mode) a synthetic Skill in .claude/skills/ was listed and resolved; one in .agents/skills/ was not. The full bundle and other versions are not tested."},
     "skill_invocation": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "Not recorded as a tested target."},
     "instruction_file": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "The verifier protects CLAUDE.md as a governance path; that is scope protection, not evidence about this provider."},
     "noninteractive_run": {"status": "UNKNOWN", "basis": "none", "evidence": [], "note": "Not recorded."},
@@ -23,8 +23,8 @@
   "qualification": {"smoke": "NOT_RUN", "deep": "NOT_RUN"},
   "limitations": [
     "Long-term target only: it has acted as an executor of missions, not as a tested target.",
-    "No live qualification has been run; a declaration is not a qualification.",
-    "No version is probed; no compatibility with any installed version is claimed."
+    "No live qualification has been run; a declaration is not a qualification. Discovery was observed with synthetic Skills only.",
+    "No compatibility with any version is claimed; 2.1.327 is only the version a discovery experiment ran on."
   ],
   "execution_authorized": false
 }
