@@ -51,18 +51,19 @@ FRICTION = ('install', 'discovery', 'task-contract', 'verification', 'recovery',
 STATUSES = ('PASS', 'PARTIAL', 'BLOCKED')
 EXIT_FOR_STATUS = {'PASS': 0, 'PARTIAL': 1, 'BLOCKED': 2}
 
-SHA256 = re.compile(r'^[0-9a-f]{64}$')
-EVENT_ID = re.compile(r'^ev-[0-9a-f]{32}$')
-IDENT64 = re.compile(r'^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$')
-TASK_ID = re.compile(r'^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$')
-CHECK_ID = re.compile(r'^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$')
-REVISION = re.compile(r'^[A-Za-z0-9._+-]{1,64}$')
-LITE_VERSION = re.compile(r'^[0-9A-Za-z.+-]{1,32}$')
-PYTHON = re.compile(r'^3\.[0-9]{1,2}$')
-AGENT_VERSION = re.compile(r'^[0-9]{1,3}(\.[0-9]{1,3}){0,3}$')
-LITE_COMMIT = re.compile(r'^[0-9a-f]{40}$')
-TIMESTAMP = re.compile(r'^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$')
-PRINTABLE_ASCII = re.compile(r'^[\x20-\x7e]*$')
+SHA256 = re.compile(r'[0-9a-f]{64}')
+EVENT_ID = re.compile(r'ev-[0-9a-f]{32}')
+IDENT64 = re.compile(r'[A-Za-z0-9][A-Za-z0-9_-]{0,63}')
+TASK_ID = re.compile(r'[A-Za-z0-9][A-Za-z0-9_-]{0,79}')
+CHECK_ID = re.compile(r'[A-Za-z0-9][A-Za-z0-9_-]{0,31}')
+REVISION = re.compile(r'[A-Za-z0-9._+-]{1,64}')
+LITE_VERSION = re.compile(r'[0-9A-Za-z.+-]{1,32}')
+PYTHON = re.compile(r'3\.[0-9]{1,2}')
+AGENT_VERSION = re.compile(r'[0-9]{1,3}(\.[0-9]{1,3}){0,3}')
+LITE_COMMIT = re.compile(r'[0-9a-f]{40}')
+TIMESTAMP = re.compile(r'[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z')
+PRINTABLE_ASCII = re.compile(r'[\x20-\x7e]*')
+REASON_CODE = re.compile(r'[a-z][a-z0-9_]{0,63}')
 
 # Per-type rules: (methods, required trust level, actor roles, observer roles, independence values).
 TYPE_RULES = {
@@ -158,7 +159,7 @@ def _check_strings(value, depth=0):
     if depth > MAX_DEPTH:
         raise ExperienceError('depth_exceeded')
     if isinstance(value, str):
-        if not PRINTABLE_ASCII.match(value):
+        if not PRINTABLE_ASCII.fullmatch(value):
             raise ExperienceError('forbidden_content')
     elif isinstance(value, dict):
         for key, item in value.items():
@@ -250,7 +251,7 @@ def _const(expected):
 
 def _regex(pattern):
     def check(value, field):
-        if not isinstance(value, str) or not pattern.match(value):
+        if not isinstance(value, str) or not pattern.fullmatch(value):
             raise ExperienceError('schema_invalid', field=field)
     return check
 
@@ -323,7 +324,7 @@ def _reason_codes(value, field):
     if not isinstance(value, list) or len(value) > 32:
         raise ExperienceError('schema_invalid', field=field)
     for code in value:
-        if not isinstance(code, str) or not re.match(r'^[a-z][a-z0-9_]{0,63}$', code):
+        if not isinstance(code, str) or not REASON_CODE.fullmatch(code):
             raise ExperienceError('schema_invalid', field=field + '[]')
     if value != sorted(set(value)):
         raise ExperienceError('schema_invalid', field=field)
@@ -408,12 +409,13 @@ def validate_event(event, *, expected_seq=None, previous_id=None, run_id=None):
         raise ExperienceError('trust_inflation', field='event.trust_level')
     if trust == 'H':
         raise ExperienceError('h_not_enabled', field='event.trust_level')
+    _check_strings(event)  # identical printable-ASCII rule for in-memory and serialized events
     _obj(event, 'event', TOP_REQUIRED, TOP_PROPERTIES)
     type_name = event['type']
     required, properties = DATA_SPECS[type_name]
     _obj(event['data'], 'event.data', required, properties)
     prev = event['prev']
-    if prev is not None and (not isinstance(prev, str) or not EVENT_ID.match(prev)):
+    if prev is not None and (not isinstance(prev, str) or not EVENT_ID.fullmatch(prev)):
         raise ExperienceError('schema_invalid', field='event.prev')
     _check_timestamp(event['recorded_at'])
 

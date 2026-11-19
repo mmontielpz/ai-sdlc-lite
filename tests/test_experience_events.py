@@ -237,6 +237,115 @@ class InvalidEvents(unittest.TestCase):
         self.assertEqual(code_of(ev.validate_event, edited), 'id_mismatch')
 
 
+class StringRestrictionsAreIdenticalInMemoryAndSerialized(unittest.TestCase):
+    """Regression (review of PR #27): `$` in the field patterns let a trailing newline through, so
+    identifiers such as "run-1\\n" were accepted by build_event AND by loads_strict (whose
+    printable-ASCII check had the same flaw). Both paths must enforce the same, strict, full-string rules."""
+
+    # (label, builder(value) -> (fields, run_id, seq, prev))
+    def cases(self):
+        run = dict(run_id='run-1', seq=1, prev=None)
+
+        def nested(type_name, path, value):
+            fields = sup.sample(type_name)
+            target = fields
+            for step in path[:-1]:
+                target[step] = dict(target[step])
+                target = target[step]
+            target[path[-1]] = value
+            return fields
+
+        yield 'run_id', lambda v: (sup.sample('check.operator_run'), dict(run, run_id=v))
+        yield 'task_id', lambda v: (nested('check.operator_run', ('subject', 'task_id'), v), run)
+        yield 'task_revision (data)', lambda v: (nested('task.approval_changed', ('data', 'task_revision'), v), run)
+        yield 'revision (subject)', lambda v: (nested('check.operator_run', ('subject', 'revision'), v), run)
+        yield 'check_id', lambda v: (nested('check.operator_run', ('data', 'check_id'), v), run)
+        yield 'lite_version', lambda v: (nested('check.operator_run', ('environment', 'lite_version'), v), run)
+        yield 'python', lambda v: (nested('check.operator_run', ('environment', 'python'), v), run)
+        yield 'agent_version', lambda v: (nested('check.operator_run', ('environment', 'agent_version'), v), run)
+        yield 'bundle_digest', lambda v: (nested('check.operator_run', ('environment', 'bundle_digest'), v), run)
+        yield 'lite_commit', lambda v: (nested('check.operator_run', ('environment', 'lite_commit'), v), run)
+        yield 'manifest_sha256', lambda v: (nested('install.completed', ('data', 'manifest_sha256'), v), run)
+        yield 'report_sha256', lambda v: (nested('verify.completed', ('data', 'report_sha256'), v), run)
+        yield 'evidence sha256', lambda v: (nested('verify.completed', ('evidence',), [
+            {'kind': 'verification-report', 'ref': 'none', 'sha256': v}]), run)
+        yield 'failure code', lambda v: (nested('verify.completed', ('data', 'failure_reason_codes'), [v]), run)
+        yield 'recorded_at', lambda v: (sup.sample('check.operator_run'), dict(run, recorded_at=v))
+        yield 'prev', lambda v: (sup.sample('check.operator_run'), dict(run, seq=2, prev=v))
+
+    HOSTILE = ('\n', '\r', '\t', '\x00', '\x1b', '\x7f', '\u2028', '\u202e', '\u00e9', ' ')
+
+    def outcome_in_memory(self, fields, run):
+        run = dict(run)
+        run.setdefault('recorded_at', sup.CLOCK_TIME)
+        return code_of(ev.build_event, fields, **run)
+
+    def outcome_serialized(self, fields, run):
+        """Same event, forced through bytes: canonical JSON -> loads_strict -> validate_event."""
+        run = dict(run)
+        event = {'schema': ev.SCHEMA, 'run_id': run['run_id'], 'seq': run['seq'], 'prev': run['prev'],
+                 'recorded_at': run.get('recorded_at', sup.CLOCK_TIME)}
+        event.update(fields)
+        event['event_id'] = ev.compute_event_id(event)
+        raw = ev.canonical_json(event)
+        try:
+            parsed = ev.loads_strict(raw)
+            ev.validate_event(parsed, expected_seq=run['seq'], previous_id=run['prev'], run_id=run['run_id'])
+        except ExperienceError as error:
+            return error.code
+        return None
+
+    def valid_value(self, label):
+        return {'run_id': 'run-1', 'task_id': 'T1', 'task_revision (data)': 'r1', 'revision (subject)': 'r1',
+                'check_id': 'V-1', 'lite_version': '2.0.0', 'python': '3.14', 'agent_version': '2.1.327',
+                'bundle_digest': 'a' * 64, 'lite_commit': 'b' * 40, 'manifest_sha256': 'a' * 64,
+                'report_sha256': 'a' * 64, 'evidence sha256': 'a' * 64, 'failure code': 'protected_path_modified',
+                'recorded_at': sup.CLOCK_TIME, 'prev': 'ev-' + 'c' * 32}[label]
+
+    def test_trailing_and_embedded_control_characters_are_rejected_everywhere(self):
+        for label, make in self.cases():
+            good = self.valid_value(label)
+            for suffix in self.HOSTILE:
+                for value in (good + suffix, suffix + good, good[:1] + suffix + good[1:]):
+                    fields, run = make(value)
+                    if label == 'prev':
+                        run = dict(run, seq=2, prev=value)
+                    mem = self.outcome_in_memory(fields, run)
+                    ser = self.outcome_serialized(fields, run)
+                    self.assertIsNotNone(mem, (label, repr(value), 'in-memory accepted'))
+                    self.assertIsNotNone(ser, (label, repr(value), 'serialized accepted'))
+
+    def test_both_paths_agree_on_every_candidate(self):
+        for label, make in self.cases():
+            for value in ('', 'a', 'A-b_c.d', 'x' * 65, '~', '\x7e', self.valid_value(label), 'ev-' + 'f' * 32):
+                fields, run = make(value)
+                if label == 'prev':
+                    run = dict(run, seq=2, prev=value)
+                mem = self.outcome_in_memory(fields, run)
+                ser = self.outcome_serialized(fields, run)
+                self.assertEqual(mem is None, ser is None, (label, repr(value), mem, ser))
+
+    def test_printable_ascii_rule_is_strict_full_string(self):
+        for text in ('a\n', '\n', 'a\r\n', 'a\x00', 'a\x7f', 'caf\u00e9'):
+            self.assertEqual(code_of(ev.loads_strict, ('{"a":%s}' % __import__('json').dumps(text)).encode()),
+                             'forbidden_content', repr(text))
+            self.assertEqual(code_of(ev.loads_strict, ('{%s:1}' % __import__('json').dumps(text)).encode()),
+                             'forbidden_content', repr(text))
+        self.assertEqual(ev.loads_strict(b'{"a":" ~"}'), {'a': ' ~'})
+
+    def test_validate_event_itself_rejects_non_printable_strings(self):
+        event = ev.build_event(sup.sample('check.operator_run'), run_id='run-1', seq=1, prev=None,
+                               recorded_at=sup.CLOCK_TIME)
+        for key in ('run_id',):
+            mutated = dict(event, **{key: event[key] + '\n'})
+            mutated['event_id'] = ev.compute_event_id(mutated)
+            self.assertIsNotNone(code_of(ev.validate_event, mutated))
+        smuggled = copy.deepcopy(event)
+        smuggled['data']['check_id'] = 'V-1\n'
+        smuggled['event_id'] = ev.compute_event_id(smuggled)
+        self.assertIsNotNone(code_of(ev.validate_event, smuggled))
+
+
 class StrictLoading(unittest.TestCase):
     def check(self, raw, code):
         self.assertEqual(code_of(ev.loads_strict, raw), code, raw[:40])

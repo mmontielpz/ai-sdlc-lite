@@ -231,6 +231,202 @@ class Corruption(JournalCase):
             self.refused(code, 1)
 
 
+class IdentifierNewlineRegression(JournalCase):
+    """PR #27 review: newline-terminated identifiers must never reach, or be accepted from, a journal."""
+
+    def test_append_refuses_before_any_write(self):
+        fresh = self.base / 'fresh.jsonl'
+        for field, value in (('run_id', 'run-1\n'), ('task_id', 'T1\n'), ('check_id', 'V-1\n')):
+            fields = sup.sample('check.operator_run')
+            kwargs = {'clock': sup.clock}
+            if field == 'run_id':
+                kwargs['run_id'] = value
+            elif field == 'task_id':
+                fields['subject'] = dict(fields['subject'], task_id=value)
+            else:
+                fields['data'] = dict(fields['data'], check_id=value)
+            self.assertIsNotNone(code_of(jr.append_event, str(fresh), fields, **kwargs), field)
+            self.assertFalse(fresh.exists(), field)
+        self.fill(2)
+        before = sup.snapshot(self.base)
+        fields = sup.sample('check.operator_run')
+        fields['data'] = dict(fields['data'], check_id='V-1\n')
+        self.assertIsNotNone(code_of(jr.append_event, str(self.journal), fields, clock=sup.clock))
+        self.assertEqual(before, sup.snapshot(self.base))
+
+    def test_a_handwritten_journal_with_an_escaped_newline_is_refused(self):
+        for label, mutate in (('run_id', lambda e: e.update(run_id='run-1\n')),
+                              ('task_id', lambda e: e['subject'].update(task_id='T1\n')),
+                              ('check_id', lambda e: e['data'].update(check_id='V-1\n')),
+                              ('sha256', lambda e: e.update(environment=dict(e['environment'], bundle_digest='a' * 64 + '\n')))):
+            event = sup.chain(1)[0]
+            mutate(event)
+            event['event_id'] = ev.compute_event_id(event)
+            self.write_raw(ev.canonical_json(event) + b'\n')
+            before = self.journal.read_bytes()
+            with self.assertRaises(ExperienceError) as caught:
+                jr.validate_journal(str(self.journal))
+            self.assertEqual(caught.exception.line, 1, label)
+            self.assertIsNotNone(code_of(self.append), label)
+            self.assertEqual(before, self.journal.read_bytes(), label)
+
+
+class EdgeCases(JournalCase):
+    """PR #27 review, phase 3: creation races, cleanup, replacement, descriptors, clock, OS errors."""
+
+    def fd_count(self):
+        return len(os.listdir('/proc/self/fd'))
+
+    def test_cleanup_of_a_created_file_must_not_lose_another_writers_event(self):
+        import threading
+        created, opened, finished = threading.Event(), threading.Event(), threading.Event()
+        real_lock = jr._lock
+        results = {}
+
+        def hooked(fd, shared):
+            name = threading.current_thread().name
+            if name == 'A':
+                created.set()
+                self.assertTrue(opened.wait(10))
+                raise ExperienceError('lock_failed')  # A fails right after creating the file
+            if name == 'B':
+                opened.set()
+                self.assertTrue(finished.wait(10))  # B has the file open but has not locked it yet
+            return real_lock(fd, shared)
+
+        def run(name):
+            try:
+                results[name] = self.append()
+            except ExperienceError as error:
+                results[name] = error.code
+            if name == 'A':
+                finished.set()
+
+        with mock.patch.object(jr, '_lock', side_effect=hooked):
+            a = threading.Thread(target=run, args=('A',), name='A')
+            a.start()
+            self.assertTrue(created.wait(10))
+            b = threading.Thread(target=run, args=('B',), name='B')
+            b.start()
+            a.join(20)
+            b.join(20)
+        self.assertEqual(results['A'], 'lock_failed')
+        self.assertIsInstance(results['B'], dict, results)  # B reported success...
+        self.assertTrue(self.journal.exists())  # ...so its event must really be in the journal at the path
+        summary = jr.validate_journal(str(self.journal))
+        self.assertEqual((summary.count, summary.head), (1, results['B']['event_id']))
+
+    def test_replacement_between_open_and_lock_is_detected(self):
+        other = self.base / 'other.jsonl'
+        for _ in range(2):
+            self.append(path=other, run_id='run-x')
+        self.fill(1)
+        real_lock = jr._lock
+        state = {'replaced': False}
+
+        def hooked(fd, shared):
+            if not state['replaced']:
+                state['replaced'] = True
+                os.replace(other, self.journal)  # the path now names a different file
+            return real_lock(fd, shared)
+
+        with mock.patch.object(jr, '_lock', side_effect=hooked):
+            event = self.append(run_id='run-x')
+        summary = jr.validate_journal(str(self.journal))
+        self.assertEqual((summary.count, summary.head), (3, event['event_id']))  # appended to the file at the path
+
+    def test_unlinked_journal_is_never_appended_to_silently(self):
+        self.fill(1)
+        real_lock = jr._lock
+        state = {'done': False}
+
+        def hooked(fd, shared):
+            if not state['done']:
+                state['done'] = True
+                self.journal.unlink()
+            return real_lock(fd, shared)
+
+        with mock.patch.object(jr, '_lock', side_effect=hooked):
+            event = self.append()
+        self.assertEqual(jr.validate_journal(str(self.journal)).head, event['event_id'])
+        self.assertEqual(event['seq'], 1)  # the old journal is gone; a fresh one was created
+
+    def test_os_errors_become_stable_codes_and_leak_nothing(self):
+        before = self.fd_count()
+        real_fsync = os.fsync
+        with mock.patch.object(os, 'fsync', side_effect=OSError(errno.EIO, 'boom')):
+            self.assertEqual(code_of(self.append), 'journal_io')
+        self.assertFalse(self.journal.exists())
+        self.fill(2)
+        with mock.patch.object(os, 'fsync', side_effect=OSError(errno.EIO, 'boom')):
+            self.assertEqual(code_of(self.append), 'journal_io')
+        self.assertEqual(jr.validate_journal(str(self.journal)).count, 2)  # the failed append was rolled back
+        with mock.patch.object(os, 'read', side_effect=OSError(errno.EIO, 'boom')):
+            self.assertEqual(code_of(self.append), 'journal_io')
+            self.assertEqual(code_of(jr.validate_journal, str(self.journal)), 'journal_io')
+        self.assertEqual(before, self.fd_count())
+        self.assertIs(os.fsync, real_fsync)
+
+    def test_no_descriptor_leaks_on_any_refusal(self):
+        self.fill(2)
+        before = self.fd_count()
+        for _ in range(3):
+            for action in (lambda: self.append(path=self.base / 'nodir' / 'j'), lambda: self.append(run_id='zzz'),
+                           lambda: jr.append_event(str(self.journal), dict(sup.sample('check.operator_run'),
+                                                                           trust_level='T3'), clock=sup.clock),
+                           lambda: jr.validate_journal(str(self.base / 'missing')),
+                           lambda: self.append(path=self.base)):
+                self.assertIsNotNone(code_of(action))
+        self.write_raw(b'junk')
+        for _ in range(3):
+            self.assertIsNotNone(code_of(self.append))
+            self.assertIsNotNone(code_of(jr.validate_journal, str(self.journal)))
+        self.assertEqual(before, self.fd_count())
+
+    def test_failed_rollback_leaves_a_refusable_journal(self):
+        self.fill(2)
+        real_write = os.write
+
+        def short(fd, data):
+            return real_write(fd, data[: len(data) // 2])
+
+        with mock.patch.object(os, 'write', side_effect=short), \
+                mock.patch.object(os, 'ftruncate', side_effect=OSError(errno.EIO, 'boom')):
+            self.assertEqual(code_of(self.append), 'journal_io')
+        self.assertEqual(code_of(jr.validate_journal, str(self.journal)), 'truncated_journal')
+        before = self.journal.read_bytes()
+        self.assertEqual(code_of(self.append), 'truncated_journal')  # never repaired, never appended to
+        self.assertEqual(before, self.journal.read_bytes())
+
+    def test_injected_clock_is_read_once_per_append(self):
+        ticks = iter('2026-11-18T22:00:%02dZ' % n for n in range(60))
+        first = jr.append_event(str(self.journal), sup.sample('check.operator_run'), clock=lambda: next(ticks))
+        second = jr.append_event(str(self.journal), sup.sample('check.operator_run'), clock=lambda: next(ticks))
+        self.assertEqual((first['recorded_at'], second['recorded_at']), ('2026-11-18T22:00:00Z', '2026-11-18T22:00:01Z'))
+
+    def test_lock_timeout_on_a_created_file_does_not_remove_a_busy_journal(self):
+        import fcntl
+        holder = None
+        real_lock = jr._lock
+
+        def hooked(fd, shared):
+            nonlocal holder
+            # another process grabs the (just created) journal's lock before we do
+            holder = os.open(self.journal, os.O_RDWR)
+            fcntl.flock(holder, fcntl.LOCK_EX)
+            with mock.patch.object(jr, 'LOCK_SECONDS', 0.05):
+                return real_lock(fd, shared)
+
+        try:
+            with mock.patch.object(jr, '_lock', side_effect=hooked):
+                self.assertEqual(code_of(self.append), 'lock_failed')
+            self.assertTrue(self.journal.exists())  # the lock holder's file must not be unlinked from under it
+        finally:
+            if holder is not None:
+                os.close(holder)
+        self.assertEqual(self.append()['seq'], 1)
+
+
 class Limits(JournalCase):
     def test_event_count_limit_is_enforced_at_5000(self):
         events = sup.chain(ev.MAX_EVENTS)

@@ -110,6 +110,25 @@ class Validate(ExperienceCliCase):
             self.assertNotIn(fragment, err)
         self.assertFalse((self.base / 'pwned').exists())
 
+    def test_output_is_always_exactly_two_lines_and_never_carries_control_characters(self):
+        from ai_sdlc import experience_events as events
+        event = sup.chain(1)[0]
+        event['run_id'] = 'run-1\n'
+        event['event_id'] = events.compute_event_id(event)
+        self.journal.write_bytes(events.canonical_json(event) + b'\n')
+        code, out, err = self.run_main('validate', '--journal', str(self.journal))
+        self.assertEqual((code, out), (2, ''))
+        self.assertEqual(err.count('\n'), 1)
+        self.make_fresh()
+        code, out, err = self.run_main('validate', '--journal', str(self.journal))
+        self.assertEqual(code, 0)
+        self.assertEqual(out.count('\n'), 2)
+        self.assertTrue(out.isascii() and all(c == '\n' or 32 <= ord(c) < 127 for c in out))
+
+    def make_fresh(self):
+        self.journal.unlink()
+        self.make(1)
+
     def test_unexpected_errors_fail_closed_without_text(self):
         self.make(1)
         with mock.patch.object(jr, 'validate_journal', side_effect=RuntimeError('SECRET-DETAIL')):

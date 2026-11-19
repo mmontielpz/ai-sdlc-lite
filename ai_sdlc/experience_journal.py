@@ -173,6 +173,8 @@ def validate_journal(path):
             _lock(fd, shared=True)
             try:
                 return parse_journal(_read_all(fd))[1]
+            except OSError:
+                raise ExperienceError('journal_io') from None
             finally:
                 _unlock(fd)
         finally:
@@ -185,76 +187,111 @@ def _default_run_id(recorded_at):
     return 'run-' + recorded_at[:10].replace('-', '') + '-1'
 
 
+class _Stale(Exception):
+    """Internal: the file we locked is no longer the one the path names; reopen and retry."""
+
+
+def _same_file(parent, leaf, fd):
+    try:
+        named = os.stat(leaf, dir_fd=parent, follow_symlinks=False)
+    except FileNotFoundError:
+        return False
+    held = os.fstat(fd)
+    return (named.st_dev, named.st_ino) == (held.st_dev, held.st_ino)
+
+
+def _remove_if_still_empty(parent, leaf, fd):
+    """Remove a journal this call created, but only while holding its exclusive lock (so no other writer
+    can be using it), while it is still empty, and while the path still names this very file."""
+    fcntl = _fcntl()
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        return  # someone else is using it: leave the (valid, empty) file alone
+    try:
+        if os.fstat(fd).st_size == 0 and _same_file(parent, leaf, fd):
+            os.unlink(leaf, dir_fd=parent)
+    except OSError:
+        pass
+
+
+def _open_for_append(parent, leaf, fields, run_id, recorded_at):
+    """Open the journal for append, creating it (exclusively, 0600) only after the first event validated."""
+    for _attempt in range(3):
+        try:
+            return os.open(leaf, os.O_RDWR | os.O_APPEND | _O_NOFOLLOW, dir_fd=parent), False
+        except FileNotFoundError:
+            ev.build_event(fields, run_id=run_id or _default_run_id(recorded_at), seq=1, prev=None,
+                           recorded_at=recorded_at)
+            try:
+                return os.open(leaf, os.O_RDWR | os.O_APPEND | os.O_CREAT | os.O_EXCL | _O_NOFOLLOW, 0o600,
+                               dir_fd=parent), True
+            except FileExistsError:
+                continue
+        except OSError:
+            raise ExperienceError('journal_invalid_path') from None
+    raise ExperienceError('journal_invalid_path')
+
+
+def _append_locked(parent, leaf, fd, created, fields, run_id, recorded_at):
+    _check_regular(fd)
+    _lock(fd, shared=False)
+    if not _same_file(parent, leaf, fd):
+        raise _Stale()  # unlinked or replaced while we waited: never write to an orphaned file
+    if created:
+        os.fsync(parent)  # make the new directory entry durable
+    data = _read_all(fd)
+    events, summary = parse_journal(data)
+    if len(events) >= ev.MAX_EVENTS:
+        raise ExperienceError('journal_full')
+    if events and run_id is not None and run_id != summary.run_id:
+        raise ExperienceError('chain_broken', field='event.run_id')
+    chosen = summary.run_id if events else (run_id or _default_run_id(recorded_at))
+    event = ev.build_event(fields, run_id=chosen, seq=len(events) + 1, prev=summary.head, recorded_at=recorded_at)
+    line = ev.canonical_json(event) + b'\n'
+    if len(data) + len(line) > ev.MAX_JOURNAL_BYTES:
+        raise ExperienceError('journal_full')
+    try:
+        written = os.write(fd, line)
+        if written != len(line):
+            raise OSError(errno.EIO, 'short write')
+        os.fsync(fd)
+    except OSError:
+        try:  # undo only our own partial write
+            os.ftruncate(fd, len(data))
+            os.fsync(fd)
+        except OSError:
+            pass
+        raise ExperienceError('journal_io') from None
+    return event
+
+
 def append_event(path, fields, *, clock=ev.default_clock, run_id=None, allow_in_repo=False):
-    """Append one validated event. Returns the event. On any refusal nothing is written (a journal file
-    created by this call is removed again if it is still empty)."""
+    """Append one validated event. Returns the event. On any refusal nothing is appended; a journal file
+    created by this call is removed again only if it is still empty and no other writer holds it."""
     if not _supported():
         raise ExperienceError('unsupported_platform')
     _fcntl()
+    recorded_at = clock()  # read exactly once per append
     parent, leaf = _open_parent(path, allow_in_repo=allow_in_repo, enforce_repo=True)
     try:
-        created, fd = False, None
-        for _attempt in range(3):
+        for _attempt in range(4):
+            fd, created = _open_for_append(parent, leaf, fields, run_id, recorded_at)
             try:
-                fd = os.open(leaf, os.O_RDWR | os.O_APPEND | _O_NOFOLLOW, dir_fd=parent)
-                break
-            except FileNotFoundError:
-                # Validate a first event before creating anything, so a refused request leaves no file.
-                recorded_at = clock()
-                chosen = run_id or _default_run_id(recorded_at)
-                ev.build_event(fields, run_id=chosen, seq=1, prev=None, recorded_at=recorded_at)
                 try:
-                    fd = os.open(leaf, os.O_RDWR | os.O_APPEND | os.O_CREAT | os.O_EXCL | _O_NOFOLLOW, 0o600,
-                                 dir_fd=parent)
-                    created = True
-                    os.fsync(parent)
-                    break
-                except FileExistsError:
+                    return _append_locked(parent, leaf, fd, created, fields, run_id, recorded_at)
+                except _Stale:
                     continue
+                except BaseException:
+                    if created:
+                        _remove_if_still_empty(parent, leaf, fd)
+                    raise
+                finally:
+                    _unlock(fd)
             except OSError:
-                raise ExperienceError('journal_invalid_path') from None
-        if fd is None:
-            raise ExperienceError('journal_invalid_path')
-        try:
-            try:
-                _check_regular(fd)
-                _lock(fd, shared=False)
-                data = _read_all(fd)
-                events, summary = parse_journal(data)
-                if len(events) >= ev.MAX_EVENTS:
-                    raise ExperienceError('journal_full')
-                recorded_at = clock()
-                if events and run_id is not None and run_id != summary.run_id:
-                    raise ExperienceError('chain_broken', field='event.run_id')
-                chosen = summary.run_id if events else (run_id or _default_run_id(recorded_at))
-                event = ev.build_event(fields, run_id=chosen, seq=len(events) + 1,
-                                       prev=summary.head, recorded_at=recorded_at)
-                line = ev.canonical_json(event) + b'\n'
-                if len(events) + 1 > ev.MAX_EVENTS or len(data) + len(line) > ev.MAX_JOURNAL_BYTES:
-                    raise ExperienceError('journal_full')
-                try:
-                    written = os.write(fd, line)
-                    if written != len(line):
-                        raise OSError(errno.EIO, 'short write')
-                    os.fsync(fd)
-                except OSError:
-                    try:  # undo only our own partial write
-                        os.ftruncate(fd, len(data))
-                        os.fsync(fd)
-                    except OSError:
-                        pass
-                    raise ExperienceError('journal_io') from None
-                return event
-            except BaseException:
-                if created and os.fstat(fd).st_size == 0:
-                    try:
-                        os.unlink(leaf, dir_fd=parent)
-                    except OSError:
-                        pass
-                raise
+                raise ExperienceError('journal_io') from None
             finally:
-                _unlock(fd)
-        finally:
-            os.close(fd)
+                os.close(fd)
+        raise ExperienceError('journal_io')  # the path kept changing under us
     finally:
         os.close(parent)
