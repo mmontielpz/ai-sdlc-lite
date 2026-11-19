@@ -183,5 +183,140 @@ class ResultTemplateTests(unittest.TestCase):
         self.assertFalse((self.meta / 'target.json').exists())
 
 
+class WebsiteGeneratedArtifactTests(unittest.TestCase):
+    """Website dogfood friction W-1 (build output) and W-2 (very large result contract), on a synthetic project."""
+
+    PKG_FILES = 1500
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        base = Path(self._tmp.name).resolve()
+        self.repo, self.meta = base / 'repo', base / 'meta'
+        self.repo.mkdir()
+        self.meta.mkdir()
+        git(self.repo, 'init', '-q')
+        (self.repo / '.gitignore').write_text('node_modules/\ndist/\n*.env\n', encoding='utf-8')
+        (self.repo / 'web' / 'src').mkdir(parents=True)
+        (self.repo / 'web' / 'src' / 'app.js').write_text('v1\n', encoding='utf-8')
+        git(self.repo, 'add', '-A')
+        git(self.repo, 'commit', '-q', '-m', 'base')
+        for index in range(self.PKG_FILES):  # a dependency folder: thousands of ignored files
+            package = self.repo / 'web' / 'node_modules' / ('pkg%d' % index)
+            package.mkdir(parents=True)
+            (package / 'index.js').write_text('x\n', encoding='utf-8')
+        (self.repo / 'web' / 'dist').mkdir()
+        (self.repo / 'web' / 'dist' / 'old.js').write_text('old\n', encoding='utf-8')
+        (self.meta / 'out.txt').write_text('ok\n', encoding='utf-8')
+        self.record = self.meta / 'baseline.json'
+        self.assertEqual(run_cli('baseline', '--repo', str(self.repo), '--out', str(self.record)).returncode, 0)
+
+    def template(self, name='result.json', record=True):
+        out = self.meta / name
+        args = ['result-template', '--repo', str(self.repo), '--out', str(out)]
+        if record:
+            args += ['--baseline-record', str(self.record)]
+        res = run_cli(*args)
+        self.assertEqual(res.returncode, 0, res.stderr)
+        return res, out, json.loads(out.read_text(encoding='utf-8'))
+
+    def build(self, name='app.abc123.js'):
+        """What `npm run build` does: rewrite the source and write a new hash-named file in the ignored output."""
+        (self.repo / 'web' / 'src' / 'app.js').write_text('v2\n', encoding='utf-8')
+        (self.repo / 'web' / 'dist' / name).write_text('built\n', encoding='utf-8')
+
+    def complete(self, data, **extra):
+        data = dict(data, task_id='WEB-1', allowed_paths=['web/src/**'], claimed_status='PASS',
+                    modified_paths=['web/src/app.js'],
+                    execution_state='complete',
+                    verification=[{'command': 'npm run build', 'exit_code': 0, 'evidence': 'out.txt'}])
+        data.update(extra)
+        path = self.meta / 'completed.json'
+        if path.exists():
+            path.unlink()
+        path.write_text(json.dumps(data), encoding='utf-8')
+        return path
+
+    def verify(self, path, record=True):
+        args = ['verify', '--repo', str(self.repo), '--result', str(path)]
+        if record:
+            args += ['--baseline-record', str(self.record)]
+        res = run_cli(*args)
+        report = json.loads(res.stdout)
+        return report['status'], {r['code'] for r in report['failure_reasons']}, [r['detail'] for r in report['failure_reasons']]
+
+    def test_w2_template_with_a_record_is_compact_and_summarizes_ignored_directories(self):
+        res, out, data = self.template()
+        self.assertNotIn('baseline_ignored_paths', data)  # the verifier reads the list from the record
+        self.assertLess(out.stat().st_size, 4000)
+        self.assertGreater(self.record.stat().st_size, 50000)  # the record keeps the complete list
+        recorded = json.loads(self.record.read_text(encoding='utf-8'))
+        self.assertEqual(len(recorded['baseline_ignored_paths']), self.PKG_FILES + 1)
+        lines = res.stdout.splitlines()
+        self.assertTrue(lines[0].startswith('wrote result template to '))
+        self.assertIn('ignored paths at baseline: web/node_modules (1500), web/dist (1)', res.stdout)
+        self.assertIn('ignorable_paths', res.stdout)
+        self.assertIn('ignored_path_unapproved', res.stdout)
+
+    def test_template_without_a_record_still_embeds_the_baseline_list(self):
+        res, out, data = self.template('norecord.json', record=False)
+        self.assertEqual(len(data['baseline_ignored_paths']), self.PKG_FILES + 1)  # the only baseline in that mode
+        self.assertEqual(res.stdout.strip().splitlines()[0][:24], 'wrote result template to')
+        self.assertEqual(len(res.stdout.strip().splitlines()), 1)
+
+    def test_w1_undeclared_build_output_blocks_and_declaring_the_directory_passes(self):
+        _res, _out, data = self.template()
+        self.build()
+        status, codes, details = self.verify(self.complete(data))
+        self.assertEqual(status, 'BLOCKED')
+        self.assertIn('ignored_path_unapproved', codes)
+        self.assertEqual([d for d in details if d.startswith('web/dist/')], ['web/dist/app.abc123.js'])
+        status, codes, _details = self.verify(self.complete(data, ignorable_paths=['web/dist/**']))
+        self.assertEqual((status, codes), ('PASS', set()))
+
+    def test_declaring_one_directory_does_not_approve_other_new_ignored_files(self):
+        _res, _out, data = self.template()
+        self.build()
+        (self.repo / 'web' / 'local.env').write_text('SECRET=1\n', encoding='utf-8')  # ignored by *.env
+        status, codes, details = self.verify(self.complete(data, ignorable_paths=['web/dist/**']))
+        self.assertEqual(status, 'BLOCKED')
+        self.assertIn('ignored_path_unapproved', codes)
+        self.assertEqual([d for d in details if d.endswith('.env')], ['web/local.env'])
+        _status, _codes, details = self.verify(self.complete(data, ignorable_paths=['web/dist/**']))
+        self.assertFalse([d for d in details if d.startswith('web/dist/')])  # the declared directory is not flagged
+
+    def test_a_contract_copy_of_the_ignored_list_is_still_cross_checked(self):
+        _res, _out, data = self.template()
+        self.build()
+        status, codes, _details = self.verify(self.complete(data, ignorable_paths=['web/dist/**'],
+                                                            baseline_ignored_paths=[]))
+        self.assertEqual(status, 'BLOCKED')
+        self.assertIn('baseline_record_mismatch', codes)
+
+    def test_compact_and_legacy_contracts_verify_identically(self):
+        _res, _out, compact = self.template()
+        recorded = json.loads(self.record.read_text(encoding='utf-8'))['baseline_ignored_paths']
+        legacy = dict(compact, baseline_ignored_paths=recorded)  # what the old template produced
+        for build_name, extra in (('a.js', {}), ('b.js', {'ignorable_paths': ['web/dist/**']})):
+            self.build(build_name)
+            self.assertEqual(self.verify(self.complete(compact, **extra)), self.verify(self.complete(legacy, **extra)))
+
+    def test_a_compact_template_cannot_pass_without_its_baseline_record(self):
+        _res, _out, data = self.template()
+        self.build()
+        status, codes, _details = self.verify(self.complete(data, ignorable_paths=['web/dist/**']), record=False)
+        self.assertNotEqual(status, 'PASS')  # fail closed: the ignored baseline is unknown
+        self.assertIn('ignored_baseline_unknown', codes)
+
+    def test_ignored_summary_is_deterministic_and_bounded(self):
+        from ai_sdlc.result_template import summarize_ignored
+        paths = ['a/b/c.js', 'a/b/d.js', 'a/x.js', 'top.log', 'z/y/1', 'z/y/2', 'z/y/3'] + ['d%d/e/f' % i for i in range(10)]
+        listed, more = summarize_ignored(paths, limit=4)
+        self.assertEqual(listed, [('z/y', 3), ('a/b', 2), ('.', 1), ('a', 1)])
+        self.assertEqual(more, 10)
+        self.assertEqual(summarize_ignored(list(reversed(paths)), limit=4), (listed, more))
+        self.assertEqual(summarize_ignored([]), ([], 0))
+
+
 if __name__ == '__main__':
     unittest.main()
