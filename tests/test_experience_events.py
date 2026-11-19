@@ -55,6 +55,10 @@ class ValidEvents(unittest.TestCase):
             self.assertFalse(doc['additionalProperties'])
         self.assertEqual(tuple(SCHEMA['data_by_type']['install.failed']['properties']['reason_code']['enum']),
                          ev.INIT_REASONS)
+        subject = SCHEMA['properties']['subject']['properties']
+        self.assertEqual(subject['revision']['pattern'], '^' + ev.REVISION.pattern + '$')
+        self.assertEqual(SCHEMA['data_by_type']['task.approval_changed']['properties']['task_revision']['pattern'],
+                         '^' + ev.REVISION.pattern + '$')
         version, registry = ev.load_registry()
         self.assertEqual(SCHEMA['x-verifier-registry-snapshot']['registry_version'], version)
         self.assertEqual(SCHEMA['x-verifier-registry-snapshot']['codes'], sorted(registry))

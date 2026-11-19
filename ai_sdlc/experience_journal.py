@@ -23,6 +23,7 @@ Summary = namedtuple('Summary', 'count run_id head')
 LOCK_SECONDS = 2.0
 _O_NOFOLLOW = getattr(os, 'O_NOFOLLOW', 0)
 _O_DIRECTORY = getattr(os, 'O_DIRECTORY', 0)
+_O_NONBLOCK = getattr(os, 'O_NONBLOCK', 0)  # never block opening a FIFO; the type check follows the open
 
 
 def _supported():
@@ -163,7 +164,7 @@ def validate_journal(path):
     parent, leaf = _open_parent(path, allow_in_repo=True, enforce_repo=False)
     try:
         try:
-            fd = os.open(leaf, os.O_RDONLY | _O_NOFOLLOW, dir_fd=parent)
+            fd = os.open(leaf, os.O_RDONLY | _O_NOFOLLOW | _O_NONBLOCK, dir_fd=parent)
         except FileNotFoundError:
             raise ExperienceError('journal_missing') from None
         except OSError:
@@ -219,7 +220,7 @@ def _open_for_append(parent, leaf, fields, run_id, recorded_at):
     """Open the journal for append, creating it (exclusively, 0600) only after the first event validated."""
     for _attempt in range(3):
         try:
-            return os.open(leaf, os.O_RDWR | os.O_APPEND | _O_NOFOLLOW, dir_fd=parent), False
+            return os.open(leaf, os.O_RDWR | os.O_APPEND | _O_NOFOLLOW | _O_NONBLOCK, dir_fd=parent), False
         except FileNotFoundError:
             ev.build_event(fields, run_id=run_id or _default_run_id(recorded_at), seq=1, prev=None,
                            recorded_at=recorded_at)
@@ -273,6 +274,8 @@ def append_event(path, fields, *, clock=ev.default_clock, run_id=None, allow_in_
         raise ExperienceError('unsupported_platform')
     _fcntl()
     recorded_at = clock()  # read exactly once per append
+    if not isinstance(recorded_at, str) or not ev.TIMESTAMP.fullmatch(recorded_at):
+        raise ExperienceError('schema_invalid', field='event.recorded_at')  # before any path or run_id derivation
     parent, leaf = _open_parent(path, allow_in_repo=allow_in_repo, enforce_repo=True)
     try:
         for _attempt in range(4):

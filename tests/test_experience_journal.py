@@ -404,6 +404,25 @@ class EdgeCases(JournalCase):
         second = jr.append_event(str(self.journal), sup.sample('check.operator_run'), clock=lambda: next(ticks))
         self.assertEqual((first['recorded_at'], second['recorded_at']), ('2026-11-18T22:00:00Z', '2026-11-18T22:00:01Z'))
 
+    def test_invalid_injected_clock_values_are_structured_refusals(self):  # F2
+        for bad in (None, 12345, b'2026-11-18T22:00:00Z', '', 'x' * 5, '2026-11-18T22:00:00Z\n', '2026-13-45T25:61:61Z'):
+            calls = []
+
+            def clock(bad=bad):
+                calls.append(1)
+                return bad
+            for run_id in (None, 'run-x'):
+                before = sup.snapshot(self.base)
+                self.assertEqual(code_of(jr.append_event, str(self.journal), sup.sample('check.operator_run'),
+                                         clock=clock, run_id=run_id), 'schema_invalid', repr(bad))
+                self.assertEqual(before, sup.snapshot(self.base))
+            self.assertEqual(len(calls), 2)  # exactly one read per append
+        self.fill(1)  # and an existing journal is refused the same way, unchanged
+        before = self.journal.read_bytes()
+        self.assertEqual(code_of(jr.append_event, str(self.journal), sup.sample('check.operator_run'),
+                                 clock=lambda: None), 'schema_invalid')
+        self.assertEqual(before, self.journal.read_bytes())
+
     def test_lock_timeout_on_a_created_file_does_not_remove_a_busy_journal(self):
         import fcntl
         holder = None
@@ -588,6 +607,47 @@ class LockingAndFailures(JournalCase):
     def test_no_network_or_process_activity_happened(self):
         self.fill(2)
         jr.validate_journal(str(self.journal))  # the setUp guards raise AssertionError on any use
+
+
+class SpecialFileValidation(unittest.TestCase):
+    """F1: `experience validate` must refuse special files promptly. Run in subprocesses with a hard timeout
+    so a regression fails the test instead of hanging it (no mocks here: the real CLI is exercised)."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix='ai-sdlc-exp-')
+        self.addCleanup(self.temp.cleanup)
+        self.base = Path(self.temp.name)
+
+    def validate(self, path):
+        command = [sys.executable, '-B', '-m', 'ai_sdlc', 'experience', 'validate', '--journal', str(path)]
+        try:
+            done = subprocess.run(command, cwd=str(ROOT), capture_output=True, text=True, timeout=20,
+                                  stdin=subprocess.DEVNULL)
+        except subprocess.TimeoutExpired:
+            self.fail('validate hung on %s' % path)
+        return done.returncode, done.stderr
+
+    def test_fifo_is_refused_without_blocking(self):
+        fifo = self.base / 'fifo.jsonl'
+        os.mkfifo(fifo)
+        self.assertEqual(self.validate(fifo), (2, 'JOURNAL-INVALID: journal_invalid_path\n'))
+
+    def test_other_special_files_are_refused(self):
+        directory = self.base / 'dir.jsonl'
+        directory.mkdir()
+        sock = self.base / 'sock.jsonl'
+        server = socket.socket(socket.AF_UNIX)
+        self.addCleanup(server.close)
+        server.bind(str(sock))
+        for path in (directory, sock, Path('/dev/null')):
+            self.assertEqual(self.validate(path), (2, 'JOURNAL-INVALID: journal_invalid_path\n'), str(path))
+
+    def test_symlink_to_fifo_is_refused_without_blocking(self):
+        fifo = self.base / 'fifo'
+        os.mkfifo(fifo)
+        link = self.base / 'link.jsonl'
+        link.symlink_to(fifo)
+        self.assertEqual(self.validate(link), (2, 'JOURNAL-INVALID: journal_invalid_path\n'))
 
 
 class PrivacyCanaries(JournalCase):

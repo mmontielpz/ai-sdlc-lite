@@ -73,7 +73,7 @@
         },
         "revision": {
           "type": "string",
-          "maxLength": 64
+          "pattern": "^[A-Za-z0-9._+-]{1,64}$"
         },
         "repo_classification": {
           "enum": [
@@ -385,7 +385,7 @@
         },
         "task_revision": {
           "type": "string",
-          "maxLength": 64
+          "pattern": "^[A-Za-z0-9._+-]{1,64}$"
         }
       }
     },
