@@ -4,16 +4,28 @@ This guide walks from installation to your first verified `PASS` and `BLOCKED` r
 
 ## 1. Install
 
-From a checkout of `ai-sdlc-lite` inside a Python 3.9+ virtual environment:
+The `ai-sdlc` command is installed separately from the Skill. Everything below is offline and uses only Python 3.9+ and Git; nothing is downloaded and no dependency is installed.
+
+**Build the wheel once, from a reviewed checkout of `ai-sdlc-lite`** (needs `setuptools` already available to that Python):
+
+```bash
+python3 -m pip wheel --no-build-isolation --no-deps -w dist .
+sha256sum dist/*.whl        # record or compare the digest before distributing the file
+```
+
+**Install it, in a Python 3.9+ virtual environment, wherever you work** (no checkout is needed from here on):
 
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
-pip install --no-build-isolation --no-deps .
-ai-sdlc --help
+pip install --no-index --no-deps /path/to/ai_sdlc_lite-*.whl
+ai-sdlc --version
+ai-sdlc doctor
 ```
 
-Without installing, you can always run directly from the checkout:
+The wheel carries the CLI and the reviewed Skill bundle, so `ai-sdlc init --repo /path/to/repo --target claude-code --apply` (section 2) installs the matching Skill, and `ai-sdlc init --repo /path/to/repo --target claude-code --check` later confirms the installed Skill still matches the installed CLI. An agent that finds no `ai-sdlc` command must stop and ask you to install it; it never installs packages itself.
+
+From a checkout you can still install in place with `pip install --no-build-isolation --no-deps .`, or run without installing:
 
 ```bash
 python3 -B -m ai_sdlc --help

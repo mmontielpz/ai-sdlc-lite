@@ -35,6 +35,7 @@ package-dir = {"ai_sdlc" = "ai_sdlc", "ai_sdlc._framework" = "."}
     "adapters/agents/*/examples/*.json",
     "adapters/godot/README.md",
     "docs/*.md",
+    "docs/product/*.md",
     "docs/qualification/*.md",
     "examples/codex-live/*.py",
     "examples/copilot-live/*.py",

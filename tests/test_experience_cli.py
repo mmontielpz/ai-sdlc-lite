@@ -34,7 +34,8 @@ BASELINE_USAGE = (
 # these files must update the constant in the same reviewed change.
 UNTOUCHED = {
     'scripts/verify_scope.py': '6562aad7ec6ebcb2e5fbc6008da11a0f9d0db8959c867cc3e3a33331d494dfbb',
-    '.agents/skills/ai-sdlc-lite/SKILL.md': '0d88536d85d86cf3387e2425e47321c3d2e2c69b88f58603ef0751ede9e14998',
+    # Updated by DISTRIBUTION-058 (owner-authorized): the "Command-line tool" section; was 0d88536d85d8….
+    '.agents/skills/ai-sdlc-lite/SKILL.md': '2d7c56ad6c4410db875e68f5de6e5f558e31c117692a3882cec7e15e77de99ba',
     # Added by EXP-01B (develop @ 12164a8): `init --journal` must not need an installer change.
     'scripts/install_skill.py': '99077c2dda336d865d949632025ab7253bc445acb15f2a270bdf7531f95caa30',
 }
@@ -166,6 +167,10 @@ class CompatibilityAndPackaging(ExperienceCliCase):
         lines = cli.USAGE.splitlines(keepends=True)
         added = [line for line in lines if line.lstrip().startswith('experience')]
         self.assertEqual(len(added), 1)
+        # DISTRIBUTION-058 added exactly one more usage line, for --version.
+        version_lines = [line for line in lines if line.lstrip().startswith('--version')]
+        self.assertEqual(len(version_lines), 1)
+        added += version_lines
         self.assertEqual(''.join(line for line in lines if line not in added), BASELINE_USAGE)
         self.assertEqual(self.run_cli('--help')[1], cli.USAGE)
 
