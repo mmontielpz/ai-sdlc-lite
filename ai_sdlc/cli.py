@@ -55,6 +55,7 @@ USAGE = (
     '  delivery plan|verify|report|execute|recover  delivery preflight, local commit, and observe-only recovery (docs/DELIVERY_CONTRACT.md)\n'
     '  result-template --repo PATH --out F [--baseline-record F] generate fail-closed result.json template\n'
     '  init --repo PATH            preview offline Skill setup; --apply to write; --check to verify\n'
+    '  experience validate --journal F  EXPERIMENTAL offline Experience journal check (read-only)\n'
 )
 HEX = frozenset('0123456789abcdef')
 BAD_REF_CHARS = frozenset(' \\:?[^~*\x7f')
@@ -388,6 +389,9 @@ def main(argv=None):
     if command == 'init':
         from ai_sdlc import initializer
         return initializer.main(rest)
+    if command == 'experience':
+        from ai_sdlc import experience  # lazy: no other command imports the Experience modules
+        return experience.main(rest)
     _err(f'ai_sdlc: unknown command {command!r}')
     sys.stderr.write(USAGE)
     return 2
