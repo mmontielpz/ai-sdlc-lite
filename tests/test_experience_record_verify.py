@@ -2,6 +2,7 @@
 
 from contextlib import redirect_stderr, redirect_stdout
 import contextlib
+import errno
 import hashlib
 import importlib.util
 import io
@@ -26,6 +27,39 @@ REFUSED = (2, '', 'RECORD-REFUSED: report_invalid\n')
 spec = importlib.util.spec_from_file_location('verify_scope_for_experience_tests', ROOT / 'scripts/verify_scope.py')
 vs = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(vs)
+NOTICE = 'RECORD-NOTICE: recorded; success output could not be written\n'
+
+
+class BrokenOut:
+    def write(self, text):
+        raise OSError(errno.EPIPE, 'Broken pipe')
+
+    def flush(self):
+        pass
+
+    def fileno(self):
+        raise OSError('no descriptor')
+
+
+class FlushFailsOut:
+    def write(self, text):
+        return len(text)
+
+    def flush(self):
+        raise BrokenPipeError(errno.EPIPE, 'Broken pipe')
+
+    def fileno(self):
+        raise OSError('no descriptor')
+
+
+def closed_stdout():
+    stream = io.StringIO()
+    stream.close()
+    return stream
+
+
+BROKEN_STDOUTS = {'none': lambda: None, 'write-fails': BrokenOut, 'flush-fails': FlushFailsOut,
+                  'closed': closed_stdout}
 ALL_PATHS = ['src/app.py', 'docs/a.md', 'docs/b.md', 'secrets/k.txt']
 
 
@@ -380,6 +414,51 @@ class RecordVerifyRefuses(VerifyReportCase):
         self.assertFalse(self.journal.exists())
 
 
+class PostAppendOutput(VerifyReportCase):
+    """The event is durable once appended: output failure is never a refusal and never retried (P1 fix)."""
+
+    def run_broken(self, kind, report, journal=None):
+        err = io.StringIO()
+        path = report if isinstance(report, Path) else self.report_path(report)
+        with mock.patch.object(sys, 'stdout', BROKEN_STDOUTS[kind]()), redirect_stderr(err), \
+                mock.patch.object(jr, 'append_event', wraps=jr.append_event) as spy:
+            code = experience.main(['record-verify', '--journal', str(journal or self.journal), '--report', str(path),
+                                    '--repo-classification', 'synthetic'])
+        return code, err.getvalue(), spy.call_count
+
+    def test_output_failure_after_a_successful_append_is_not_a_refusal(self):  # R-01 (P1)
+        for kind in BROKEN_STDOUTS:
+            for name in ('pass', 'partial', 'blocked_two'):
+                journal = self.base / ('%s-%s.jsonl' % (kind, name))
+                self.assertEqual(self.run_broken(kind, name, journal), (0, NOTICE, 1), (kind, name))
+                events = self.events(journal)
+                self.assertEqual([(e['seq'], e['type']) for e in events], [(1, 'verify.completed')])
+                self.assertEqual(jr.validate_journal(str(journal)).count, 1)
+
+    def test_no_automatic_retry_and_a_manual_retry_is_a_new_event(self):  # at-most-once capture
+        self.assertEqual(self.run_broken('write-fails', 'pass'), (0, NOTICE, 1))
+        self.assertEqual(self.run_broken('write-fails', 'pass'), (0, NOTICE, 1))
+        self.assertEqual([e['seq'] for e in self.events()], [1, 2])
+
+    def test_genuine_refusals_still_refuse_without_writing_even_with_broken_stdout(self):  # R-14
+        repo = self.base / 'repo'
+        (repo / '.git').mkdir(parents=True)
+        for kind in BROKEN_STDOUTS:
+            before = sup.snapshot(self.base)
+            self.assertEqual(self.run_broken(kind, 'early_blocked'),
+                             (2, 'RECORD-REFUSED: report_invalid\n', 0), kind)  # refused before the journal
+            self.assertEqual(self.run_broken(kind, 'pass', repo / 'j.jsonl'),
+                             (2, 'RECORD-REFUSED: journal_in_repo\n', 1), kind)
+            self.assertEqual(before, sup.snapshot(self.base))
+            self.assertFalse(self.journal.exists())
+
+    def test_working_stdout_is_unchanged(self):  # R-01
+        code, out, err = self.verify('pass')
+        self.assertEqual((code, err), (0, ''))
+        self.assertRegex(out, r'^experience recorded: seq=1 type=verify\.completed event_id=ev-[0-9a-f]{32}\n'
+                              r'authenticity: not verified \(integrity checks only\)\n$')
+
+
 class ReportFileHandling(VerifyReportCase):
     def test_non_regular_and_linked_reports_are_refused(self):  # R-10 (in-process cases)
         real = self.report_path('pass')
@@ -444,7 +523,36 @@ class ReportFileHandling(VerifyReportCase):
 
 
 class RecordVerifySpecialFiles(unittest.TestCase):
-    """Real processes with hard timeouts and no mocks: special report files never hang the command."""
+    """Real processes with hard timeouts and no mocks: special report files never hang the command, and a
+    closed stdout after the append is not a refusal (P1 fix)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls._shared = tempfile.TemporaryDirectory(prefix='ai-sdlc-rv-shared-')
+        cls.addClassCleanup(cls._shared.cleanup)
+        cls.reports = build_reports(Path(cls._shared.name))
+
+    def test_closed_stdout_and_closed_pipe_after_the_append(self):
+        for mode in ('closed', 'pipe'):
+            with tempfile.TemporaryDirectory(prefix='ai-sdlc-rv-') as temp:
+                journal = Path(temp) / 'j.jsonl'
+                command = [sys.executable, '-B', '-m', 'ai_sdlc', 'experience', 'record-verify', '--journal',
+                           str(journal), '--report', str(self.reports / 'pass.json'), '--repo-classification',
+                           'synthetic']
+                if mode == 'closed':
+                    done = subprocess.run(['sh', '-c', 'exec "$@" >&-', 'sh', *command], cwd=str(ROOT),
+                                          capture_output=True, text=True, timeout=30, stdin=subprocess.DEVNULL)
+                    code, err = done.returncode, done.stderr
+                else:
+                    proc = subprocess.Popen(command, cwd=str(ROOT), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                            text=True, stdin=subprocess.DEVNULL)
+                    proc.stdout.close()
+                    _, err = proc.communicate(timeout=30)
+                    code = proc.returncode
+                self.assertEqual(code, 0, (mode, err))
+                self.assertIn(err, (NOTICE,) if mode == 'closed' else ('', NOTICE))
+                self.assertNotIn('Exception ignored', err)
+                self.assertEqual(jr.validate_journal(str(journal)).count, 1)
 
     def test_fifo_and_devices_do_not_hang(self):  # R-10
         with tempfile.TemporaryDirectory(prefix='ai-sdlc-rv-') as temp:

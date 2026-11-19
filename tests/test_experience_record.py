@@ -1,6 +1,7 @@
 """EXP-01B: `ai-sdlc experience record` (X-rec-01..12) and its privacy, determinism and offline gates."""
 
 from contextlib import redirect_stderr, redirect_stdout
+import errno
 import io
 import os
 from pathlib import Path
@@ -31,6 +32,45 @@ FEEDBACK = ['--type', 'human.feedback', '--task-id', 'T1', '--decision', 'NEEDS_
             '--friction', 'install']
 BASES = {'task.initialized': INIT, 'task.approval_changed': APPROVAL, 'check.operator_run': CHECK,
          'human.feedback': FEEDBACK}
+
+
+NOTICE = 'RECORD-NOTICE: recorded; success output could not be written\n'
+
+
+class BrokenOut:
+    """A stdout whose write fails (closed pipe)."""
+
+    def write(self, text):
+        raise OSError(errno.EPIPE, 'Broken pipe')
+
+    def flush(self):
+        pass
+
+    def fileno(self):
+        raise OSError('no descriptor')
+
+
+class FlushFailsOut:
+    """A stdout that buffers the write and fails when flushed."""
+
+    def write(self, text):
+        return len(text)
+
+    def flush(self):
+        raise BrokenPipeError(errno.EPIPE, 'Broken pipe')
+
+    def fileno(self):
+        raise OSError('no descriptor')
+
+
+def closed_stdout():
+    stream = io.StringIO()
+    stream.close()
+    return stream
+
+
+BROKEN_STDOUTS = {'none': lambda: None, 'write-fails': BrokenOut, 'flush-fails': FlushFailsOut,
+                  'closed': closed_stdout}
 
 
 def code_for(value):
@@ -311,6 +351,53 @@ class RecordEvents(RecordCase):
             self.assertEqual(event['event_id'], ev.compute_event_id(event))
 
 
+class PostAppendOutput(RecordCase):
+    """The event is durable once appended: output failure is never a refusal and never retried (P1 fix)."""
+
+    def run_broken(self, kind, args, journal=None):
+        err = io.StringIO()
+        with mock.patch.object(sys, 'stdout', BROKEN_STDOUTS[kind]()), redirect_stderr(err), \
+                mock.patch.object(jr, 'append_event', wraps=jr.append_event) as spy:
+            code = experience.main(['record', '--journal', str(journal or self.journal), '--repo-classification',
+                                    'synthetic', *args])
+        return code, err.getvalue(), spy.call_count
+
+    def test_output_failure_after_a_successful_append_is_not_a_refusal(self):  # X-rec-12 (P1)
+        for kind in BROKEN_STDOUTS:
+            for number, (type_name, args) in enumerate(BASES.items(), 1):
+                journal = self.base / ('%s-%s.jsonl' % (kind, type_name))
+                code, err, appends = self.run_broken(kind, args, journal)
+                self.assertEqual((code, err, appends), (0, NOTICE, 1), (kind, type_name))
+                self.assertNotIn('RECORD-REFUSED', err)
+                events = jr.parse_journal(journal.read_bytes())[0]  # exactly one valid event
+                self.assertEqual([(e['seq'], e['type']) for e in events], [(1, type_name)])
+                self.assertEqual(jr.validate_journal(str(journal)).count, 1)
+
+    def test_a_retry_after_output_failure_is_a_new_distinct_event(self):  # at-most-once capture, no auto retry
+        self.assertEqual(self.run_broken('write-fails', CHECK), (0, NOTICE, 1))
+        self.assertEqual(self.run_broken('write-fails', CHECK), (0, NOTICE, 1))  # one append per invocation
+        self.assertEqual([e['seq'] for e in self.events()], [1, 2])
+        self.assertEqual(len({e['event_id'] for e in self.events()}), 2)
+
+    def test_genuine_pre_append_failures_still_refuse_without_writing(self):  # X-rec-08/09 with broken stdout
+        repo = self.base / 'repo'
+        (repo / '.git').mkdir(parents=True)
+        for kind in BROKEN_STDOUTS:
+            before = sup.snapshot(self.base)
+            self.assertEqual(self.run_broken(kind, swap(INIT, '--skill-target', 'nope')),
+                             (2, 'RECORD-REFUSED: schema_invalid\n', 0), kind)
+            self.assertEqual(self.run_broken(kind, INIT, repo / 'j.jsonl'),
+                             (2, 'RECORD-REFUSED: journal_in_repo\n', 1), kind)  # append attempted, refused, no write
+            self.assertEqual(before, sup.snapshot(self.base))
+            self.assertFalse(self.journal.exists())
+
+    def test_working_stdout_is_unchanged(self):  # X-rec-12
+        code, out, err = self.rec(INIT)
+        self.assertEqual((code, err), (0, ''))
+        self.assertRegex(out, r'^experience recorded: seq=1 type=task\.initialized event_id=ev-[0-9a-f]{32}\n'
+                              r'authenticity: not verified \(integrity checks only\)\n$')
+
+
 class RecordSpecialFiles(unittest.TestCase):
     """Real-process checks with hard timeouts (no mocks): special files never hang `record`."""
 
@@ -327,6 +414,34 @@ class RecordSpecialFiles(unittest.TestCase):
                 except subprocess.TimeoutExpired:
                     self.fail('record hung on %s' % path)
                 self.assertEqual((done.returncode, done.stderr), (2, 'RECORD-REFUSED: journal_invalid_path\n'))
+
+
+class RecordRealStdoutFailures(unittest.TestCase):
+    """Real processes (no mocks): a closed or broken stdout after the append is not a refusal (P1 fix)."""
+
+    def command(self, journal):
+        return [sys.executable, '-B', '-m', 'ai_sdlc', 'experience', 'record', '--journal', str(journal),
+                '--repo-classification', 'synthetic', *CHECK]
+
+    def test_closed_stdout(self):
+        with tempfile.TemporaryDirectory(prefix='ai-sdlc-rec-') as temp:
+            journal = Path(temp) / 'j.jsonl'
+            done = subprocess.run(['sh', '-c', 'exec "$@" >&-', 'sh', *self.command(journal)], cwd=str(ROOT),
+                                  capture_output=True, text=True, timeout=30, stdin=subprocess.DEVNULL)
+            self.assertEqual((done.returncode, done.stderr), (0, NOTICE))
+            self.assertEqual(jr.validate_journal(str(journal)).count, 1)
+
+    def test_reader_closed_pipe(self):
+        with tempfile.TemporaryDirectory(prefix='ai-sdlc-rec-') as temp:
+            journal = Path(temp) / 'j.jsonl'
+            proc = subprocess.Popen(self.command(journal), cwd=str(ROOT), stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE, text=True, stdin=subprocess.DEVNULL)
+            proc.stdout.close()  # the reader goes away before the command writes
+            _, err = proc.communicate(timeout=30)
+            self.assertEqual(proc.returncode, 0, err)  # never 120 from a failed flush at shutdown
+            self.assertIn(err, ('', NOTICE))
+            self.assertNotIn('Exception ignored', err)
+            self.assertEqual(jr.validate_journal(str(journal)).count, 1)
 
 
 if __name__ == '__main__':

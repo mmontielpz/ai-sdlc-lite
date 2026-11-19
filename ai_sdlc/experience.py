@@ -4,6 +4,7 @@ No network, no subprocess, no model call, no implicit capture. Output never echo
 Capture is explicit and opt-in: every command needs an explicit --journal path (there is no default).
 """
 
+import os
 import re
 import sys
 
@@ -133,10 +134,29 @@ def _append(values, fields):
     ev.dry_validate(fields, run_id)  # a refusal here touches nothing
     event = journal.append_event(values['--journal'], fields, clock=ev.default_clock, run_id=run_id,
                                  allow_in_repo=bool(values.get('--allow-in-repo')))
-    sys.stdout.write('experience recorded: seq=%d type=%s event_id=%s\n' % (event['seq'], event['type'],
-                                                                           event['event_id']))
-    sys.stdout.write('authenticity: not verified (integrity checks only)\n')
+    _announce(event)
     return 0
+
+
+def _announce(event):
+    """Report a persisted event. The event is already durable here: success output is best effort and its
+    failure (closed or broken stdout, full pipe, no stdout at all) must never be reported as a refusal and the
+    append is never retried. On failure: exit status stays 0, one best-effort stderr notice, and the broken
+    stdout is replaced by /dev/null so interpreter shutdown cannot fail either."""
+    try:
+        sys.stdout.write('experience recorded: seq=%d type=%s event_id=%s\n' % (event['seq'], event['type'],
+                                                                               event['event_id']))
+        sys.stdout.write('authenticity: not verified (integrity checks only)\n')
+        sys.stdout.flush()
+    except Exception:
+        try:
+            os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+        except Exception:
+            pass
+        try:
+            sys.stderr.write('RECORD-NOTICE: recorded; success output could not be written\n')
+        except Exception:
+            pass
 
 
 def _record(args):
