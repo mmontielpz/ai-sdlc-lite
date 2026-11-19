@@ -3,10 +3,12 @@
 from contextlib import redirect_stderr, redirect_stdout
 import errno
 import io
+import json
 import os
 from pathlib import Path
 import re
 import socket
+import stat
 import subprocess
 import sys
 import tempfile
@@ -67,6 +69,38 @@ def closed_stdout():
     stream = io.StringIO()
     stream.close()
     return stream
+
+
+EMBEDDED_HOST = '''
+import json, os, stat, sys
+from ai_sdlc import experience
+argv = json.loads(sys.argv[1])
+sys.stdin.readline()                      # wait until the parent has closed the reading end of stdout
+before = len(os.listdir('/proc/self/fd'))
+codes = [experience.main(list(argv)) for _ in range(2)]
+info = {'codes': codes, 'fd_before': before, 'fd_after': len(os.listdir('/proc/self/fd')),
+        'fd1_is_fifo_after': stat.S_ISFIFO(os.fstat(1).st_mode)}
+sys.stderr.write('INFO ' + json.dumps(info) + '\\n')
+'''
+
+
+def run_embedded_host(argv):
+    """A host process that calls experience.main twice while its stdout pipe has no reader; returns
+    (returncode, stderr, info). Real descriptors, no mocks."""
+    proc = subprocess.Popen([sys.executable, '-B', '-c', EMBEDDED_HOST, json.dumps(argv)], cwd=str(ROOT),
+                            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                            env=dict(os.environ, PYTHONPATH=str(ROOT)))
+    proc.stdout.close()
+    proc.stdin.write('go\n')
+    proc.stdin.close()
+    err = proc.stderr.read()
+    proc.wait(timeout=60)
+    info = json.loads(err.split('INFO ', 1)[1].splitlines()[0])
+    return proc.returncode, err, info
+
+
+def fd_count():
+    return len(os.listdir('/proc/self/fd'))
 
 
 BROKEN_STDOUTS = {'none': lambda: None, 'write-fails': BrokenOut, 'flush-fails': FlushFailsOut,
@@ -356,10 +390,13 @@ class PostAppendOutput(RecordCase):
 
     def run_broken(self, kind, args, journal=None):
         err = io.StringIO()
+        before = fd_count()
         with mock.patch.object(sys, 'stdout', BROKEN_STDOUTS[kind]()), redirect_stderr(err), \
+                mock.patch.object(os, 'dup2', side_effect=AssertionError('no descriptor change while running')), \
                 mock.patch.object(jr, 'append_event', wraps=jr.append_event) as spy:
             code = experience.main(['record', '--journal', str(journal or self.journal), '--repo-classification',
                                     'synthetic', *args])
+        self.assertEqual(before, fd_count())  # no descriptor was created or leaked
         return code, err.getvalue(), spy.call_count
 
     def test_output_failure_after_a_successful_append_is_not_a_refusal(self):  # X-rec-12 (P1)
@@ -390,6 +427,33 @@ class PostAppendOutput(RecordCase):
                              (2, 'RECORD-REFUSED: journal_in_repo\n', 1), kind)  # append attempted, refused, no write
             self.assertEqual(before, sup.snapshot(self.base))
             self.assertFalse(self.journal.exists())
+
+    def test_a_host_owned_descriptor_is_untouched_and_nothing_leaks(self):  # real descriptor, repeated calls
+        reader, writer = os.pipe()
+        os.close(reader)  # the reading end is gone: every write fails with EPIPE
+        stream = os.fdopen(writer, 'w')
+
+        def close():
+            try:
+                stream.close()
+            except OSError:
+                pass
+        self.addCleanup(close)
+        info, before = os.fstat(writer), fd_count()
+        err = io.StringIO()
+        with mock.patch.object(sys, 'stdout', stream), redirect_stderr(err), \
+                mock.patch.object(os, 'dup2', side_effect=AssertionError('no descriptor change while running')), \
+                mock.patch.object(jr, 'append_event', wraps=jr.append_event) as spy:
+            codes = [experience.main(['record', '--journal', str(self.journal), '--repo-classification', 'synthetic',
+                                      *args]) for args in (CHECK, INIT, FEEDBACK)]
+        self.assertEqual(codes, [0, 0, 0])
+        self.assertEqual(spy.call_count, 3)  # exactly one append per invocation, no retry
+        self.assertEqual(err.getvalue(), NOTICE * 3)  # every failure is reported, none is swallowed silently
+        after = os.fstat(writer)
+        self.assertTrue(stat.S_ISFIFO(after.st_mode))  # still the host's pipe, not /dev/null
+        self.assertEqual((info.st_dev, info.st_ino), (after.st_dev, after.st_ino))
+        self.assertEqual(before, fd_count())
+        self.assertEqual([e['seq'] for e in self.events()], [1, 2, 3])
 
     def test_working_stdout_is_unchanged(self):  # X-rec-12
         code, out, err = self.rec(INIT)
@@ -423,6 +487,20 @@ class RecordRealStdoutFailures(unittest.TestCase):
         return [sys.executable, '-B', '-m', 'ai_sdlc', 'experience', 'record', '--journal', str(journal),
                 '--repo-classification', 'synthetic', *CHECK]
 
+    def test_an_embedding_host_keeps_its_descriptors(self):  # repeated calls, real fd 1 with no reader
+        with tempfile.TemporaryDirectory(prefix='ai-sdlc-rec-') as temp:
+            journal = Path(temp) / 'j.jsonl'
+            argv = ['record', '--journal', str(journal), '--repo-classification', 'synthetic', *CHECK]
+            code, err, info = run_embedded_host(argv)
+            self.assertEqual(code, 0, err)  # shutdown never fails with status 120
+            self.assertEqual(info['codes'], [0, 0])
+            self.assertEqual(info['fd_before'], info['fd_after'])  # no descriptor leaked
+            self.assertTrue(info['fd1_is_fifo_after'])  # the host's descriptor 1 was not redirected while running
+            self.assertEqual(err.count('RECORD-NOTICE'), 2)  # both failures reported
+            self.assertNotIn('Exception ignored', err)
+            self.assertNotIn('RECORD-REFUSED', err)
+            self.assertEqual(jr.validate_journal(str(journal)).count, 2)
+
     def test_closed_stdout(self):
         with tempfile.TemporaryDirectory(prefix='ai-sdlc-rec-') as temp:
             journal = Path(temp) / 'j.jsonl'
@@ -439,7 +517,7 @@ class RecordRealStdoutFailures(unittest.TestCase):
             proc.stdout.close()  # the reader goes away before the command writes
             _, err = proc.communicate(timeout=30)
             self.assertEqual(proc.returncode, 0, err)  # never 120 from a failed flush at shutdown
-            self.assertIn(err, ('', NOTICE))
+            self.assertEqual(err, NOTICE)
             self.assertNotIn('Exception ignored', err)
             self.assertEqual(jr.validate_journal(str(journal)).count, 1)
 

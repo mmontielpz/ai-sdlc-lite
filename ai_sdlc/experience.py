@@ -4,6 +4,7 @@ No network, no subprocess, no model call, no implicit capture. Output never echo
 Capture is explicit and opt-in: every command needs an explicit --journal path (there is no default).
 """
 
+import atexit
 import os
 import re
 import sys
@@ -138,21 +139,49 @@ def _append(values, fields):
     return 0
 
 
-def _announce(event):
-    """Report a persisted event. The event is already durable here: success output is best effort and its
-    failure (closed or broken stdout, full pipe, no stdout at all) must never be reported as a refusal and the
-    append is never retried. On failure: exit status stays 0, one best-effort stderr notice, and the broken
-    stdout is replaced by /dev/null so interpreter shutdown cannot fail either."""
-    try:
-        sys.stdout.write('experience recorded: seq=%d type=%s event_id=%s\n' % (event['seq'], event['type'],
-                                                                               event['event_id']))
-        sys.stdout.write('authenticity: not verified (integrity checks only)\n')
-        sys.stdout.flush()
-    except Exception:
+_FAILED_OUTPUTS = []  # streams whose success output failed after an append; checked once at interpreter exit
+_EXIT_HOOK = []
+
+
+def _quiet_shutdown():
+    """Runs once at interpreter exit, never while the host is running. A standard output (descriptor 1) that
+    failed after an append and still cannot be flushed would make interpreter shutdown exit with status 120;
+    only then is descriptor 1 pointed at /dev/null (the documented broken-pipe idiom) and the temporary
+    descriptor closed. Streams that are not descriptor 1 are never touched."""
+    for stream in _FAILED_OUTPUTS:
         try:
-            os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+            stream.flush()
+            continue
         except Exception:
             pass
+        try:
+            if stream.fileno() == 1:
+                devnull = os.open(os.devnull, os.O_WRONLY)
+                try:
+                    os.dup2(devnull, 1)
+                finally:
+                    os.close(devnull)
+        except Exception:
+            pass
+
+
+def _announce(event):
+    """Report a persisted event. The event is already durable here: success output is best effort and its
+    failure (closed or broken stdout, full pipe, no stdout) must never be reported as a refusal and the append
+    is never retried. On failure the exit status stays 0 and one best-effort stderr notice is written. No
+    descriptor is created, closed or redirected while the command runs; the only descriptor action is the
+    exit-time handler above."""
+    stream = sys.stdout
+    try:
+        stream.write('experience recorded: seq=%d type=%s event_id=%s\n' % (event['seq'], event['type'],
+                                                                           event['event_id']))
+        stream.write('authenticity: not verified (integrity checks only)\n')
+        stream.flush()
+    except Exception:
+        if stream is not None and not any(stream is known for known in _FAILED_OUTPUTS):
+            _FAILED_OUTPUTS.append(stream)
+            if not _EXIT_HOOK:
+                _EXIT_HOOK.append(atexit.register(_quiet_shutdown))
         try:
             sys.stderr.write('RECORD-NOTICE: recorded; success output could not be written\n')
         except Exception:

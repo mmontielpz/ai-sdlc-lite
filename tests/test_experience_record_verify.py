@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import socket
+import stat
 import subprocess
 import sys
 import tempfile
@@ -18,6 +19,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import experience_support as sup
+import test_experience_record as record_tests
 from ai_sdlc import experience
 from ai_sdlc import experience_events as ev
 from ai_sdlc import experience_journal as jr
@@ -420,10 +422,13 @@ class PostAppendOutput(VerifyReportCase):
     def run_broken(self, kind, report, journal=None):
         err = io.StringIO()
         path = report if isinstance(report, Path) else self.report_path(report)
+        before = record_tests.fd_count()
         with mock.patch.object(sys, 'stdout', BROKEN_STDOUTS[kind]()), redirect_stderr(err), \
+                mock.patch.object(os, 'dup2', side_effect=AssertionError('no descriptor change while running')), \
                 mock.patch.object(jr, 'append_event', wraps=jr.append_event) as spy:
             code = experience.main(['record-verify', '--journal', str(journal or self.journal), '--report', str(path),
                                     '--repo-classification', 'synthetic'])
+        self.assertEqual(before, record_tests.fd_count())  # no descriptor was created or leaked
         return code, err.getvalue(), spy.call_count
 
     def test_output_failure_after_a_successful_append_is_not_a_refusal(self):  # R-01 (P1)
@@ -451,6 +456,34 @@ class PostAppendOutput(VerifyReportCase):
                              (2, 'RECORD-REFUSED: journal_in_repo\n', 1), kind)
             self.assertEqual(before, sup.snapshot(self.base))
             self.assertFalse(self.journal.exists())
+
+    def test_a_host_owned_descriptor_is_untouched_and_nothing_leaks(self):  # real descriptor, repeated calls
+        reader, writer = os.pipe()
+        os.close(reader)
+        stream = os.fdopen(writer, 'w')
+
+        def close():
+            try:
+                stream.close()
+            except OSError:
+                pass
+        self.addCleanup(close)
+        info, before = os.fstat(writer), record_tests.fd_count()
+        err = io.StringIO()
+        with mock.patch.object(sys, 'stdout', stream), redirect_stderr(err), \
+                mock.patch.object(os, 'dup2', side_effect=AssertionError('no descriptor change while running')), \
+                mock.patch.object(jr, 'append_event', wraps=jr.append_event) as spy:
+            codes = [experience.main(['record-verify', '--journal', str(self.journal), '--report',
+                                      str(self.report_path(name)), '--repo-classification', 'synthetic'])
+                     for name in ('pass', 'partial', 'blocked_two')]
+        self.assertEqual(codes, [0, 0, 0])
+        self.assertEqual(spy.call_count, 3)
+        self.assertEqual(err.getvalue(), NOTICE * 3)
+        after = os.fstat(writer)
+        self.assertTrue(stat.S_ISFIFO(after.st_mode))
+        self.assertEqual((info.st_dev, info.st_ino), (after.st_dev, after.st_ino))
+        self.assertEqual(before, record_tests.fd_count())
+        self.assertEqual([e['seq'] for e in self.events()], [1, 2, 3])
 
     def test_working_stdout_is_unchanged(self):  # R-01
         code, out, err = self.verify('pass')
@@ -532,6 +565,21 @@ class RecordVerifySpecialFiles(unittest.TestCase):
         cls.addClassCleanup(cls._shared.cleanup)
         cls.reports = build_reports(Path(cls._shared.name))
 
+    def test_an_embedding_host_keeps_its_descriptors(self):  # repeated calls, real fd 1 with no reader
+        with tempfile.TemporaryDirectory(prefix='ai-sdlc-rv-') as temp:
+            journal = Path(temp) / 'j.jsonl'
+            argv = ['record-verify', '--journal', str(journal), '--report', str(self.reports / 'pass.json'),
+                    '--repo-classification', 'synthetic']
+            code, err, info = record_tests.run_embedded_host(argv)
+            self.assertEqual(code, 0, err)
+            self.assertEqual(info['codes'], [0, 0])
+            self.assertEqual(info['fd_before'], info['fd_after'])
+            self.assertTrue(info['fd1_is_fifo_after'])
+            self.assertEqual(err.count('RECORD-NOTICE'), 2)
+            self.assertNotIn('Exception ignored', err)
+            self.assertNotIn('RECORD-REFUSED', err)
+            self.assertEqual(jr.validate_journal(str(journal)).count, 2)
+
     def test_closed_stdout_and_closed_pipe_after_the_append(self):
         for mode in ('closed', 'pipe'):
             with tempfile.TemporaryDirectory(prefix='ai-sdlc-rv-') as temp:
@@ -550,7 +598,7 @@ class RecordVerifySpecialFiles(unittest.TestCase):
                     _, err = proc.communicate(timeout=30)
                     code = proc.returncode
                 self.assertEqual(code, 0, (mode, err))
-                self.assertIn(err, (NOTICE,) if mode == 'closed' else ('', NOTICE))
+                self.assertEqual(err, NOTICE, mode)
                 self.assertNotIn('Exception ignored', err)
                 self.assertEqual(jr.validate_journal(str(journal)).count, 1)
 
