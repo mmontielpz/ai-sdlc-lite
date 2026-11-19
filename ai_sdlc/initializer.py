@@ -20,7 +20,10 @@ USAGE = ('usage: python3 -B -m ai_sdlc init --repo PATH [--target agents|claude-
          'Default: read-only preview of the agents target (.agents/skills/ai-sdlc-lite).\n'
          '--target claude-code selects .claude/skills/ai-sdlc-lite; the bundle is identical.\n'
          '--apply creates only the offline Skill bundle.\n'
-         '--check verifies local files only; no provider is probed or authorized.\n')
+         '--check verifies local files only; no provider is probed or authorized.\n'
+         'Optional EXPERIMENTAL capture (with --apply or --check only): --journal FILE --repo-classification C\n'
+         '[--run-id R] [--allow-in-repo] appends one Experience event after the result is final; a journal\n'
+         'failure adds one stderr line "JOURNAL: <code>" and never changes the exit code.\n')
 MAX_MANIFEST = 1 << 20
 MAX_ENTRIES = 20000
 
@@ -200,37 +203,71 @@ def _apply(fd, content, installer, skill):
             installer.write_bundle(content, lambda name, data: _write_file(destination, name, data))
 
 
-def main(argv):
-    args = list(argv)
-    if args in (['--help'], ['-h']):
-        sys.stdout.write(USAGE)
-        return 0
+def _journal_code(error):
+    code = getattr(error, 'code', None)
+    if isinstance(code, str) and code and code.replace('_', '').isalpha() and code == code.lower():
+        return code
+    return 'journal_io'
+
+
+def _record(journal, target, outcome):
+    """Append one Experience event for a finished init. Any Exception becomes one stderr line; the exit code
+    of init is never touched. The Experience modules are imported only here, only when --journal was given."""
+    try:
+        from . import experience
+        experience.record_install(journal['path'], journal['classification'], journal['run_id'],
+                                  journal['allow_in_repo'], target, outcome)
+    except Exception as error:
+        sys.stderr.write('JOURNAL: %s\n' % _journal_code(error))
+
+
+def _parse(args):
+    """Returns (repo, mode, target, journal) or None for a usage error. `journal` is None without --journal."""
     repo, mode, seen, target = None, 'preview', set(), 'agents'
+    extra = {}
     while args:
         flag = args.pop(0)
-        if flag in seen or flag not in ('--repo', '--target', '--dry-run', '--apply', '--check'):
-            sys.stderr.write('BLOCKED: usage\n' + USAGE)
-            return 2
+        known = ('--repo', '--target', '--dry-run', '--apply', '--check',
+                 '--journal', '--repo-classification', '--run-id', '--allow-in-repo')
+        if flag in seen or flag not in known:
+            return None
         seen.add(flag)
         if flag == '--repo':
             if not args or args[0].startswith('--'):
-                sys.stderr.write('BLOCKED: usage\n' + USAGE)
-                return 2
+                return None
             repo = args.pop(0)
         elif flag == '--target':
             if not args or args[0] not in ('agents', 'claude-code'):
-                sys.stderr.write('BLOCKED: usage\n' + USAGE)
-                return 2
+                return None
             target = args.pop(0)
+        elif flag in ('--journal', '--repo-classification', '--run-id'):
+            if not args or args[0].startswith('--'):
+                return None
+            extra[flag] = args.pop(0)
+        elif flag == '--allow-in-repo':
+            extra[flag] = True
         else:
             if len(seen & {'--dry-run', '--apply', '--check'}) > 1:
-                sys.stderr.write('BLOCKED: usage\n' + USAGE)
-                return 2
+                return None
             mode = flag[2:]
     if repo is None:
-        sys.stderr.write('BLOCKED: usage\n' + USAGE)
-        return 2
+        return None
+    journal = None
+    if extra:
+        if '--journal' not in extra or '--repo-classification' not in extra or mode not in ('apply', 'check'):
+            return None
+        from . import experience  # lazy: only when a journal option was given
+        if not experience.check_capture_args(extra['--repo-classification'], extra.get('--run-id')):
+            return None
+        journal = {'path': extra['--journal'], 'classification': extra['--repo-classification'],
+                   'run_id': extra.get('--run-id'), 'allow_in_repo': bool(extra.get('--allow-in-repo'))}
+    return repo, mode, target, journal
+
+
+def _execute(repo, mode, target):
+    """The unchanged init logic. Returns (exit code, outcome) where outcome describes the final result."""
     started = False
+    outcome = None
     try:
         if not _supported():
             raise Refused('unsupported_filesystem_primitives')
@@ -254,23 +291,46 @@ def main(argv):
                                               json.dumps(rel, ensure_ascii=True), installer.digest(data)))
                 print('Provider discovery, permissions and task approval: UNVERIFIED')
                 sys.stdout.flush()
+                result = 'PREVIEW'
                 if mode == 'check':
                     print('RESULT: CHECK_OK')
+                    result = 'CHECK_OK'
                 elif exists:
                     print('RESULT: UNCHANGED')
+                    result = 'UNCHANGED'
                 elif mode == 'apply':
                     started = True
                     _apply(fd, content, installer, skill)
                     if not _existing(fd, content, hashes, installer, skill):
                         raise Refused('installation_missing')
                     print('RESULT: INITIALIZED')
+                    result = 'INITIALIZED'
                 else:
                     print('RESULT: PREVIEW')
+                # Every success path above re-validated the installation byte for byte, manifest included.
+                outcome = {'ok': True, 'result': result, 'file_count': len(content),
+                           'manifest_sha256': installer.digest(content[installer.MANIFEST])}
         finally:
             os.close(anchor)
-        return 0
+        return 0, outcome
     except Exception as error:
         # Never echo OS/JSON/installer messages: they may contain untrusted bytes.
         reason = str(error) if isinstance(error, Refused) else 'validation_or_io_failure'
         sys.stderr.write('RESULT: %s reason=%s\n' % ('PARTIAL' if started else 'BLOCKED', reason))
-        return 1 if started else 2
+        return (1 if started else 2), {'ok': False, 'reason': reason, 'partial': started}
+
+
+def main(argv):
+    args = list(argv)
+    if args in (['--help'], ['-h']):
+        sys.stdout.write(USAGE)
+        return 0
+    parsed = _parse(args)
+    if parsed is None:
+        sys.stderr.write('BLOCKED: usage\n' + USAGE)
+        return 2
+    repo, mode, target, journal = parsed
+    code, outcome = _execute(repo, mode, target)
+    if journal is not None:
+        _record(journal, target, outcome)
+    return code

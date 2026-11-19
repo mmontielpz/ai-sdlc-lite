@@ -1,5 +1,6 @@
 """EXP-01A: `ai-sdlc experience validate`, compatibility with existing commands, and packaging layout."""
 
+import ast
 from contextlib import redirect_stderr, redirect_stdout
 import hashlib
 import io
@@ -34,6 +35,8 @@ BASELINE_USAGE = (
 UNTOUCHED = {
     'scripts/verify_scope.py': '6562aad7ec6ebcb2e5fbc6008da11a0f9d0db8959c867cc3e3a33331d494dfbb',
     '.agents/skills/ai-sdlc-lite/SKILL.md': '0d88536d85d86cf3387e2425e47321c3d2e2c69b88f58603ef0751ede9e14998',
+    # Added by EXP-01B (develop @ 12164a8): `init --journal` must not need an installer change.
+    'scripts/install_skill.py': '99077c2dda336d865d949632025ab7253bc445acb15f2a270bdf7531f95caa30',
 }
 
 
@@ -179,6 +182,40 @@ class CompatibilityAndPackaging(ExperienceCliCase):
                                'print(sorted(m for m in sys.modules if "experience" in m))\n'],
                               capture_output=True, text=True, cwd=ROOT, env=dict(os.environ, PYTHONPATH=str(ROOT)))
         self.assertIn('ai_sdlc.experience', used.stdout)
+
+    def test_initializer_imports_the_experience_layer_only_lazily(self):  # CP-05, EXP-01B OD-3
+        tree = ast.parse((ROOT / 'ai_sdlc' / 'initializer.py').read_text(encoding='utf-8'))
+        found = []
+
+        class Visitor(ast.NodeVisitor):
+            def __init__(self):
+                self.stack = []
+
+            def visit_FunctionDef(self, node):
+                self.stack.append(node.name)
+                self.generic_visit(node)
+                self.stack.pop()
+
+            def _import(self, node, names):
+                found.append((tuple(self.stack), node, names))
+
+            def visit_Import(self, node):
+                self._import(node, [alias.name for alias in node.names])
+
+            def visit_ImportFrom(self, node):
+                self._import(node, [(node.module or '')] + [alias.name for alias in node.names])
+
+        Visitor().visit(tree)
+        experience_imports = [(where, node) for where, node, names in found
+                              if any('experience' in name for name in names)]
+        self.assertTrue(experience_imports)  # the --journal branch exists
+        for where, node in experience_imports:
+            self.assertTrue(where, 'a module-level experience import would break the default no-import behavior')
+            self.assertEqual(set(where) - {'_parse', '_record'}, set(), where)
+            self.assertEqual((node.module, node.level, [alias.name for alias in node.names]), (None, 1, ['experience']))
+        forbidden = {'socket', 'http', 'urllib', 'ssl', 'subprocess', 'ftplib', 'smtplib'}  # SEC-01
+        for _where, node, names in found:
+            self.assertFalse({name.split('.')[0] for name in names} & forbidden, names)
 
     def test_a_corrupt_journal_cannot_affect_other_commands(self):  # S-11
         self.journal.write_bytes(b'garbage\n')
