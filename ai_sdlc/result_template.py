@@ -1,6 +1,7 @@
 """Generate a fail-closed starting template for `ai-sdlc-lite-result/1` (stdlib only, no network)."""
 
 import argparse
+import collections
 import importlib.util
 import json
 import re
@@ -48,8 +49,23 @@ def _validate_out_path(root, out_arg):
     return resolved
 
 
-def build_template(repo, baseline_record=None):
-    """Build a fail-closed `ai-sdlc-lite-result/1` template from repository state or a baseline record."""
+def summarize_ignored(paths, limit=8):
+    """Deterministic, bounded summary of ignored paths by directory prefix: [(prefix, count), ...] plus the
+    number of prefixes that were not listed. Prefix = the first two path segments (a file directly under a
+    top-level directory is grouped under that directory, a top-level file under '.')."""
+    counts = collections.Counter()
+    for path in paths:
+        parts = path.split('/')
+        counts['/'.join(parts[:2]) if len(parts) > 2 else (parts[0] if len(parts) == 2 else '.')] += 1
+    ordered = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+    return ordered[:limit], max(0, len(ordered) - limit)
+
+
+def _build(repo, baseline_record=None):
+    """Return (root, template, omitted_ignored). With a baseline record the verifier reads the ignored-path list
+    from that record (the contract copy is optional and only cross-checked), so it is not copied into the
+    template; `omitted_ignored` is that list. Without a record the list is the only baseline and stays in the
+    template (`omitted_ignored` is None)."""
     root = _vs.repo_root(repo)
     if baseline_record is not None:
         record = _vs.load_sealed(baseline_record, _vs.BASELINE_SCHEMA, 'baseline record')
@@ -64,18 +80,27 @@ def build_template(repo, baseline_record=None):
         ignored = current['baseline_ignored_paths']
 
     modified = _vs.changes_since(root, base)
-    return root, {
+    template = {
         'schema': _vs.CONTRACT_SCHEMA,
         'task_id': 'REPLACE-WITH-TASK-ID',
         'baseline_sha': base,
         'baseline_dirty_paths': dirty,
-        'baseline_ignored_paths': ignored,
         'allowed_paths': ['REPLACE-WITH-ALLOWED-GLOB'],
         'modified_paths': modified,
         'verification': [],
         'claimed_status': 'BLOCKED',
         'execution_state': 'in_progress',
     }
+    if baseline_record is None:
+        template['baseline_ignored_paths'] = ignored
+        return root, template, None
+    return root, template, ignored
+
+
+def build_template(repo, baseline_record=None):
+    """Build a fail-closed `ai-sdlc-lite-result/1` template from repository state or a baseline record."""
+    root, template, _omitted = _build(repo, baseline_record)
+    return root, template
 
 
 def main(argv=None):
@@ -88,7 +113,7 @@ def main(argv=None):
     parser.add_argument('--baseline-record', help='optional operator-supplied baseline record from `ai-sdlc baseline`')
     args = parser.parse_args(argv)
     try:
-        root, template = build_template(args.repo, args.baseline_record)
+        root, template, omitted = _build(args.repo, args.baseline_record)
         out = _validate_out_path(root, args.out)
         text = json.dumps(template, indent=2, sort_keys=True) + '\n'
         _vs.write_new(out, text)
@@ -102,4 +127,13 @@ def main(argv=None):
         sys.stderr.write(f'ai-sdlc result-template: BLOCKED: unexpected error: {type(error).__name__}: {error}\n')
         return 2
     sys.stdout.write(f'wrote result template to {out}\n')
+    if omitted:
+        listed, more = summarize_ignored(omitted)
+        sys.stdout.write('baseline_ignored_paths not copied: the baseline record lists %d ignored path(s) and `verify '
+                         '--baseline-record` reads them from the record\n' % len(omitted))
+        sys.stdout.write('ignored paths at baseline: %s%s\n' % (', '.join('%s (%d)' % item for item in listed),
+                                                             ' and %d more director%s' % (more, 'y' if more == 1 else 'ies') if more else ''))
+        sys.stdout.write('if the task regenerates ignored files (for example build output), declare exactly those '
+                         'directories in ignorable_paths (for example "dist/**"); any new ignored file that is not '
+                         'declared or allowed is BLOCKED (ignored_path_unapproved)\n')
     return 0
