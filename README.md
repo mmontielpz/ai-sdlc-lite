@@ -90,7 +90,7 @@ At **Gate 2**, the human operator independently re-runs the required checks, ins
 | **Claude Code (`2.1.329`, Linux)** | **Experimental Smoke PASS** (operator-orchestrated) | Native Skill discovery under `.claude/skills/ai-sdlc-lite/`, BOV, Experience capture, negative control (`BLOCKED`), `--uninstall`. Independent human clean-room (`G3`/`G10`) **PENDING**; deep **NOT RUN**. |
 | **Linux (`ubuntu-24.04`, Python 3.14 / 3.9+)** | **Automated Suite PASS** (`Q1`) | `743` deterministic tests across `30` modules (`BuiltWheelTests` included). |
 | **macOS & Windows** | **Deferred / NOT TESTED** | Unqualified; Linux-only for current experimental phase. |
-| **Codex, Copilot CLI, Antigravity** | **Not in V1–V3 scope** | Historical adapters/notes preserved; "not verified". |
+| **Codex, Copilot CLI, Antigravity** | **Not in V1–V3 scope** | Historical adapters/examples preserved ([codex-live](examples/codex-live/format_elapsed.py), [codex test](examples/codex-live/test_format_elapsed.py), [copilot-live](examples/copilot-live/clamp_int.py), [copilot test](examples/copilot-live/test_clamp_int.py)); "not verified". |
 
 Full matrix and release gates: [QUALIFICATION_MATRIX.md](QUALIFICATION_MATRIX.md) and [QUALIFICATION.md](QUALIFICATION.md).
 
