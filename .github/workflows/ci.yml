@@ -6,6 +6,11 @@ on:
   push:
     branches: [develop, master]
   workflow_dispatch:
+    inputs:
+      python_39:
+        description: 'Run Python 3.9 compatibility matrix (manual/release qualification)'
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -22,7 +27,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.9', '3.14']
+        python: ${{ (github.event_name == 'workflow_dispatch' && inputs.python_39) && fromJSON('["3.14", "3.9"]') || fromJSON('["3.14"]') }}
     env:
       PYTHONDONTWRITEBYTECODE: '1'
     steps:

@@ -39,12 +39,16 @@ Preview what `init` will install (no files are written):
 ai-sdlc init --repo /path/to/repo
 ```
 
-Apply the Skill bundle (`.agents/skills/ai-sdlc-lite/SKILL.md` and `framework/`) and verify integrity:
+Apply the Skill bundle (`.agents/skills/ai-sdlc-lite/SKILL.md` and `framework/`, or `--target claude-code` for `.claude/skills/ai-sdlc-lite/`), verify integrity, upgrade an intact older bundle, or uninstall cleanly (standard repositories and linked Git worktrees supported):
 
 ```bash
-ai-sdlc init --repo /path/to/repo --apply
-ai-sdlc init --repo /path/to/repo --check
+ai-sdlc init --repo /path/to/repo --target claude-code --apply
+ai-sdlc init --repo /path/to/repo --target claude-code --check
+ai-sdlc init --repo /path/to/repo --target claude-code --upgrade
+ai-sdlc init --repo /path/to/repo --target claude-code --uninstall
 ```
+
+> **Runtime boundaries & limitations:** Post-execution verification is not runtime confinement, independent command execution is not automatic (re-run required checks at Gate 2), human approval remains required, macOS and Windows qualification is deferred (Linux only), and Experience schema `/1` refuses dotted/leading-symbol `task_id`s or `BLOCKED`/`PARTIAL` reports with empty `failure_reasons`.
 
 ## 3. Diagnose Environment and Repository State
 
