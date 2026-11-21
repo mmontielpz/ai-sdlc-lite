@@ -107,7 +107,7 @@ Full matrix and release gates: [QUALIFICATION_MATRIX.md](QUALIFICATION_MATRIX.md
 | Delivery contract & executor | [docs/DELIVERY_CONTRACT.md](docs/DELIVERY_CONTRACT.md) |
 | Experimental Experience journal | `docs/EXPERIENCE_CONTRACT.md` |
 | Agent contracts & templates | [AGENTS.md](AGENTS.md), [TASK.md](TASK.md), [CHECKLIST.md](CHECKLIST.md), [templates/RESULT.md](templates/RESULT.md) |
-| Roadmap & product baseline | [ROADMAP.md](ROADMAP.md), [CHANGELOG.md](CHANGELOG.md), [docs/product/README.md](docs/product/README.md) |
+| Roadmap, vision & research | [ROADMAP.md](ROADMAP.md), [VISION.md](https://github.com/mmontielpz/ai-sdlc-lite/blob/develop/VISION.md), [RESEARCH_AGENDA.md](https://github.com/mmontielpz/ai-sdlc-lite/blob/develop/docs/research/RESEARCH_AGENDA.md), [CHANGELOG.md](CHANGELOG.md), [docs/product/README.md](docs/product/README.md) |
 
 ---
 

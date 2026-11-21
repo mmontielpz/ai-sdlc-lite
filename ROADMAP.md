@@ -1,5 +1,29 @@
 # AI-SDLC Lite: roadmap
 
+## Strategic Product & Research Sequence (Added 2026-11-21)
+
+**Current status:** `2.0.0.dev1` (`EXPERIMENTAL`, `Q1` PASS, `Q2` PARTIAL, `Q3` NOT_MET, `G3`/`G10` PENDING). See `VISION.md` and `docs/research/RESEARCH_AGENDA.md`.
+
+1. **Framework Foundation** *(Implemented on `develop`)* — Deterministic `ai-sdlc` CLI, BOV contracts, wheel distribution, worktree `init` & Skill lifecycle.
+2. **Open Source Readiness** *(In progress, PR #33)* — Repository/branch hygiene, redesigned `README.md`, canonical Mermaid diagrams, minimal governance.
+3. **Research & Competitive Intelligence** — Formalized tracks `R01`–`R08` and comparison baselines (native agents, Spec Kit, OpenSpec, BMAD Method).
+4. **Experimental Public Release** *(Planned, pending owner `RG-2`/`RG-3`)* — Promote `develop` → `master` and publish pre-release wheel + SHA-256.
+5. **Website Projects & Products (First Real-World Domain, before JACK)** — Candidate progression across greenfield, incremental changes, maintenance, bug fixing, and refactoring:
+   - `W01` — Static website
+   - `W02` — Product/documentation website
+   - `W03` — Dynamic website
+   - `W04` — Full-stack web application
+   - `W05` — AI-powered web application
+   *(Candidate projects, not rigid delivery commitments.)*
+6. **Controlled Benchmarking** — Repeated-run, statistically grounded comparisons and Pareto frontier / ablation studies.
+7. **Evidence-Driven Framework Optimization** — Targeted framework improvements justified by Website & benchmark evidence.
+8. **Adaptive SLM/LLM Execution Research** — Explore conceptual `L0`–`L4` routing and Minimum Sufficient Intelligence.
+9. **Experience-Driven Adaptation** — Cross-project Experience analysis and safe policy adaptation.
+10. **Cross-Domain Generalization** — Later domains after Website: **JACK**, **TAKO**, **FOB**, and **Physical AI**.
+11. **Scientific Publication** — Reproducible benchmark package and arXiv preprint.
+
+---
+
 **Status: PLAN with an owner-approved current execution sequence (2026-11-12, mission AI-SDLC-LITE-CODEX-001B).** Approval covers this documentation reconciliation and execution priorities; it does not authorize implementation, commits, runtime runs or spending. The earlier FOB-first plan is preserved as historical context. Nothing below is released or qualified unless it cites evidence. See [ARCHITECTURE.md](ARCHITECTURE.md) for design and [QUALIFICATION_MATRIX.md](QUALIFICATION_MATRIX.md) for the test matrix.
 
 **Two roadmaps, one product.** The current execution sequence below governs priority. **Part A** preserves the historical **FOB-first MVP**: AI-SDLC-Lite → Godot → FOB → FOB Game Studio. **Part B** is the long-term **Universal V1.0** (the original P0–P6 phases and backlog S01–S22, preserved below and reclassified, not discarded). Later: Website pilot → independent-evaluator evaluation → Universal V1.0. Part A may not weaken Part B: the core stays project-agnostic and FOB-specific material lives only in adapters or in FOB's own repositories.
