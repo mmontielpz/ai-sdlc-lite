@@ -108,6 +108,7 @@ Full matrix and release gates: [QUALIFICATION_MATRIX.md](QUALIFICATION_MATRIX.md
 | Experimental Experience journal | `docs/EXPERIENCE_CONTRACT.md` |
 | Agent contracts & templates | [AGENTS.md](AGENTS.md), [TASK.md](TASK.md), [CHECKLIST.md](CHECKLIST.md), [templates/RESULT.md](templates/RESULT.md) |
 | Roadmap, vision & research | [ROADMAP.md](ROADMAP.md), [VISION.md](https://github.com/mmontielpz/ai-sdlc-lite/blob/develop/VISION.md), [RESEARCH_AGENDA.md](https://github.com/mmontielpz/ai-sdlc-lite/blob/develop/docs/research/RESEARCH_AGENDA.md), [CHANGELOG.md](CHANGELOG.md), [docs/product/README.md](docs/product/README.md) |
+| Research closeout, comparison & protocol | [RESEARCH_TODO.md](https://github.com/mmontielpz/ai-sdlc-lite/blob/develop/docs/research/RESEARCH_TODO.md) (`PARTIAL`), [COMPARISON.md](https://github.com/mmontielpz/ai-sdlc-lite/blob/develop/docs/research/COMPARISON.md) (preliminary), [BENCHMARK_PROTOCOL.md](https://github.com/mmontielpz/ai-sdlc-lite/blob/develop/docs/research/BENCHMARK_PROTOCOL.md) (`0` runs) |
 
 ---
 

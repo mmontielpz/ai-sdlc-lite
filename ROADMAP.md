@@ -6,9 +6,9 @@
 
 1. **Framework Foundation** *(Implemented on `develop`)* — Deterministic `ai-sdlc` CLI, BOV contracts, wheel distribution, worktree `init` & Skill lifecycle.
 2. **Open Source Readiness** *(Implemented on `develop`)* — Repository/branch hygiene, redesigned `README.md`, canonical Mermaid diagrams, minimal governance, engineering baseline (`GF-02` local triage optional).
-3. **Research & Competitive Intelligence** *(Agenda defined; `R001` execution pending)* — Formalized tracks `R01`–`R08` and comparison baselines (native agents, Spec Kit, OpenSpec, BMAD Method).
+3. **Research & Competitive Intelligence** *(`R001` `PARTIAL` closeout; `0` benchmark runs)* — Formalized tracks `R01`–`R08`, [RESEARCH_TODO.md](https://github.com/mmontielpz/ai-sdlc-lite/blob/develop/docs/research/RESEARCH_TODO.md), [COMPARISON.md](https://github.com/mmontielpz/ai-sdlc-lite/blob/develop/docs/research/COMPARISON.md) (preliminary qualitative comparison), and [BENCHMARK_PROTOCOL.md](https://github.com/mmontielpz/ai-sdlc-lite/blob/develop/docs/research/BENCHMARK_PROTOCOL.md).
 4. **Experimental Public Release** *(Planned, pending owner `RG-2`/`RG-3`)* — Promote `develop` → `master` (`GF-05`), address/disclose `G3`/`G10` (`GF-06`), and publish pre-release wheel + SHA-256.
-5. **Website Projects & Products (First Real-World Domain, before JACK)** — Candidate progression across greenfield, incremental changes, maintenance, bug fixing, and refactoring (`GF-07`, `GF-09`, `GF-10`, `GF-12`):
+5. **Website Projects & Products (First Real-World Domain, before JACK; M064 Ready)** — Transitioning immediately to `W01` under supervised Gate 1 / Gate 2 using frozen `2.0.0.dev1` (research completion is not a prerequisite); candidate progression across greenfield, incremental changes, maintenance, bug fixing, and refactoring (`GF-07`, `GF-09`, `GF-10`, `GF-12`):
    - `W01` — Static website
    - `W02` — Product/documentation website
    - `W03` — Dynamic website
