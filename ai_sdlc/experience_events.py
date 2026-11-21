@@ -485,3 +485,119 @@ def default_environment():
 
 def default_clock():
     return time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+
+
+# ---------------------------------------------------------------------------------------------
+# EXP-01B: mapping a verifier report (ai-sdlc-lite-verification/1) to a `verify.completed` event
+# ---------------------------------------------------------------------------------------------
+
+REPORT_SCHEMA = 'ai-sdlc-lite-verification/1'
+MAX_REPORT_BYTES = 1 << 20
+MAX_MODIFIED_PATHS = 1000000
+_FACET_PREFIXES = (
+    ('custody', 'unauthenticated', 'unauthenticated'),
+    ('independent_execution', 'not verified', 'not-verified'),
+    ('agent_assertions', 'unverified', 'unverified'),
+)
+_DRY_RECORDED_AT = '2000-01-01T00:00:00Z'
+
+
+def _invalid():
+    return ExperienceError('report_invalid')
+
+
+def _report_facets(trust):
+    """Map the verifier's trust block to the closed facet vocabulary; anything unrecognised is refused."""
+    if not isinstance(trust, dict):
+        raise _invalid()
+    baseline = trust.get('baseline')
+    if not isinstance(baseline, str):
+        raise _invalid()
+    if baseline == 'agent-reported':
+        facets = {'baseline': 'agent-reported'}
+    elif baseline.startswith('operator-supplied record'):
+        facets = {'baseline': 'operator-supplied-record'}
+    else:
+        raise _invalid()
+    integrity = trust.get('hash_integrity')
+    if not isinstance(integrity, str) or integrity not in ('none', 'partial', 'all'):
+        raise _invalid()
+    facets['hash_integrity'] = integrity
+    for name, prefix, value in _FACET_PREFIXES:
+        text = trust.get(name)
+        if not isinstance(text, str) or not text.startswith(prefix):
+            raise _invalid()
+        facets[name] = value
+    return facets
+
+
+def dry_validate(fields, run_id=None):
+    """Validate caller fields as a first chain entry without any I/O; refusals keep their stable code."""
+    build_event(fields, run_id=run_id or 'run-dry-1', seq=1, prev=None, recorded_at=_DRY_RECORDED_AT)
+
+
+def report_to_fields(data, raw, environment, repo_classification):
+    """Map a parsed verifier report plus its raw bytes to `build_event` fields. Raises report_invalid for any
+    incomplete, unrecognised or inconsistent report. Never reads `detail`, never stores a path."""
+    if not isinstance(data, dict):
+        raise _invalid()
+    if data.get('schema') != REPORT_SCHEMA or type(data.get('schema')) is not str:
+        raise _invalid()
+    version, registry = load_registry()
+    registry_version = data.get('registry_version')
+    if type(registry_version) is not int or registry_version != version:
+        raise _invalid()
+    task_id = data.get('task_id')
+    if not isinstance(task_id, str) or not TASK_ID.fullmatch(task_id):
+        raise _invalid()
+    status = data.get('status')
+    if not isinstance(status, str) or status not in EXIT_FOR_STATUS:
+        raise _invalid()
+    facets = _report_facets(data.get('trust'))
+    modified = data.get('modified_paths')
+    if not isinstance(modified, list) or len(modified) > MAX_MODIFIED_PATHS:
+        raise _invalid()
+    reasons = data.get('failure_reasons')
+    if not isinstance(reasons, list):
+        raise _invalid()
+    codes = set()
+    for reason in reasons:
+        if not isinstance(reason, dict):
+            raise _invalid()
+        code, severity = reason.get('code'), reason.get('severity')
+        if (not isinstance(code, str) or code not in registry or not isinstance(severity, str)
+                or severity not in registry[code]):
+            raise _invalid()
+        codes.add(code)
+    codes = sorted(codes)
+    if len(codes) > 32:
+        raise _invalid()
+    if status == 'PASS' and codes:
+        raise _invalid()
+    if status == 'PARTIAL' and (not codes or any('PARTIAL' not in registry[code] for code in codes)):
+        raise _invalid()
+    if status == 'BLOCKED' and not any('BLOCKED' in registry[code] for code in codes):
+        raise _invalid()
+    digest = sha256_hex(raw)
+    fields = {
+        'type': 'verify.completed',
+        'subject': {'kind': 'task', 'task_id': task_id, 'repo_classification': repo_classification},
+        'actor': {'role': 'tool', 'name': 'ai-sdlc-lite'}, 'observer': {'role': 'tool', 'name': 'ai-sdlc-lite'},
+        'method': 'tool-observed-git-state', 'trust_level': 'T2', 'independence': 'none',
+        'environment': environment,
+        'evidence': [{'kind': 'verification-report', 'ref': 'none', 'sha256': digest}],
+        'data': {'status': status, 'exit_code': EXIT_FOR_STATUS[status], 'failure_reason_codes': codes,
+                 'modified_path_count': len(modified), 'report_sha256': digest, 'registry_version': version,
+                 'facets': facets, 'checks_origin': 'agent-reported'},
+    }
+    try:  # the shipped validator is the final word on the event
+        dry_validate(fields)
+    except ExperienceError as error:
+        probe = dict(fields, environment=default_environment(),
+                     subject=dict(fields['subject'], repo_classification='synthetic'))
+        try:
+            dry_validate(probe)
+        except ExperienceError:
+            raise _invalid() from None  # the report itself cannot form a valid event
+        raise error  # the caller's classification or environment flags were the problem
+    return fields

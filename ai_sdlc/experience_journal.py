@@ -184,6 +184,43 @@ def validate_journal(path):
         os.close(parent)
 
 
+def read_report(path):
+    """Read a verifier report for `record-verify`: regular, non-symlink, single-link, at most 1 MiB (checked by
+    fstat before any read, read capped at limit+1), opened without blocking. Every refusal is `report_invalid`."""
+    if not _supported():
+        raise ExperienceError('unsupported_platform')
+    try:
+        parent, leaf = _open_parent(path, allow_in_repo=True, enforce_repo=False)
+    except ExperienceError:
+        raise ExperienceError('report_invalid') from None
+    try:
+        try:
+            fd = os.open(leaf, os.O_RDONLY | _O_NOFOLLOW | _O_NONBLOCK, dir_fd=parent)
+        except OSError:
+            raise ExperienceError('report_invalid') from None
+        try:
+            info = os.fstat(fd)
+            if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_size > ev.MAX_REPORT_BYTES:
+                raise ExperienceError('report_invalid')
+            chunks, remaining = [], ev.MAX_REPORT_BYTES + 1
+            while remaining:
+                chunk = os.read(fd, min(remaining, 65536))
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                remaining -= len(chunk)
+            data = b''.join(chunks)
+            if len(data) > ev.MAX_REPORT_BYTES:
+                raise ExperienceError('report_invalid')
+            return data
+        except OSError:
+            raise ExperienceError('report_invalid') from None
+        finally:
+            os.close(fd)
+    finally:
+        os.close(parent)
+
+
 def _default_run_id(recorded_at):
     return 'run-' + recorded_at[:10].replace('-', '') + '-1'
 
