@@ -2,24 +2,24 @@
 
 ## Strategic Product & Research Sequence (Added 2026-11-21)
 
-**Current status:** `2.0.0.dev1` (`EXPERIMENTAL`, `Q1` PASS, `Q2` PARTIAL, `Q3` NOT_MET, `G3`/`G10` PENDING). See `VISION.md` and `docs/research/RESEARCH_AGENDA.md`.
+**Current status:** `2.0.0.dev1` (`EXPERIMENTAL`, `Q1` PASS, `Q2` PARTIAL, `Q3` NOT_MET, `G3`/`G10` PENDING). See `VISION.md`, `docs/research/RESEARCH_AGENDA.md`, `docs/engineering/ENGINEERING_BASELINE.md`, `docs/engineering/FINDINGS_REGISTER.csv`, and `docs/engineering/METRICS_CATALOG.csv`.
 
 1. **Framework Foundation** *(Implemented on `develop`)* — Deterministic `ai-sdlc` CLI, BOV contracts, wheel distribution, worktree `init` & Skill lifecycle.
-2. **Open Source Readiness** *(In progress, PR #33)* — Repository/branch hygiene, redesigned `README.md`, canonical Mermaid diagrams, minimal governance.
-3. **Research & Competitive Intelligence** — Formalized tracks `R01`–`R08` and comparison baselines (native agents, Spec Kit, OpenSpec, BMAD Method).
-4. **Experimental Public Release** *(Planned, pending owner `RG-2`/`RG-3`)* — Promote `develop` → `master` and publish pre-release wheel + SHA-256.
-5. **Website Projects & Products (First Real-World Domain, before JACK)** — Candidate progression across greenfield, incremental changes, maintenance, bug fixing, and refactoring:
+2. **Open Source Readiness** *(Implemented on `develop`)* — Repository/branch hygiene, redesigned `README.md`, canonical Mermaid diagrams, minimal governance, engineering baseline (`GF-02` local triage optional).
+3. **Research & Competitive Intelligence** *(Agenda defined; `R001` execution pending)* — Formalized tracks `R01`–`R08` and comparison baselines (native agents, Spec Kit, OpenSpec, BMAD Method).
+4. **Experimental Public Release** *(Planned, pending owner `RG-2`/`RG-3`)* — Promote `develop` → `master` (`GF-05`), address/disclose `G3`/`G10` (`GF-06`), and publish pre-release wheel + SHA-256.
+5. **Website Projects & Products (First Real-World Domain, before JACK)** — Candidate progression across greenfield, incremental changes, maintenance, bug fixing, and refactoring (`GF-07`, `GF-09`, `GF-10`, `GF-12`):
    - `W01` — Static website
    - `W02` — Product/documentation website
    - `W03` — Dynamic website
    - `W04` — Full-stack web application
    - `W05` — AI-powered web application
    *(Candidate projects, not rigid delivery commitments.)*
-6. **Controlled Benchmarking** — Repeated-run, statistically grounded comparisons and Pareto frontier / ablation studies.
-7. **Evidence-Driven Framework Optimization** — Targeted framework improvements justified by Website & benchmark evidence.
-8. **Adaptive SLM/LLM Execution Research** — Explore conceptual `L0`–`L4` routing and Minimum Sufficient Intelligence.
-9. **Experience-Driven Adaptation** — Cross-project Experience analysis and safe policy adaptation.
-10. **Cross-Domain Generalization** — Later domains after Website: **JACK**, **TAKO**, **FOB**, and **Physical AI**.
+6. **Controlled Benchmarking** — Repeated-run, statistically grounded comparisons and Pareto frontier / ablation studies (`GF-11`, `GF-17`).
+7. **Evidence-Driven Framework Optimization** — Targeted framework improvements justified by Website & benchmark evidence (`GF-01`, `GF-03`, `GF-04`, `GF-08` — exploratory candidates, not commitments).
+8. **Adaptive SLM/LLM Execution Research** — Explore conceptual `L0`–`L4` routing and Minimum Sufficient Intelligence (`GF-18`).
+9. **Experience-Driven Adaptation** — Cross-project Experience analysis and safe policy adaptation (`GF-04`, `GF-18`).
+10. **Cross-Domain Generalization** — Later domains after Website: **JACK**, **TAKO**, **FOB**, and **Physical AI** (`GF-16` if cross-OS demand arises).
 11. **Scientific Publication** — Reproducible benchmark package and arXiv preprint.
 
 ---
