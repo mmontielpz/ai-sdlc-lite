@@ -6,8 +6,8 @@ Use this process with one bounded task at a time. The human owns approvals; the 
 
 1. Start with read-only inspection. Identify the repository root, baseline revision, existing changes, and applicable project and directory instructions. Preserve existing work. Report instruction conflicts rather than guessing which project rule to discard.
 2. Read the active task contract, normally [TASK.md](TASK.md), and relevant files. For an existing project, integrate with its instructions rather than replacing them. For a new repository, record that no commit or checks exist yet.
-3. Propose a design, small implementation steps, exact verification commands, expected outcomes, and risks. Agree on a repeatable check if none exists. Baseline checks must respect task constraints; report checks that cannot safely run.
-4. Stop before implementation until explicit human approval identifies the task revision and plan. An explicit mission brief may serve as the active contract and approval; cite it in the result. Blank template fields grant no authority. Do not require the human to repeat authorization already covering the work.
+3. Propose a design, small implementation steps, exact verification commands, expected outcomes, and risks. Agree on a repeatable check if none exists. Baseline checks must respect task constraints; report checks that cannot safely run. Verification commands for I/O-capable or external tools must be offline or dry-run unless separately authorized, and any side effect must be disclosed.
+4. Stop before implementation until explicit human approval identifies the task revision and plan. An explicit mission brief may serve as the active contract and approval; cite it in the result. Blank template fields grant no authority. Do not require the human to repeat authorization already covering the work. Separate relayable command confirmations from human-only safety or acceptance attestations; agents never answer human attestations.
 
 ## During work: Observe
 

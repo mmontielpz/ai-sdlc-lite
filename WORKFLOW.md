@@ -12,6 +12,8 @@ Use one bounded task at a time. This guide helps a human and an agent navigate t
 4. **Verify:** Run `ai-sdlc verify --repo . --result /outside/result.json --baseline-record /outside/baseline.json` (add `ai-sdlc seal` + `--evidence-manifest` when hash sealing is required).
 5. **Gate 2:** Report the `verify` outcome and diff; stop for human acceptance.
 
+- **Lightweight delivery-boundary mode:** For small self-contained changes where full ceremony is unnecessary, use `ai-sdlc baseline` → bounded work → `ai-sdlc result-template` → `ai-sdlc seal` (optional) → `ai-sdlc verify` while keeping Gate 1 approval and Gate 2 human acceptance intact.
+
 ## Evidence custody and result artifacts
 
 - **`result.json` vs `RESULT.md`:** `result.json` (`ai-sdlc-lite-result/1`, defined in [RESULT_CONTRACT.md](RESULT_CONTRACT.md)) is the machine-verifiable contract checked by `ai-sdlc verify`. Mandatory fields are `schema`, `task_id`, `baseline_sha`, `baseline_dirty_paths`, `allowed_paths`, `modified_paths`, `verification`, and `claimed_status`; `modified_paths` and `verification[].exit_code` must reflect observed evidence. `RESULT.md` is optional human-readable documentation.

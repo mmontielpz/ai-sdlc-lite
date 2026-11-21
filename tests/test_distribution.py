@@ -65,6 +65,16 @@ class VersionAndSkillTests(unittest.TestCase):
         self.assertEqual(self.run_cli('--version', 'extra').returncode, 2)
         self.assertIn('--version', self.run_cli('--help').stdout)
 
+    def test_version_matches_pyproject_and_package_init(self):
+        import ai_sdlc
+        pyproject = (ROOT / 'pyproject.toml').read_text(encoding='utf-8')
+        match = re.search(r'^version\s*=\s*"([^"]+)"', pyproject, re.M)
+        self.assertIsNotNone(match)
+        self.assertEqual(match.group(1), ai_sdlc.__version__)
+        done = self.run_cli('--version')
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertTrue(done.stdout.startswith(f'ai-sdlc {ai_sdlc.__version__} '), done.stdout)
+
     def test_skill_names_the_cli_and_forbids_self_install(self):
         skill = (ROOT / installer.SKILL / 'SKILL.md').read_text(encoding='utf-8')
         for needle in ('ai-sdlc doctor', 'pip install --no-index --no-deps', 'Do not install packages',

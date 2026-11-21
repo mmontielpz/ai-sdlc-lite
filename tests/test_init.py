@@ -363,6 +363,74 @@ class InitTests(unittest.TestCase):
             self.assertEqual(result.returncode, expected, result.stderr)
             self.assertEqual(before, snapshot(self.repo))
 
+    def test_linked_git_worktree_supported_and_spoofed_backlink_refused(self):
+        env = {k: v for k, v in os.environ.items() if not k.startswith('GIT_')}
+        subprocess.run(['git', '-C', str(self.repo), 'config', 'user.name', 'Test'], env=env, check=True)
+        subprocess.run(['git', '-C', str(self.repo), 'config', 'user.email', 'test@example.com'], env=env, check=True)
+        (self.repo / 'README.md').write_text('hi\n')
+        subprocess.run(['git', '-C', str(self.repo), 'add', 'README.md'], env=env, check=True)
+        subprocess.run(['git', '-C', str(self.repo), 'commit', '-q', '-m', 'init'], env=env, check=True)
+        wt = self.base / 'linked-wt'
+        subprocess.run(['git', '-C', str(self.repo), 'worktree', 'add', '-q', str(wt), '-b', 'wt-branch'], env=env, check=True)
+        code, out, err = self.invoke('--target', 'claude-code', '--apply', repo=wt)
+        self.assertEqual(code, 0, out + err)
+        self.assertIn('RESULT: INITIALIZED', out)
+        code, out, err = self.invoke('--target', 'claude-code', '--check', repo=wt)
+        self.assertEqual(code, 0, out + err)
+        self.assertIn('RESULT: CHECK_OK', out)
+        # Spoofed backlink must be rejected
+        gitdir_meta = self.repo / '.git' / 'worktrees' / 'linked-wt' / 'gitdir'
+        gitdir_meta.write_text(str(self.outside / '.git') + '\n')
+        self.reject_unchanged('--check', repo=wt)
+
+    def test_uninstall_and_upgrade_lifecycle_and_user_edit_protection(self):
+        # Uninstall when absent succeeds cleanly
+        code, out, err = self.invoke('--uninstall')
+        self.assertEqual(code, 0, out + err)
+        self.assertIn('RESULT: NOT_INSTALLED', out)
+        # Upgrade when absent installs fresh
+        code, out, err = self.invoke('--upgrade')
+        self.assertEqual(code, 0, out + err)
+        self.assertIn('RESULT: INITIALIZED', out)
+        # Upgrade when current is UNCHANGED
+        code, out, err = self.invoke('--upgrade')
+        self.assertEqual(code, 0, out + err)
+        self.assertIn('RESULT: UNCHANGED', out)
+        # User-modified file blocks both --uninstall and --upgrade without touching files
+        skill_md = self.destination / 'SKILL.md'
+        original = skill_md.read_bytes()
+        skill_md.write_bytes(original + b'\n# user edit\n')
+        self.reject_unchanged('--uninstall')
+        self.reject_unchanged('--upgrade')
+        self.assertTrue(skill_md.is_file())
+        # Extra file also blocks --uninstall and --upgrade
+        skill_md.write_bytes(original)
+        extra = self.destination / 'extra.txt'
+        extra.write_text('keep')
+        self.reject_unchanged('--uninstall')
+        self.reject_unchanged('--upgrade')
+        extra.unlink()
+        # Simulate intact older managed bundle (valid manifest with older SKILL.md hash)
+        import hashlib, json as _json
+        older = b'# older skill\n'
+        (self.destination / 'SKILL.md').write_bytes(older)
+        manifest_path = self.destination / self.installer.MANIFEST
+        manifest = _json.loads(manifest_path.read_text(encoding='utf-8'))
+        manifest['files']['SKILL.md'] = hashlib.sha256(older).hexdigest()
+        manifest_path.write_text(_json.dumps(manifest, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+        # --apply still refuses version conflict; --upgrade replaces cleanly
+        self.reject_unchanged('--apply')
+        code, out, err = self.invoke('--upgrade')
+        self.assertEqual(code, 0, out + err)
+        self.assertIn('RESULT: UPGRADED', out)
+        code, out, err = self.invoke('--check')
+        self.assertEqual(code, 0, out + err)
+        # --uninstall removes intact bundle cleanly and leaves repo clean
+        code, out, err = self.invoke('--uninstall')
+        self.assertEqual(code, 0, out + err)
+        self.assertIn('RESULT: UNINSTALLED', out)
+        self.assertFalse(self.destination.exists())
+
 
 if __name__ == '__main__':
     unittest.main()
