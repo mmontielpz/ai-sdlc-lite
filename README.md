@@ -1,377 +1,126 @@
 # AI-SDLC Lite
 
-**A lightweight, Markdown-first workflow for bounded development with AI coding agents.**
+**Bounded Bound → Observe → Verify (BOV) workflow, Skill, and offline verification CLI for AI coding agents.**
 
-For software engineers and maintainers making bug fixes and small feature increments in existing repositories. AI-generated changes can solve the wrong problem or appear complete without evidence. AI-SDLC Lite makes the scope, human decisions, and verification explicit so each useful increment can be reviewed and accepted.
+[![CI](https://github.com/mmontielpz/ai-sdlc-lite/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/mmontielpz/ai-sdlc-lite/actions/workflows/ci.yml)
+![Status: Experimental](https://img.shields.io/badge/status-experimental%20(2.0.0.dev1)-orange)
+![Python: 3.14 | 3.9+](https://img.shields.io/badge/python-3.14%20%7C%203.9%2B-blue)
+![License: MIT](https://img.shields.io/badge/license-MIT-green)
 
-Use your existing agent, project tools, and checks. Start with a short request, agree on a bounded plan, implement one end-to-end slice, and use feedback to choose the next.
+AI coding agents can drift out of scope, edit tests or governance files silently, or report success without verifiable evidence. **AI-SDLC Lite** keeps every change bounded, inspectable, and human-approved using only Python 3.9+ stdlib and Git—no daemon, database, network call, or SDK lock-in.
 
-[Getting Started](#quickstart) · [Workflow](WORKFLOW.md) · [Examples](#examples) · [Qualification](QUALIFICATION.md#ai-sdlc-lite-012a-current-evidence-addendum) · [Limitations](#supported-agent-approach-and-limitations) · [Contributing](CONTRIBUTING.md)
+---
 
-**Status: EXPERIMENTAL (`2.0.0.dev1`) — publicly available, no release.** The automated test suite runs in CI on Linux (Ubuntu 24.04) with Python 3.14 on every PR/push (and Python 3.9 via manual/release `workflow_dispatch`). macOS and Windows qualification is deferred (`NOT TESTED`). Private vulnerability reporting is enabled (see [SECURITY.md](SECURITY.md)). A dated Claude Code `2.1.329` Linux smoke run (`2026-11-21`, wheel `2.0.0.dev1`) verified native Skill discovery under `.claude/skills/ai-sdlc-lite/`, Bound/Observe/Verify, Experience capture, negative control (`BLOCKED`), and `--uninstall`, while independent human clean-room qualification (`G3`/`G10`) remains `PENDING`. Post-execution verification is not runtime confinement, independent command execution is not automatic, human approval remains required at Gate 1 and Gate 2, and Experience schema `/1` limitations remain.
+## What It Provides
 
-**Strategy (owner decision, 2026-11-18):** Claude Code is the only provider targeted for V1–V3. Deep qualification is `NOT RUN`, and independent human clean-room qualification (`G3`/`G10`) is `PENDING`. The Codex and GitHub Copilot CLI adapters and their historical evidence are preserved but not expanded; Antigravity has no adapter (only notes). All three are "not verified (not in committed scope)". The core stays agent-neutral. Planning artifacts: [docs/product/](docs/product/README.md).
+- **Offline CLI (`ai-sdlc`):** `init`, `doctor`, `status`, `baseline`, `result-template`, `verify` (`PASS` / `PARTIAL` / `BLOCKED`), `seal`, `delivery`, `adapter`, and experimental `experience` journal capture/validation.
+- **Agent Skill Bundle (`.claude/skills/ai-sdlc-lite/` & `.agents/skills/ai-sdlc-lite/`):** Instruction-only Markdown contracts (`AGENTS.md`, `WORKFLOW.md`, `TASK.md`, `CHECKLIST.md`, `templates/RESULT.md`) installed and hash-checked offline.
+- **Honest Trust Semantics:** Separates agent assertions (`T0`), digest checks (`T1`), and tool-observed Git state (`T2`) from independent human execution and acceptance (`Gate 1` & `Gate 2`).
 
-### Current state at a glance
+## BOV Conceptual Workflow (D01)
 
-| Area | State |
-| --- | --- |
-| Scope and evidence verifier (`verify`, `baseline`, `seal`, `result-template`), including honest summary wording and preserved dirty-baseline handling | Implemented; unit-tested (CI: Linux, Python 3.14 PR / 3.9 manual); Experimental |
-| Offline Skill bundle (`init --apply\|--check\|--upgrade\|--uninstall`, linked worktrees, `doctor`, `status`) | Implemented; unit-tested; Claude Code 2.1.329 Linux discovery observed |
-| Delivery (`delivery plan\|verify\|report`; `execute` = local stage and commit only; `recover` = observe-only) | Implemented; unit-tested; not exercised in real use; Experimental |
-| Claude Code qualification | Linux smoke (`2.1.329`, operator-orchestrated) recorded `2026-11-21`; deep `NOT RUN`; independent clean-room (`G3`/`G10`) `PENDING` |
-| Codex, Copilot CLI, Antigravity | Codex and Copilot adapters and historical evidence preserved (no Antigravity adapter exists); not verified; not in committed scope |
-| Independent execution of checks | Not implemented: the verifier never runs commands |
-| Repository discovery and audit, governance declarations (`.ai-sdlc-lite/project.json`), task contracts | Not implemented; planned in the Product Baseline track |
-| Recommendations, feature contracts, run receipts, metrics, multi-repository | Deferred |
-| macOS and Windows | NOT TESTED; unqualified |
-| Godot adapter and FOB/Studio work | Optional configuration-level adapter; not on the V1 critical path |
-
-## Quickstart
-
-Open your project with its AI-SDLC Lite documents available. For first-time setup, follow [Adopt in an existing repository](#adopt-in-an-existing-repository), preserving existing instructions and work.
-
-Offline setup that does not depend on any agent (a Git repository and Python 3.9+; from a checkout of this repository):
-
-```sh
-python3 -B -m ai_sdlc init --repo /absolute/path/to/repo --apply
-python3 -B -m ai_sdlc init --repo /absolute/path/to/repo --check
+```mermaid
+flowchart LR
+  subgraph B["1. Bound (Gate 1)"]
+    REQ["Task + Baseline"] --> PLAN["Plan + Allowed Scope"]
+    PLAN --> G1{"Human Approves?"}
+  end
+  subgraph O["2. Observe (Agent)"]
+    G1 -- "Yes" --> EDIT["Edit Within Scope"]
+    EDIT --> CHECK["Run Checks -> External out.txt"]
+  end
+  subgraph V["3. Verify (Gate 2)"]
+    CHECK --> VER["ai-sdlc verify (Git State + Digests)"]
+    VER --> HUM["Human Re-runs Checks + Reviews Diff"]
+    HUM --> G2{"Human Accepts?"}
+  end
 ```
 
-`init` writes only the Skill bundle under `.agents/skills/ai-sdlc-lite/` by default. A bounded observation (Claude Code 2.1.327, Linux, `-p` mode; see the record in `docs/qualification/CLAUDE-C1B-runtime-discovery.md`) found that Claude Code lists Skills under `.claude/skills/` but not under `.agents/skills/`. For Claude Code, select the additive target explicitly:
+---
 
-```sh
-python3 -B -m ai_sdlc init --repo /absolute/path/to/repo --target claude-code --apply
-python3 -B -m ai_sdlc init --repo /absolute/path/to/repo --target claude-code --check
-```
+## Quickstart (Offline Wheel Install)
 
-This installs the identical bundle under `.claude/skills/ai-sdlc-lite/`, never writes `CLAUDE.md`, and keeps the default target unchanged. Install before taking a verifier baseline, because `.claude/` is a governance-sensitive path. This is an observation, not a qualification: Claude Code smoke and deep runs are NOT RUN, and the full bundle has not been exercised in a live session. Existing installs under `.agents/skills/` are unaffected; `python3 scripts/install_skill.py --target REPO --uninstall --skill-target claude-code` removes the new target (unchanged owned files only).
-
-The agent-specific examples below are historical evidence for products that are not in the committed provider scope. If the native Skill is available, invoke it using your client's supported selection. In Codex:
-
-> Use $ai-sdlc-lite. Fix [observable problem]. Inspect first and propose the smallest useful slice, allowed changes, and exact checks. Stop for plan approval.
-
-For Copilot CLI, first use the [project Skill installer](#install-for-copilot-cli), launch in the target repository with `copilot -C /absolute/path/to/target-repository`, then request:
-
-> Use the /ai-sdlc-lite skill. Inspect [problem], propose a bounded plan and exact checks, and stop for plan approval.
-
-If the Skill is unavailable:
-
-> Read the project instructions and WORKFLOW.md. Use BOV to inspect [problem] and propose a bounded plan. Stop before implementation.
-
-The agent proposes the task brief and result location; you approve the identified revision and plan once. It implements, verifies, and reports, then you separately accept or reject the delivered snapshot. Use feedback to choose the next slice. The Skill supplies framework guidance; your repository instructions and active task supply project context. For UI work, optionally name existing [design references and visual criteria](WORKFLOW.md#optional-project-and-visual-context). See [bounded autonomy](WORKFLOW.md#bounded-autonomy-and-operational-permissions) for CLI prompts and permission limits.
-
-**Outcome-first · Time-conscious · Token-aware.** Prioritize verified delivery, then elapsed time and human effort, then reliable native token observations. Keep engineering and documentation proportionate to the slice. Token measurement is optional; unavailable values remain UNKNOWN. No productivity, token-saving, or cost improvement is established by the recorded runs.
-
-With AI Coding Agents, deliver the smallest useful end-to-end increment, verify its observable value, and use feedback to choose the next slice. Follow the [incremental delivery guidance](WORKFLOW.md#deliver-one-useful-increment). A technically verified PoC, Prototype, or Pilot is not automatically production-ready; functional delivery and production readiness are separate decisions.
-
-## Bound → Observe → Verify (BOV)
-
-- **Bound:** define the objective, allowed scope, exclusions, constraints, acceptance criteria, and conditions that require stopping.
-- **Observe:** record what changed, which checks ran, what happened, and what remains unknown.
-- **Verify:** compare evidence with the agreed criteria, report the delivered snapshot, and stop for human review.
-
-Apply all three controls throughout the lifecycle. BOV is AI-SDLC Lite's organizing model.
-
-## Six lifecycle concepts
-
-| Concept | Smallest useful action |
-| --- | --- |
-| Plan | State the problem, scope, constraints, and observable acceptance criteria. |
-| Design | Inspect the repository and propose an approach, affected files, risks, and checks. |
-| Build | Implement the approved change within its boundaries. |
-| Test | Run the agreed deterministic checks and record actual outcomes. |
-| Deploy | If authorized, release the reviewed change with a verification and rollback plan. |
-| Maintain | Record remaining issues and use operational feedback to define the next task. |
-
-These concepts form a repeatable loop. A small task can cover several together. Record a reason for any stage that is not applicable or not performed.
-
-## Two human approval gates
-
-1. **Before implementation:** a human approves the written task and proposed plan after read-only inspection. Record the approver, date, and task revision. Material changes to scope or approach require renewed approval.
-2. **Delivery acceptance:** by default, report the diff, verification evidence and unresolved issues, leave acceptance PENDING, and stop without an interactive acceptance prompt. A human may separately accept or reject the identified snapshot. Retain an explicit acceptance checkpoint when requested by the owner or required by project policy for high-risk delivery; do not infer acceptance from silence or technical PASS.
-
-A passing check does not grant human acceptance. Acceptance does not authorize a push, merge, deployment, publication, or paid operation; those actions need explicit authorization within the task or separately. An agent must not invent human approval.
-
-## Adopt in an existing repository
-
-### Provider-neutral offline initialization
-
-From a reviewed AI-SDLC Lite checkout, use Python 3.9+ to preview setup in an
-existing Git project. Run from the framework checkout; never import the CLI from
-an untrusted project. `-B` suppresses Python bytecode writes outside the target.
+Build the wheel once from a reviewed checkout (requires `setuptools`), then install offline in any Python 3.9+ virtual environment:
 
 ```bash
-python3 -B -m ai_sdlc init --repo /absolute/path/to/project
-python3 -B -m ai_sdlc init --repo /absolute/path/to/project --apply
-python3 -B -m ai_sdlc init --repo /absolute/path/to/project --check
+python3 -m pip wheel --no-build-isolation --no-deps -w dist .
+sha256sum dist/ai_sdlc_lite-*.whl
+
+python3 -m venv .venv
+. .venv/bin/activate
+pip install --no-index --no-deps /path/to/ai_sdlc_lite-*.whl
+ai-sdlc --version
+ai-sdlc doctor
 ```
 
-The default and `--dry-run` are read-only previews. Every bundle destination and
-SHA-256 is listed before `--apply` writes. Setup creates only the self-contained
-Skill under `.agents/skills/ai-sdlc-lite/`, its `framework/` references and ownership
-manifest. Existing instructions, task records, task context, Git settings and
-provider configuration remain untouched. No project configuration is required.
-Open your chosen agent separately and explicitly reference the installed Skill or
-its bundled workflow. Provider discovery, permissions and task approval remain
-unverified; initialization runs no provider, project code, Git command or network
-operation, and installs no dependencies.
-
-The target must be the explicit root of an ordinary Git working tree with an
-internal `.git` directory. Dirty, unborn and detached repositories are accepted;
-cleanliness is UNKNOWN because Git status is not run. Framework-overlapping
-targets, traversal, symlinks, special files and hard-linked installation files are
-refused. Git pointer files (worktrees/submodules), bare repositories and platforms
-without descriptor-relative no-follow filesystem operations are unsupported.
-Stop concurrent writers before applying: this is not a sandbox against hostile
-directory renames or privileged processes.
-
-Matching reruns preserve bytes and timestamps. `--check` verifies the complete
-inventory, ownership manifest and exact current bundle without writing or probing
-a provider. Edited, older, partial, additional or unmanifested installations are
-refused, including native single-file installations; there is no automatic repair,
-upgrade, adoption or deletion. After an interrupted write, preserve the artifacts
-and review ownership before any separately authorized recovery. A successful
-preview does not guarantee that a later apply will be writable.
-
-Init exit codes: **0** successful preview/install/no-op/check; **1** apply started
-but failed and may have left partial artifacts; **2** usage, validation, conflict
-or check failure. Other CLI commands retain their existing exit meanings. Output
-uses sorted relative paths, SHA-256 hashes and stable result/reason identifiers;
-untrusted paths are JSON-escaped. No `--force` or provider setup flag is offered.
-Provider-specific installation and configuration remain separate opt-in workflows
-described below.
-
-> **Copilot sections (through "Safe uninstall") are preserved historical and experimental material.** GitHub Copilot CLI is not in the committed provider scope (Claude Code only; owner decision 2026-11-18). What they describe was observed on the stated versions only. The raw URL below follows `master`, which trails `develop`; branch policy is an open owner decision.
-
-### Native Copilot Skill install (no Python)
-
-`copilot skill add` takes a file, directory, or a URL to a **single SKILL.md** over HTTPS; a GitHub `/tree/...` page URL is not a SKILL.md and is not supported. From the target repository:
+Initialize a target repository (standard repo or linked Git worktree) for **Claude Code**:
 
 ```bash
-copilot skill add --project https://raw.githubusercontent.com/mmontielpz/ai-sdlc-lite/master/.agents/skills/ai-sdlc-lite/SKILL.md
+ai-sdlc init --repo /path/to/repo --target claude-code --apply
+ai-sdlc init --repo /path/to/repo --target claude-code --check
 ```
 
-`--project` writes `.github/skills/ai-sdlc-lite/SKILL.md` in the current project; omit it for `~/.copilot/skills/`. Verify with `copilot skill list` (expect `ai-sdlc-lite`, enabled). Remove with `copilot skill remove ai-sdlc-lite`.
+Safe lifecycle management: use `--upgrade` to replace an intact older bundle, or `--uninstall` to remove only unmodified manifest-verified files. See `docs/QUICKSTART.md` for the full 5-minute walkthrough and `examples/first-five-minutes/README.md` for a disposable `PASS` / `BLOCKED` fixture.
 
-**Evidence and limits:** installing the local file with `--project` into a disposable repository was observed to create only that one file, which `copilot skill list` reported as an enabled project Skill (Copilot CLI 1.0.109). Installing from the public raw URL was then observed to create only that same file, byte-identical to the repository file, listed as enabled (2026-11-12). A single-file install does not include `framework/`; the Skill points to the canonical documents by URL. For a self-contained offline bundle, use the Python installer below (optional fallback). Native installation does not grant permissions; Copilot may still prompt for tool use, and full live Copilot qualification is **not established** (one observed task run only).
+---
 
-### Install for Copilot CLI
-
-From a reviewed AI-SDLC Lite checkout, use Python 3.9+ and Git to install into an explicit target repository:
+## Representative First-Task Workflow
 
 ```bash
-python3 /absolute/path/to/ai-sdlc-lite/scripts/install_skill.py --target /absolute/path/to/target-repository
-python3 /absolute/path/to/ai-sdlc-lite/scripts/install_skill.py --target /absolute/path/to/target-repository --check
-copilot -C /absolute/path/to/target-repository
+# 1. Record pre-task baseline outside the repository
+ai-sdlc baseline --repo /path/to/repo --out /safe/place/baseline.json
+
+# 2. Agent implements approved plan and writes test output to /safe/place/out.txt
+# 3. Generate and populate fail-closed result contract
+ai-sdlc result-template --repo /path/to/repo --out /safe/place/result.json --baseline-record /safe/place/baseline.json
+
+# 4. Verify scope, dirty baseline preservation, and evidence digests
+ai-sdlc verify --repo /path/to/repo --result /safe/place/result.json \
+  --baseline-record /safe/place/baseline.json --format summary
 ```
 
-Then use the copy-ready request in [Quickstart](#quickstart). Task initialization and permission configuration below are optional; an existing authoritative task needs no duplicate record. See [safe uninstall](#safe-uninstall) when removing or replacing the bundle.
+At **Gate 2**, the human operator independently re-runs the required checks, inspects `git diff`, and accepts or rejects the reviewed snapshot.
 
-The [installer](scripts/install_skill.py) resolves the target Git root, reports existing changes, previews every destination and SHA-256, and writes only inside `.agents/skills/ai-sdlc-lite/`. Add `--dry-run` to preview without writing. A framework target, conflicting installation, or symlink in the installation path is refused. Matching repeat installations do not rewrite files; automatic upgrades are not supported.
+---
 
-The installed entry point links to `framework/`, containing canonical references, their local link dependencies, and the MIT license. Reusable result content comes from [templates/RESULT.md](templates/RESULT.md), with its README link rebased for the backward-compatible `framework/RESULT.md` path. The mutable root RESULT.md is never bundled or used to initialize a task. Other reference bytes are preserved. Linked examples and historical evidence are reference material, not additional instructions to execute. Existing target instructions and active records remain untouched. Agree on task/result paths outside the bundle; the manual adoption steps below remain available when adapting templates.
+## Supported Agents & Observed Qualification
 
-`READY` after installation means the references are present and the installed Copilot CLI discovers this enabled project Skill. It does not establish task approval, sandbox enforcement, successful coding, or zero permission prompts. Missing CLI or failed discovery reports `BLOCKED` and leaves installed files available for inspection or rollback. Use `--check` for a non-writing workspace and installed-manifest check, and `/skills info ai-sdlc-lite` in the target session. The installer reports root and parent `AGENTS.md` locations without reading or changing their contents, target writability, task-context paths and the launch command. Detection does not establish that Copilot loads an ancestor file. CLI behavior depends on version and policy. Default installation changes no permissions or global configuration and runs no packages, builds, tests or inference.
+| Target | Status | Evidence |
+|---|---|---|
+| **Claude Code (`2.1.329`, Linux)** | **Experimental Smoke PASS** (operator-orchestrated) | Native Skill discovery under `.claude/skills/ai-sdlc-lite/`, BOV, Experience capture, negative control (`BLOCKED`), `--uninstall`. Independent human clean-room (`G3`/`G10`) **PENDING**; deep **NOT RUN**. |
+| **Linux (`ubuntu-24.04`, Python 3.14 / 3.9+)** | **Automated Suite PASS** (`Q1`) | `743` deterministic tests across `30` modules (`BuiltWheelTests` included). |
+| **macOS & Windows** | **Deferred / NOT TESTED** | Unqualified; Linux-only for current experimental phase. |
+| **Codex, Copilot CLI, Antigravity** | **Not in V1–V3 scope** | Historical adapters/examples preserved ([codex-live](examples/codex-live/format_elapsed.py), [codex test](examples/codex-live/test_format_elapsed.py), [copilot-live](examples/copilot-live/clamp_int.py), [copilot test](examples/copilot-live/test_clamp_int.py)); "not verified". |
 
-`--init-task MY-TASK` creates pending TASK, CHECKLIST and RESULT records under `tasks/MY-TASK/`, plus `.ai-sdlc-lite/task-context.json` naming the active paths. It preserves root records and existing project instructions. If an authoritative task already exists, add `--task-contract tasks/R1/TASK.md` with its actual repository-relative path; that file is referenced without alteration. Existing conflicting records are refused. Repeat initialization preserves subsequent record edits. The installed Skill asks the agent to read this context; it does not guarantee compliance or reconstruct a missing approved R1 brief. New templates remain PENDING; existing approvals require the original contract and explicit owner decision. Task records and the context pointer survive Skill uninstall.
+Full matrix and release gates: [QUALIFICATION_MATRIX.md](QUALIFICATION_MATRIX.md) and [QUALIFICATION.md](QUALIFICATION.md).
 
-### Optional Copilot sandbox settings
+---
 
-Copilot CLI 1.0.109 supports user sandbox settings in an explicitly selected `COPILOT_HOME`. After reviewing a preview, opt in with:
+## Documentation Map
 
-```bash
-python3 /absolute/path/to/ai-sdlc-lite/scripts/install_skill.py --target /absolute/path/to/target-repository --configure-copilot --copilot-home /absolute/path/to/copilot-home --dry-run
-```
+| Topic | Document |
+|---|---|
+| 5-minute install & verification guide | `docs/QUICKSTART.md` |
+| Daily BOV workflow & micro-cycles | [WORKFLOW.md](WORKFLOW.md) |
+| System architecture & trust boundaries | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| Result contract (`ai-sdlc-lite-result/1`) | [RESULT_CONTRACT.md](RESULT_CONTRACT.md) |
+| Delivery contract & executor | [docs/DELIVERY_CONTRACT.md](docs/DELIVERY_CONTRACT.md) |
+| Experimental Experience journal | `docs/EXPERIENCE_CONTRACT.md` |
+| Agent contracts & templates | [AGENTS.md](AGENTS.md), [TASK.md](TASK.md), [CHECKLIST.md](CHECKLIST.md), [templates/RESULT.md](templates/RESULT.md) |
+| Roadmap, vision & research | [ROADMAP.md](ROADMAP.md), [VISION.md](https://github.com/mmontielpz/ai-sdlc-lite/blob/develop/VISION.md), [RESEARCH_AGENDA.md](https://github.com/mmontielpz/ai-sdlc-lite/blob/develop/docs/research/RESEARCH_AGENDA.md), [CHANGELOG.md](CHANGELOG.md), [docs/product/README.md](docs/product/README.md) |
 
-The Copilot home must already exist. Remove `--dry-run` to set only `sandbox.enabled=true` and `sandbox.allowBypass=false`, preserving unrelated settings. Add `--read-instruction /exact/ancestor/AGENTS.md` only for a detected regular parent instruction file: this appends its exact path to the sandbox's `readonlyPaths`, not a directory or write grant. Configuration affects every session using that Copilot home; it is not repository-scoped. Launch with `COPILOT_HOME=/absolute/path/to/copilot-home copilot -C /absolute/path/to/target-repository`. An isolated home does not inherit another home's authentication or settings. The installer never copies credentials or performs login.
+---
 
-The installer previews changed keys and destinations, backs up original settings privately inside the selected home, and refuses conflicting backups, symlinks or non-JSON settings (including JSONC). Use `--rollback-config --copilot-home /absolute/path/to/copilot-home` to restore exact original bytes, or remove installer-created settings when none existed. Add `--dry-run` for rollback preview. Later settings edits block rollback and preserve both settings and backup. Do not run concurrent configuration writers.
+## Important Limitations
 
-**Parent-file CLI path approval remains BLOCKED for automatic setup.** The supported saved path gate grants directories, while a sandbox read-only file rule does not independently satisfy that gate. No parent-directory access, persistent tool grants or external-command approvals are added. OS sandbox support and actual enforcement must be verified on the host; accepted configuration does not prove enforcement. See [Copilot configuration](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference) and [instruction discovery](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions). Interactive prompt counts and any reduction remain UNKNOWN until a comparable measured session is run.
+- **Post-execution detection only:** `ai-sdlc verify` detects scope and digest violations after execution; it is **not** a runtime sandbox or OS confinement boundary.
+- **No automatic check execution (`T3` absent):** `verify` never executes commands named in `result.json`; humans must re-run required checks before accepting at Gate 2.
+- **Human approvals required:** Gate 1 (plan) and Gate 2 (acceptance) remain explicit human decisions.
+- **Platform & Experience limits:** Linux-only (`macOS`/`Windows` deferred); `ai-sdlc-experience-event/1` refuses dotted/leading-symbol `task_id`s and `record-verify` on `BLOCKED`/`PARTIAL` reports with empty `failure_reasons`.
+- **No unverified claims:** No production-readiness, token-saving, or acceleration claims are established.
 
-For development preflight, ask the agent to report the target snapshot, allowed files, exact project scripts and available tools, expected writes/network use, risks, credential requirements, production exposure and task-owned temporary paths. Inspect script definitions and lifecycle hooks without reading secret values. Prefer reviewed project scripts for lint, build, loopback-only preview and visual tests over generated heredocs or compound commands. A command rule does not confine a script's effects; recheck affected authorization after script changes. Keep artifacts isolated and clean up only explicitly task-owned files.
+---
 
-Keep task approval, CLI tool authorization, workspace access, sandbox enforcement and delivery acceptance distinct. Within the approved plan, proceed with supported routine operations without repeated BOV approvals; respect operational prompts and restrictions. Production access/deployment, secrets or credentials, new dependencies, destructive work outside task-owned temporary paths, Git push, publication/release and scope expansion need explicit authorization for that action. Routine plan approval does not imply it.
+## Contributing & License
 
-An optional narrow permission setup is available for Copilot CLI 1.0.109. Its configuration behavior is tested; authenticated command matching, runtime confinement and prompt reduction remain unqualified. Historical observation from the earlier inspected environment: the native Skill was unchanged because `.agents` was read-only. The consolidated Skill now references `templates/RESULT.md`; the document-based guidance above remains available. No filesystem restriction is bypassed.
-
-### Opt in to reviewed development operations
-
-First install the Skill and identify the active task as above. The installer preflight reports workspace changes, tools, declared test scripts, risks and UNKNOWN production/credential exposure within its metadata/package inspection scope. It executes no project checks. Agree on one concise task plan with exact operations and observable checks; keep its explicit owner approval reference separate from configuration consent and final delivery acceptance.
-
-Prepare a repository-relative JSON plan, for example `tasks/MY-TASK/copilot-plan.json`:
-
-```json
-{
-  "approval_reference": "",
-  "scripts": ["lint", "build", "test"],
-  "read_files": ["src/example.ts"],
-  "edit_files": ["src/example.ts"],
-  "reviewed_package_sha256": "",
-  "production_exposure": "UNKNOWN",
-  "credential_exposure": "UNKNOWN",
-  "filesystem_access": "Describe allowed files and artifact paths",
-  "network_access": "UNKNOWN",
-  "risks": ["Review scripts, lifecycle hooks and their side effects"]
-}
-```
-
-Use real existing file paths. Leave approvals/exposure unknown until established; never put secrets in this plan. For command grants, review package.json and lifecycle hooks, record the package hash shown by preview, supply the actual owner approval reference, and use `NONE_DECLARED` exposure values only when supported by the bounded review. These are owner declarations, not verified absence of production or credentials.
-
-```bash
-python3 /absolute/path/to/ai-sdlc-lite/scripts/install_skill.py --target /absolute/path/to/target-repository --configure-copilot --copilot-home /absolute/path/to/dedicated-copilot-home --permission-plan tasks/MY-TASK/copilot-plan.json --dry-run
-```
-
-Review the exact destinations, grants, hashes and consent token. Repeat with `--consent-config TOKEN` instead of `--dry-run` to apply that exact proposal. Omitting consent previews without writing. Changing the plan, declared files or existing settings invalidates the token. Default global Copilot home, unknown CLI versions, inherited unrestricted modes, linked worktrees and pre-existing target grants are refused. Other repositories' settings remain unchanged. Use a dedicated existing Copilot home; authentication is not copied or performed by the installer.
-
-Only literal `npm run lint`, `npm run build` and `npm run test` identifiers are stored for the target repository. Exact read/edit file rules appear in the printed invocation command and apply only when that command is used. There are no generic interpreter, shell, write or extra-directory grants. The setup enables sandbox settings and disables bypass, but this does not prove host support or enforcement. A command grant authorizes the script's code and hooks; it cannot confine their effects. File rules do not constrain shell commands. Recheck source/config changes and stop for changed scope or risks; do not treat the profile as task authorization.
-
-This profile is not an exact-command or task-expiry security boundary. Saved repository command approvals remain until guarded rollback; use a dedicated Copilot home for the approved trial and roll back afterward. Absolute-file rules avoid a repository-wide write grant for built-in tools, but do not narrow the CLI's default workspace access or constrain shell effects. CLI 1.0.109 help does not establish safe exact-argument matching for Python unittest; leave that command ungranted and approve the reviewed request once if needed. Do not substitute a generic Python grant. New files and other unsupported operations may still prompt. The owner must separately consent to the permission preview; BOV plan approval alone does not apply it.
-
-Preview, browser verification and cleanup remain ungranted because their effects and ownership cannot be established from command names. Such requests may require operational approval; use reviewed loopback-only/owned-artifact scripts in the task plan without broad grants. Production, credentials, dependencies, security changes and publication are never inferred from routine development approval. After plan approval, implement, check, fix and retest within scope without repeated BOV decisions; reuse context and stop at new risks, permissions or final acceptance.
-
-The printed launch command uses `COPILOT_HOME=... copilot --no-auto-update -C /absolute/path/to/target-repository` plus exact file rules. Keep sessions stopped while changing configuration. `--rollback-config --copilot-home ...` restores exact original permission/settings bytes or absence, only if both files remain unchanged; later edits preserve both files and the private backup. Reconfiguration requires rollback/review first. The older sandbox-only opt-in still works without a permission plan.
-
-### Safe uninstall
-
-Preview removal from the explicit target:
-
-```bash
-python3 /absolute/path/to/ai-sdlc-lite/scripts/install_skill.py --target /absolute/path/to/target-repository --uninstall --dry-run
-```
-
-Review the exact files and empty installation directories, then omit `--dry-run` to remove them. Only manifest-listed files with unchanged hashes are removed. Edited files, additional files and unowned empty directories are preserved and reported as `BLOCKED`; the manifest remains for review. Missing, corrupt, incomplete or unsafe manifests and symlinks are refused before removal. Repeated uninstall of an absent installation succeeds; a partial uninstall keeps preserving retained content. Parent `.agents/skills` directories, project code and active task history remain untouched.
-
-Uninstall and configuration rollback validate the target and their own ownership/backup evidence before task/package preflight, so stale task context or malformed package.json cannot prevent recovery. Uninstall restores no Copilot configuration. Use `--rollback-config --copilot-home ...` separately; without verified original-state evidence, or after later settings edits, restoration is blocked. Read-only/unwritable removal scope is reported as `BLOCKED`, with no permission repair or bypass. Keep manifests/backups intact and stop concurrent writers. An older 019B installation is not silently upgraded: review and uninstall its unchanged bundle before reinstalling; task records remain intact.
-
-### Manual document adoption
-
-1. Open the target repository and review its existing instructions and working changes. Copy or adapt [TASK.md](TASK.md), [CHECKLIST.md](CHECKLIST.md), and the reusable [result template](templates/RESULT.md) into agreed active task paths, preserving existing files. Root RESULT.md may contain historical execution evidence and is not a template source. Tell the agent the exact paths.
-2. Review [AGENTS.md](AGENTS.md). If the target already has agent instructions, merge the relevant guidance into them; never overwrite existing AGENTS.md instructions. Resolve conflicts with the project owner. If none exists, adapt this AGENTS.md to the project. Keep applicable license notices when copying project material; examples and other foundation documents are not required for adoption.
-3. Keep one active task/result pair. Before reusing it, preserve the completed pair and its evidence under a task-specific directory, such as `tasks/SMALL-FIX-001/`, or in version history. Retain approval references, checked revisions, and verification evidence together; do not overwrite prior results or commit secrets.
-
-Use the [Quickstart](#quickstart) in the target repository. The agent inspects the applicable instructions and proposes the bounded task before approval; you do not need to complete every template field manually first. Explicit reading was demonstrated in the bounded runs described in [QUALIFICATION.md](QUALIFICATION.md).
-
-## Workflow guide and optional Skill
-
-For a guided task from read-only inspection through human acceptance, use [WORKFLOW.md](WORKFLOW.md). The four BOV contracts remain canonical. Name task-specific contract and result paths explicitly and retain existing approvals and project instructions.
-
-The [optional GitHub mapping](WORKFLOW.md#optional-github-mapping) connects Task → Branch → Change → Tests → PR → Review → Merge under repository rules. Local tasks need no GitHub, and both existing human approval boundaries remain in place. See [CONTRIBUTING.md](CONTRIBUTING.md) for concise contribution guidance.
-
-An optional repository [ai-sdlc-lite Skill](.agents/skills/ai-sdlc-lite/SKILL.md) provides a small entry point to the same documents. Explicit invocation with `$ai-sdlc-lite` was demonstrated in the inspected Codex session: the available Skill and supplied instructions matched the repository source. Copying task/result templates does not install or expose the Skill; use the document-reading fallback if your client cannot find it. See [qualification limits](#supported-agent-approach-and-limitations) for provider-specific evidence.
-
-## Detailed workflow
-
-Follow [WORKFLOW.md](WORKFLOW.md) for inspection, plan approval, scoped execution, verification, and delivery acceptance. Keep one authoritative task brief and one result record; link them rather than copying their contents. If no suitable automated check exists, agree on a repeatable check before implementation. Visual and usability claims need appropriate human review.
-
-## Expected repository structure
-
-The repository contains the Markdown workflow documents, the `ai_sdlc/` CLI package, `scripts/` (verifier and installer), adapters, tests, examples, and historical task records under `tasks/`. File counts are intentionally not recorded here; see the repository listing. Root task/result files are reusable templates; example and task records preserve execution evidence.
-
-```text
-README.md
-AGENTS.md          # durable agent operating rules
-TASK.md            # one bounded task, plan, and approval
-CHECKLIST.md       # human checkpoints and verification
-RESULT.md          # evidence, outcomes, and acceptance
-LICENSE
-CONTRIBUTING.md
-SECURITY.md
-CHANGELOG.md
-WORKFLOW.md        # navigation through the existing controls
-QUALIFICATION.md   # portable evidence, limits, release blockers, full inventory
-.agents/skills/ai-sdlc-lite/SKILL.md
-examples/small-fix/   # repaired normalization and isolated baseline replay
-examples/copilot-live/ # owner-reported clamp slice
-examples/codex-live/   # verified elapsed-time formatter
-tasks/AI-SDLC-LITE-UX-002/RESULT.md # historical staging record
-tasks/AI-SDLC-LITE-011C/RESULT.md   # formatter verification and measurements
-```
-
-The [current-evidence addendum](QUALIFICATION.md#current-inventory-and-snapshot-identity) lists all 23 paths. Historical 18-file and 20-file inventories describe earlier snapshots; their records and hashes remain unchanged. Temporary harnesses, raw transcripts, credentials, and local state are outside the project inventory.
-
-When adopting the process, adapt the task records to your repository. Merge guidance into existing instruction files after review; do not overwrite project rules or create competing sources of truth.
-
-## Examples
-
-These small, standard-library Python examples show observable behavior and bounded verification:
-
-| Example | Behavior | Evidence |
-| --- | --- | --- |
-| [Name normalization](examples/small-fix/README.md) | Trim surrounding whitespace and lowercase, preserving internal whitespace. | Five passing tests recorded, with a separate replay of the original two-failure baseline. |
-| [Integer clamp](examples/copilot-live/clamp_int.py) | Limit an integer to inclusive bounds. | [Six tests](examples/copilot-live/test_clamp_int.py); passing execution reported by the owner for Copilot CLI 1.0.109. |
-| [Elapsed-time display](examples/codex-live/format_elapsed.py) | Format nonnegative integer seconds as M:SS without a minute cap. | [Six tests](examples/codex-live/test_format_elapsed.py) and smoke check passed in the directly observed Codex pilot; [result and measurement boundaries](tasks/AI-SDLC-LITE-011C/RESULT.md). |
-
-The [qualification record](QUALIFICATION.md#evidence-attribution-and-qualification-scope) distinguishes recorded, directly observed, and owner-reported evidence. These examples do not establish production readiness.
-
-## Supported agent approach and limitations
-
-The methodology is the task, controls, approvals, and evidence. Codex, GitHub Copilot CLI, and Claude Code are separate products that can act as development agents. The only provider targeted for V1–V3 is Claude Code (owner decision, 2026-11-18); it is not yet qualified. The Codex and GitHub Copilot CLI adapters and their historical evidence are preserved (no Antigravity adapter exists); Codex, Copilot CLI and Antigravity are not in the committed scope and are "not verified". No agent is a dependency of the core process.
-
-Start with one agent. Discovery, permissions, and usage reporting depend on the client, version, and environment.
-
-| Capability | Qualification |
-| --- | --- |
-| Claude Code (targeted provider): installation of the Skill bundle, discovery, bounded task, `verify` | NOT TESTED: no smoke or deep run recorded. A read-only `claude --version` check on the author's workstation reported 2.1.327; that is not a qualification. |
-| Explicit Codex Skill invocation and bounded local delivery | Demonstrated in the inspected environment; includes a recovered scope incident and the accepted formatter pilot. |
-| Copilot CLI 1.0.109 Skill discovery and coding slice | Owner-reported success; not an independently repeated compatibility qualification. |
-| GitHub task-to-merge workflow | Documented optional mapping; execution not qualified. Local tasks require no GitHub. |
-| Automatic Codex discovery, broader agent/platform compatibility, first-time usability, and workshop use | Unverified. |
-| Full task timing, active agent time, task tokens, billed units, and monetary cost | No complete attribution established for the pilot; the recorded 209.330981-second window is partial. |
-
-See [supported claims and exclusions](QUALIFICATION.md#supported-limited-scope-v1-claims) and the [incident record](QUALIFICATION.md#incident-and-controlled-recovery). The evidence does not establish universal compliance, development acceleration, or savings.
-
-Markdown instructions and checklists are procedural controls. They do not enforce permissions, sandbox commands, prevent destructive actions, or guarantee agent compliance. Use the repository's existing access controls and review process. The core Markdown workflow adds no runtime, CLI, SDK, telemetry, backend, cloud service, or paid API requirement; the optional installer uses existing Python and Git. Your chosen agent and project may have their own requirements and costs.
-
-## Outcomes and honest measurement
-
-| Value | Meaning |
-| --- | --- |
-| PASS | All agreed acceptance criteria are met and supported by recorded verification evidence. Human acceptance is recorded separately. |
-| PARTIAL | Some work is complete, but at least one criterion is unmet or unverified. List the gaps. |
-| BLOCKED | An obstacle prevents meaningful progress within the approved boundaries. Record the obstacle and the input or action needed. |
-| UNKNOWN | A fact or measurement is unavailable or cannot be established. This is a field value, not a successful task outcome. |
-
-Record checks as passed, failed, or not run, with commands, exit codes, relevant output, environment, and the code revision checked. Label reused or illustrative evidence. Do not hide failures through retries, substitute confidence for evidence, or describe unperformed checks as passed.
-
-Keep these measurements separate, with a source, units, and measurement window:
-
-- **Measured tokens:** counts reported by a tool, retaining its categories and definitions.
-- **Billed units:** provider-reported charging units, which may use a different basis from token counts.
-- **Elapsed time:** start-to-end wall time, including waiting unless separately measured. It is not active work time.
-- **Monetary cost:** actual charges only when supported by billing evidence, with currency and covered period. Any estimate must be labeled separately with assumptions and price source.
-
-Token counts do not establish monetary charges. Missing measurements are `UNKNOWN`, not zero. Do not infer comparable usage or savings across tools from incompatible counters.
-
-## Contributing, security, and versioning
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for change and review guidance, [SECURITY.md](SECURITY.md) for disclosure limitations, and [CHANGELOG.md](CHANGELOG.md) for project history and the versioning policy. No V1.0.0 release has been made.
-
-## Attribution and license
-
-AI-SDLC Lite is an independent adaptation informed by [Anthropic's AI-Native SDLC Playbook](https://claude.com/resources/articles/the-ai-native-sdlc-playbook). It retains the six lifecycle concepts while using original wording and a smaller, manual process. It is not affiliated with, certified by, or endorsed by Anthropic, OpenAI, or GitHub.
-
-Design lessons also came from the local FOB (Fix One, Break One) AI-SDLC handoff: bounded work, human checkpoints, and evidence-based reporting. No FOB files or implementation code are included. Findings from that single project do not establish general productivity benefits.
-
-Original AI-SDLC Lite project material is available under the [MIT License](LICENSE). Referenced third-party material and trademarks remain subject to their respective owners' rights; the project license does not relicense them.
-
-## Canonical development candidate
-
-The canonical repository is https://github.com/mmontielpz/ai-sdlc-lite.
-This local candidate adds offline scope verification, declarative Codex/Godot adapters,
-and reusable result-template isolation. Its inclusion here does not imply a release or runtime qualification.
-Technical adapter boundaries are described in [the configuration reference](docs/qualification/CODEX-002-summary.md);
-the [architecture](ARCHITECTURE.md) and [DX proposal](DX_ARCHITECTURE.md) remain plans where labeled.
-
-The existing master raw installation URL above remains the compatibility entry point.
-The proposed governance is main for stable reviewed work, develop for integration,
-feature/* for bounded changes and experiment/* for qualification. These branches and
-protections are not created by this candidate. Document a main URL only after that
-branch exists and is verified. For repeatable installation, pin a reviewed public
-commit; no new release or tag is implied. Codex runtime installation and unattended
-operation remain unqualified.
-
-## Offline delivery planner
-
-`python3 -B -m ai_sdlc delivery plan|verify|report --repo PATH --input FILE` provides deterministic provider-neutral Git delivery preflight. See [ai-sdlc-delivery/1](docs/DELIVERY_CONTRACT.md) for the JSON request, sealed plan, status codes and supported repository layouts. Store plan output outside the target checkout. Verification detects changed HEAD, branch, file inventory, configuration and index. These commands perform no Git mutations, subprocess execution, network requests or inference. A plan digest proves integrity, never authorization; local READY does not establish future write permission or remote delivery readiness.
+Contributions and bug reports are welcome—see [CONTRIBUTING.md](CONTRIBUTING.md) for our minimal branch policy and review expectations, and [SECURITY.md](SECURITY.md) for private vulnerability reporting. Licensed under the [MIT License](LICENSE).
