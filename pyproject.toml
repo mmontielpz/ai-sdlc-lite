@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ai-sdlc-lite"
-version = "0.1.0"
+version = "2.0.0.dev1"
 description = "Universal Coding Agent Skill and deterministic verification CLI for bounded software changes"
 readme = "README.md"
 license = {text = "MIT"}
@@ -35,6 +35,7 @@ package-dir = {"ai_sdlc" = "ai_sdlc", "ai_sdlc._framework" = "."}
     "adapters/agents/*/examples/*.json",
     "adapters/godot/README.md",
     "docs/*.md",
+    "docs/product/*.md",
     "docs/qualification/*.md",
     "examples/codex-live/*.py",
     "examples/copilot-live/*.py",
@@ -42,3 +43,6 @@ package-dir = {"ai_sdlc" = "ai_sdlc", "ai_sdlc._framework" = "."}
     "tasks/AI-SDLC-LITE-011C/RESULT.md",
     "tasks/AI-SDLC-LITE-UX-002/RESULT.md",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

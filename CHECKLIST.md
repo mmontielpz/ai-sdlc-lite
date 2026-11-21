@@ -17,3 +17,4 @@ Use this checklist with the active [task contract](TASK.md) and [result record](
 - [ ] A human separately records acceptance or rejection of the identified reviewed revision; otherwise acceptance remains PENDING.
 - [ ] Deploy has explicit authorization before any release action, or is recorded as not performed with a reason. Human acceptance alone does not authorize release.
 - [ ] Maintain records remaining issues and the next action or a reason no follow-up is needed. Preserve the completed task and result before reuse.
+- [ ] Handoff check: verify local links, status vocabulary (`PASS`/`PARTIAL`/`BLOCKED`/`UNKNOWN`), open-gaps register, and whether commits are runtime-qualified or docs-only.

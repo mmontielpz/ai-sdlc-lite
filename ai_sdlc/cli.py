@@ -56,6 +56,7 @@ USAGE = (
     '  result-template --repo PATH --out F [--baseline-record F] generate fail-closed result.json template\n'
     '  init --repo PATH            preview offline Skill setup; --apply to write; --check to verify\n'
     '  experience validate --journal F  EXPERIMENTAL offline Experience journal check (read-only)\n'
+    '  --version                    print the installed CLI version\n'
 )
 HEX = frozenset('0123456789abcdef')
 BAD_REF_CHARS = frozenset(' \\:?[^~*\x7f')
@@ -359,6 +360,16 @@ def _status(rest):
     return 0
 
 
+def _version_line():
+    """Installed distribution version when available, otherwise the source-tree version. Reads no repository."""
+    try:
+        from importlib import metadata
+        return 'ai-sdlc %s (installed package ai-sdlc-lite)' % metadata.version('ai-sdlc-lite')
+    except Exception:  # not installed (source checkout) or metadata unreadable
+        from ai_sdlc import __version__
+        return 'ai-sdlc %s (source tree)' % __version__
+
+
 def main(argv=None):
     args = list(sys.argv[1:] if argv is None else argv)
     if not args:
@@ -367,6 +378,12 @@ def main(argv=None):
     command, rest = args[0], args[1:]
     if command in ('-h', '--help', 'help'):
         sys.stdout.write(USAGE)
+        return 0
+    if command in ('-V', '--version', 'version'):
+        if rest:
+            _err('usage: python3 -m ai_sdlc --version')
+            return 2
+        sys.stdout.write(_version_line() + '\n')
         return 0
     if command in PASSTHROUGH:
         return _passthrough(command, rest)

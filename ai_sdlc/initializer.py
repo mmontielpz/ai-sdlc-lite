@@ -16,10 +16,11 @@ import sys
 from ._root import framework_root
 
 ROOT = framework_root()
-USAGE = ('usage: python3 -B -m ai_sdlc init --repo PATH [--target agents|claude-code] [--dry-run | --apply | --check]\n'
+USAGE = ('usage: python3 -B -m ai_sdlc init --repo PATH [--target agents|claude-code] [--dry-run | --apply | --check | --upgrade | --uninstall]\n'
          'Default: read-only preview of the agents target (.agents/skills/ai-sdlc-lite).\n'
          '--target claude-code selects .claude/skills/ai-sdlc-lite; the bundle is identical.\n'
-         '--apply creates only the offline Skill bundle.\n'
+         '--apply creates only the offline Skill bundle; --upgrade replaces an intact older managed bundle.\n'
+         '--uninstall removes only an intact manifest-verified bundle.\n'
          '--check verifies local files only; no provider is probed or authorized.\n'
          'Optional EXPERIMENTAL capture (with --apply or --check only): --journal FILE --repo-classification C\n'
          '[--run-id R] [--allow-in-repo] appends one Experience event after the result is final; a journal\n'
@@ -104,15 +105,53 @@ def _target(value):
     return root
 
 
-def _validate_git(fd):
-    # Deliberately exclude pointer files, worktrees, submodules and external metadata.
-    with _directory(fd, ('.git',)) as git:
-        with _directory(git, ('objects',)), _directory(git, ('refs',)):
-            head = _read(git, 'HEAD', 512).decode('ascii').strip()
-            if not (head.startswith('ref: refs/heads/') or
-                    (len(head) in (40, 64) and all(c in '0123456789abcdef' for c in head))):
-                raise Refused('invalid_git_root')
-        if 'commondir' in os.listdir(git):
+def _check_head(git):
+    head = _read(git, 'HEAD', 512).decode('ascii').strip()
+    if not (head.startswith('ref: refs/heads/') or
+            (len(head) in (40, 64) and all(c in '0123456789abcdef' for c in head))):
+        raise Refused('invalid_git_root')
+
+
+def _validate_git(anchor, fd, root):
+    """Validate a standard .git directory or a linked Git worktree (<common>/worktrees/<name>) without Git."""
+    try:
+        info = os.stat('.git', dir_fd=fd, follow_symlinks=False)
+    except FileNotFoundError:
+        raise Refused('invalid_git_root')
+    if stat.S_ISDIR(info.st_mode):
+        with _directory(fd, ('.git',)) as git:
+            with _directory(git, ('objects',)), _directory(git, ('refs',)):
+                _check_head(git)
+            if 'commondir' in os.listdir(git):
+                raise Refused('external_git_metadata')
+        return
+    if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+        raise Refused('invalid_git_root')
+    raw = _read(fd, '.git', 1024).decode('ascii').split('\n', 1)[0].strip(' \t\r')
+    if not raw.startswith('gitdir:'):
+        raise Refused('invalid_git_root')
+    target = raw[len('gitdir:'):].strip(' ')
+    if not target or '\x00' in target or any(ord(c) < 32 or ord(c) == 127 for c in target):
+        raise Refused('invalid_git_root')
+    pointed = Path(target)
+    git_dir = Path(os.path.normpath(str(pointed if pointed.is_absolute() else root / pointed)))
+    if git_dir.anchor != root.anchor:
+        raise Refused('external_git_metadata')
+    with _directory(anchor, git_dir.parts[1:]) as git:
+        _check_head(git)
+        common_raw = _read(git, 'commondir', 1024).decode('ascii').split('\n', 1)[0].strip(' \t\r')
+        if not common_raw or '\x00' in common_raw:
+            raise Refused('external_git_metadata')
+        common = Path(os.path.normpath(str(git_dir / common_raw)))
+        if git_dir.parent.name != 'worktrees' or common != Path(os.path.normpath(str(git_dir.parent.parent))):
+            raise Refused('external_git_metadata')
+        if common.anchor != root.anchor:
+            raise Refused('external_git_metadata')
+        with _directory(anchor, common.parts[1:]) as common_fd:
+            with _directory(common_fd, ('objects',)), _directory(common_fd, ('refs',)):
+                pass
+        backlink = _read(git, 'gitdir', 1024).decode('ascii').split('\n', 1)[0].strip(' \t\r')
+        if not backlink or Path(os.path.normpath(backlink)) != root / '.git':
             raise Refused('external_git_metadata')
 
 
@@ -164,6 +203,56 @@ def _validate_existing(fd, content, hashes, installer):
         with _directory(fd, Path(name).parts[:-1]) as parent:
             if _read(parent, Path(name).name, max(len(data), MAX_MANIFEST if name == installer.MANIFEST else 0)) != data:
                 raise Refused('installation_content_conflict')
+
+
+def _validate_owned_manifest(fd, installer):
+    """Validate an existing installation against its own manifest (used by --uninstall and --upgrade)."""
+    raw = _read(fd, installer.MANIFEST, MAX_MANIFEST)
+    record = json.loads(raw, object_pairs_hook=_unique)
+    if (not isinstance(record, dict) or set(record) != {'format', 'files'}
+            or type(record['format']) is not int):
+        raise Refused('invalid_manifest')
+    owned = installer.manifest_files(record)
+    actual = set(_inventory(fd))
+    expected = set(owned) | {installer.MANIFEST}
+    for name in owned:
+        expected.update(p.as_posix() + '/' for p in Path(name).parents if p != Path('.'))
+    if actual != expected:
+        raise Refused('installation_inventory_conflict')
+    for name, expected_sha in sorted(owned.items()):
+        with _directory(fd, Path(name).parts[:-1]) as parent:
+            data = _read(parent, Path(name).name, MAX_MANIFEST)
+            if installer.digest(data) != expected_sha:
+                raise Refused('installation_content_conflict')
+    return owned
+
+
+def _remove_owned(fd, owned, installer, skill):
+    """Remove only manifest-verified files and empty directories below `skill`."""
+    with _directory(fd, skill.parts[:-1]) as parent:
+        with _directory(parent, (skill.name,)) as destination:
+            dirs = set()
+            for name in sorted(owned):
+                parts = Path(name).parts
+                with _directory(destination, parts[:-1]) as subdir:
+                    os.unlink(parts[-1], dir_fd=subdir)
+                for p in Path(name).parents:
+                    if p != Path('.'):
+                        dirs.add(p)
+            os.unlink(installer.MANIFEST, dir_fd=destination)
+            for p in sorted(dirs, key=lambda item: len(item.parts), reverse=True):
+                with _directory(destination, p.parts[:-1]) as subdir:
+                    os.rmdir(p.name, dir_fd=subdir)
+        os.rmdir(skill.name, dir_fd=parent)
+
+
+def _destination_exists(fd, skill):
+    try:
+        with _directory(fd, skill.parts[:-1]) as parent:
+            os.stat(skill.name, dir_fd=parent, follow_symlinks=False)
+            return True
+    except FileNotFoundError:
+        return False
 
 
 def _existing(fd, content, hashes, installer, skill):
@@ -227,7 +316,7 @@ def _parse(args):
     extra = {}
     while args:
         flag = args.pop(0)
-        known = ('--repo', '--target', '--dry-run', '--apply', '--check',
+        known = ('--repo', '--target', '--dry-run', '--apply', '--check', '--upgrade', '--uninstall',
                  '--journal', '--repo-classification', '--run-id', '--allow-in-repo')
         if flag in seen or flag not in known:
             return None
@@ -247,7 +336,7 @@ def _parse(args):
         elif flag == '--allow-in-repo':
             extra[flag] = True
         else:
-            if len(seen & {'--dry-run', '--apply', '--check'}) > 1:
+            if len(seen & {'--dry-run', '--apply', '--check', '--upgrade', '--uninstall'}) > 1:
                 return None
             mode = flag[2:]
     if repo is None:
@@ -278,7 +367,41 @@ def _execute(repo, mode, target):
         anchor = os.open(root.anchor, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
         try:
             with _directory(anchor, root.parts[1:]) as fd:
-                _validate_git(fd)
+                _validate_git(anchor, fd, root)
+                if mode == 'uninstall':
+                    print('AI-SDLC INIT 1')
+                    print('repository: ' + json.dumps(str(root), ensure_ascii=True))
+                    if not _destination_exists(fd, skill):
+                        print('RESULT: NOT_INSTALLED')
+                        return 0, {'ok': True, 'result': 'NOT_INSTALLED'}
+                    with _directory(fd, skill.parts) as destination:
+                        owned = _validate_owned_manifest(destination, installer)
+                    started = True
+                    _remove_owned(fd, owned, installer, skill)
+                    print('RESULT: UNINSTALLED')
+                    return 0, {'ok': True, 'result': 'UNINSTALLED'}
+                if mode == 'upgrade':
+                    if _destination_exists(fd, skill):
+                        try:
+                            exists = _existing(fd, content, hashes, installer, skill)
+                        except Refused:
+                            with _directory(fd, skill.parts) as destination:
+                                owned = _validate_owned_manifest(destination, installer)
+                            started = True
+                            _remove_owned(fd, owned, installer, skill)
+                            _apply(fd, content, installer, skill)
+                            if not _existing(fd, content, hashes, installer, skill):
+                                raise Refused('installation_missing')
+                            print('AI-SDLC INIT 1')
+                            print('repository: ' + json.dumps(str(root), ensure_ascii=True))
+                            print('working tree state: UNKNOWN (not inspected)')
+                            for name, data in sorted(content.items()):
+                                rel = (skill / name).as_posix()
+                                print('CREATE %s sha256=%s' % (json.dumps(rel, ensure_ascii=True), installer.digest(data)))
+                            print('Provider discovery, permissions and task approval: UNVERIFIED')
+                            print('RESULT: UPGRADED')
+                            return 0, {'ok': True, 'result': 'UPGRADED', 'file_count': len(content),
+                                       'manifest_sha256': installer.digest(content[installer.MANIFEST])}
                 exists = _existing(fd, content, hashes, installer, skill)
                 if mode == 'check' and not exists:
                     raise Refused('installation_missing')
@@ -298,7 +421,7 @@ def _execute(repo, mode, target):
                 elif exists:
                     print('RESULT: UNCHANGED')
                     result = 'UNCHANGED'
-                elif mode == 'apply':
+                elif mode in ('apply', 'upgrade'):
                     started = True
                     _apply(fd, content, installer, skill)
                     if not _existing(fd, content, hashes, installer, skill):
