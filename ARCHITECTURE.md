@@ -10,6 +10,19 @@ Owner decisions (2026-11-18) added without superseding the earlier plan: **Claud
 
 ## One canonical source
 
+### System Architecture & Trust Boundaries (D02)
+
+```mermaid
+flowchart TB
+  CLI["ai-sdlc CLI (Python 3.9+ stdlib)"] --> INIT["initializer.py (init --apply/--check/--upgrade/--uninstall)"]
+  CLI --> VER["scripts/verify_scope.py (baseline, verify, seal)"]
+  CLI --> RT["result_template.py"]
+  CLI --> DEL["delivery.py (local commit / observe-only recover)"]
+  CLI --> EXP["experience.py (EXPERIMENTAL JSONL journal)"]
+  INIT --> SKILL[".claude/skills/ai-sdlc-lite/ (Guidance Only, No Enforcement)"]
+  VER -. "Reads Git state & digests; NEVER executes checks" .-> REPO["Target Git Repository"]
+```
+
 The canonical definition is the Markdown contract set (`AGENTS.md`, `WORKFLOW.md`, `TASK.md`, `CHECKLIST.md`, `RESULT.md`, `RESULT_CONTRACT.md`) plus the single-file Skill `.agents/skills/ai-sdlc-lite/SKILL.md`. Agent adapters and project adapters are **derived or referenced, never separately maintained**. A drift test (the existing `test_skill_source_bundle_consistency` is the model) must fail if an adapter diverges from the canonical text.
 
 ## Components

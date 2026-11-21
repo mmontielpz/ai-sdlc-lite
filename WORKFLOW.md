@@ -6,6 +6,18 @@ Use one bounded task at a time. This guide helps a human and an agent navigate t
 
 `Task -> Gate 1 (plan approval) -> Implementation -> Evidence -> Verify -> Gate 2 (human acceptance)`
 
+### Execution Workflow & Human Approval Gates (D03)
+
+```mermaid
+flowchart LR
+  T["Task + Baseline"] --> G1{"Gate 1: Human Approves Plan?"}
+  G1 -- "Yes" --> IMP["Agent Implements in Scope"]
+  IMP --> EV["External Evidence (out.txt, result.json)"]
+  EV --> VER["ai-sdlc verify (T1/T2 Scope & Digests)"]
+  VER --> RERUN["Human Re-runs Checks + Inspects Diff"]
+  RERUN --> G2{"Gate 2: Human Accepts?"}
+```
+
 1. **Task & Gate 1:** State the bounded task; inspect read-only and approve the plan + checks once before editing.
 2. **Baseline (when tracking dirty or ignored files):** Before edits, capture `ai-sdlc baseline --repo . --out /outside/baseline.json`.
 3. **Implement & Capture Evidence:** Edit only approved paths, run checks, and write test output (`out.txt`) outside the repository.

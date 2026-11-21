@@ -20,6 +20,20 @@ Include the problem solved, resulting behavior, validation evidence, and remaini
 
 For GitHub contributions, follow the [optional task-to-merge mapping](WORKFLOW.md#optional-github-mapping). Link the task and result in the PR rather than duplicating them. PR and merge permissions follow repository rules and explicit authorization; an existing approval need not be repeated. Local contributions do not require GitHub.
 
+## Branch & Release Governance (D04)
+
+```mermaid
+flowchart LR
+  FEAT["feature/* | fix/* | docs/* | chore/* | experiment/*"] -- "PR -> develop (ci-gate + human review)" --> DEV["develop (Integration Baseline)"]
+  DEV -- "PR -> master (ci-gate + 3.9 dispatch)" --> MAS["master (Published Experimental Baseline)"]
+  MAS -- "Owner Tag + Pre-Release" --> REL["Tagged Wheel + SHA-256"]
+```
+
+- **Permanent branches:** `master` (published experimental baseline) and `develop` (integration baseline).
+- **Temporary branches:** `feature/*` (or `feat/*`), `fix/*`, `docs/*`, `chore/*`, `experiment/*` originate from `develop` and target `develop` (optional `hotfix/*`, `release/*` when needed).
+- **Checks & merge policy:** `ci-gate` (`strict: true`) and human review are required before merge; use merge commits for integration history and retire merged branches only after verifying no stacked PR depends on them.
+- **Release promotion:** Promote `develop` → `master` via reviewed PR; tag experimental releases only after explicit owner authorization (`RG-2`/`RG-3`).
+
 ## Rights and conduct
 
 Submit original work or material you have permission to contribute under the [MIT License](LICENSE). Preserve applicable notices, attribute external ideas, and identify third-party material and its license before inclusion. Do not submit proprietary code, private data, secrets, or copied vendor documentation. Contributions to original project material use the same MIT license.
