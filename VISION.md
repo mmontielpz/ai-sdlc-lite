@@ -1,10 +1,10 @@
 # AI-SDLC Lite — Vision & Strategic Direction
 
-**Product Name:** AI-SDLC Lite  
-**Vision:** *Towards Pareto-efficient and experience-driven agentic software engineering.*  
-**Research Domain:** Efficient Agentic Software Engineering  
-**Core Methodology:** Bound — Observe — Verify (BOV)  
-**Design Philosophy:** Minimum Sufficient Intelligence  
+**Product Name:** AI-SDLC Lite
+**Vision:** *Towards Pareto-efficient and experience-driven agentic software engineering.*
+**Research Domain:** Efficient Agentic Software Engineering
+**Core Methodology:** Bound — Observe — Verify (BOV)
+**Design Philosophy:** Minimum Sufficient Intelligence
 **Current Status:** `2.0.0.dev1` (`EXPERIMENTAL`; `Q1` PASS, `Q2` PARTIAL, `Q3` NOT_MET; `G3`/`G10` PENDING)
 
 > **Boundary Note:** Sections below distinguish **Implemented Today** from **Future Research Directions**. Nothing in the research vision claims unverified runtime capabilities or performance gains.

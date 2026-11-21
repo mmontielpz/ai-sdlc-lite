@@ -1,6 +1,6 @@
 # AI-SDLC Lite — Research Agenda
 
-**Research Domain:** Efficient Agentic Software Engineering  
+**Research Domain:** Efficient Agentic Software Engineering
 **Status:** `RESEARCH_PLAN` (conceptual research tracks and experimental protocols; **not** implemented runtime capabilities).
 
 ---
