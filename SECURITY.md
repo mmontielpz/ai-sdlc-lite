@@ -48,6 +48,37 @@ The verifier never resets, cleans, deletes, checks out, stashes or overwrites an
 Known limits of the verifier: it does not see ignored files comprehensively. New ignored files are compared with the baseline's ignored set, but content changes to files that were already ignored, more than 20,000 ignored files, changes outside the repository, and state before work (unless an independent baseline record exists) are not covered. The repository's own `.gitignore` is limited to Python cache artifacts to keep this blind spot small. It does not re-run reported commands, so exit codes are only as honest as their author. A PASS means "no violation detected in the evidence supplied", not "no violation occurred". Human review remains required.
 
 
+## Information classification and data handling
+
+This is the minimum project rule for AI-SDLC Lite's own records (OD-29). It is a procedure, not an enforced control.
+
+| Class | Meaning | Where it may go |
+|---|---|---|
+| PUBLIC | approved public documentation and sanitized evidence | public repository |
+| INTERNAL | non-public engineering evidence without the content below | private companion evidence repository, after owner confirmation |
+| CONFIDENTIAL | personal information, sensitive raw logs, local paths or account names, private infrastructure details, private project identifiers, third-party confidential material | restricted encrypted storage only |
+| RESTRICTED | credentials, tokens, passwords, private keys and equivalent secrets | never stored as evidence; revoke and rotate if exposed |
+
+- Classify a package by its most sensitive file. Classification does not follow from repository visibility, and a private repository is not a secrets manager.
+- When the class is unknown, treat the material as CONFIDENTIAL.
+- Before publication or upload, check the exact content: a pattern scan and a review of what is added. A scan cannot prove absence.
+- A sanitized copy gets its own checksum and a recorded link to the original. Never attach an original checksum to changed content.
+- Retention is for the life of the project, subject to confidentiality, applicable privacy obligations and authorized deletion requirements.
+- Suspected exposure of CONFIDENTIAL or RESTRICTED material stops the affected work and is escalated to the owner. History rewriting needs separate authorization.
+
+### Pilot data
+
+Pilot evidence stays outside the repository, is classified, is indexed by digest and is copied to restricted storage before the pilot closes. Collect only what the pilot's measurement sheet needs. Do not collect visitor or third-party personal data without a separately approved purpose. Confidential material never goes to the companion repository. Publish summaries only after the same pre-publication check.
+
+## What `baseline` and `verify` read
+
+- `ai-sdlc baseline` reads the content of every path that differs from `HEAD`, **including every untracked file that Git does not ignore**, and writes each path and a SHA-256 of its content into the baseline record. Files over 10 MiB are recorded as too large instead of hashed; for a symlink the link target is recorded.
+- Ignored files are listed **by name** (up to 20,000); the baseline does not hash their content.
+- `ai-sdlc verify` lists changed and untracked paths in its report and, with a baseline record, hashes the recorded dirty paths again.
+- There is no option to exclude an untracked file from this inspection. Ignoring a file stops content hashing but not the recording of its name.
+
+A hash of short or guessable content can be matched by guessing, and file names can be sensitive. Treat baseline records and reports as at least as sensitive as the working tree. Before running these commands, use a workspace without secrets, personal data or unrelated private files, and review `git status --porcelain --untracked-files=all`. Whether this behaviour changes is an open decision (M-03, a candidate public-release blocker); this project does not claim the verifier is safe on arbitrary working trees.
+
 ## Reporting a vulnerability
 
 **Private reporting route: ENABLED for `mmontielpz/ai-sdlc-lite`.** Observed 2026-11-12T21:31:53Z via `gh api repos/mmontielpz/ai-sdlc-lite/private-vulnerability-reporting`, which returned `{"enabled":true}` immediately after enabling it with the same endpoint. The **Report a vulnerability** button was not independently checked in the web interface, and no test report was sent. No release has been made; this project is experimental.
