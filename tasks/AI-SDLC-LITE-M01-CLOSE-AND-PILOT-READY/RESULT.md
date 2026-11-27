@@ -44,6 +44,26 @@ Window: mission start 2026-11-27T20:41:20Z to 2026-11-27T20:47:07Z (agent prepar
 
 Descriptive comparison with the partial S7-S9a baseline (7 owner mission messages and 1 agent question, 4 preparation-only rounds, 1 integrated pull request, about 1 h 51 min wall time): this interim window has 1 message and no preparation-only round, with nothing yet accepted. The windows and work differ; no efficiency improvement is claimed.
 
+## Update after partial owner authorization
+
+- **Pull request A:** Gate 2 approved; merged as `2ecc8db711c837d8b0a07afe383515447a29e115`; post-merge CI passed (743 run, 2 skipped); local and remote `main` synchronized. This branch then merged `main`.
+- **Held evidence:** five originals are held and unmodified: four contain a confidential project identifier and one a local path. Sanitized derivatives with new digests and provenance were built and checked locally; none is uploaded. Two further packages await a decision on project names. Original public digests could let someone with a derivative confirm a guess of redacted text.
+- **Correction:** the first eligibility scan reported no home-path matches but did not look for home-relative paths; the rescan found one in an essential package.
+- **Restricted-archive script:** a second version limits scope to the five project evidence folders by regular file, excludes staging copies, refuses linked entries and output inside the scope, and detects extra files. Synthetic self-test passed. No real archive was created.
+- **Deviation (recorded):** three missions' work overlapped, beyond the two-active-mission guidance, under the owner's two-wave approval.
+- **Concurrency evaluation (no policy change):** the overlapping work used separate files and produced no observed conflict; the costs seen were a branch update required by the strict up-to-date rule and several decisions waiting on one owner. A risk-based rule could allow parallel local or pull-request work on disjoint files while limiting overlapping-file, hosted or irreversible work to one mission at a time. One mission is too little evidence; keep the numeric limit and reassess after further missions.
+- **Further failures and holds:** a staging step did not start because of a wrong log path; a staging copy that retained unreferenced held objects was replaced by a clean one before any push, and push is disabled on all local staging copies. Logs and copies are retained.
+
+| Metric | Cumulative value | Source |
+| --- | --- | --- |
+| Owner mission messages | 2 | conversation |
+| Consolidated owner requests by the agent | 1, with a follow-up pending | conversation |
+| Preparation-only rounds | 0 | conversation |
+| Integrated pull requests | 1 | repository |
+| Wall time | 2026-11-27T20:41:20Z to 2026-11-27T20:56:01Z, including owner waiting | timestamps |
+| Active execution time, tokens, billed units, cost | UNKNOWN | not observed |
+| Scope violations | none observed | agent |
+
 ## Outcome and lifecycle
 
 - **Technical outcome:** PARTIAL. Owner-only security actions, upload, restore from custody and restricted storage are pending.

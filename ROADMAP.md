@@ -27,9 +27,9 @@ At most two missions are active at once. W01 requires step 1 integrated, a pilot
 |---|---|---|
 | C1 | `main` is default and its ruleset is read back at closure | met at the last read-back; repeat at closure |
 | C2 | legacy `master` and `develop` frozen and retained, decision recorded, `master` install URL preserved | met (OD-30) |
-| C3 | essential evidence in the approved private repository, anchored by digest in the public index | **not met**: repository created, no evidence uploaded |
+| C3 | essential evidence in the approved private repository, anchored by digest in the public index | **not met**: repository created, no evidence uploaded; sanitized derivatives proposed for held packages (OD-35) |
 | C4 | restore of all essential evidence in a clean environment (fresh clones, no original evidence folders), digests matching public anchors, legacy tip checks passing, record reviewed at Gate 2 | **not met**: a local rehearsal from staging is not a restore from custody |
-| C5 | available originals in restricted storage with verified copies, or a recorded owner exception (OD-21) | **not met** |
+| C5 | available originals in restricted storage with verified copies, or a recorded owner exception (OD-21) | **not met**: two-location strategy proposed (OD-35); no verified copy |
 | C6 | missing records listed as `MISSING_OR_UNKNOWN` and accepted at closure | listed; acceptance pending |
 | C7 | current documents reconciled through pull requests with `ci-gate` | in progress |
 
@@ -77,14 +77,14 @@ Classes: **Committed** (owner-accepted sequence), **Proposed** (near-term, needs
 | Mission | H | Class | Priority · findings | Dependency / note |
 |---|---|---|---|---|
 | M-01 GOV-TRUNK-001 | H1 | In progress: Phase 1 accepted; Phase 2 S0-S7 complete, S8 preparation partial; legacy branches frozen and retained (OD-30); durable remote evidence custody pending; remote closure NOT_MET | P0 · DA-D09-01..03, DA-D10-04, DA-D08-04 | hosted state read 2026-11-27; trunk `main` (OD-24, OD-26); custody per OD-29; before any tag |
-| M-02 SEC-DOC-001: Security, Privacy and Information Governance | H1 | Minimum slice (classification, pilot data handling, verifier disclosure) proposed in its own pull request; remaining scope open | P1 · DA-D08-01(R1), -04, -05, -06 | documentation only; discloses current untracked-content behaviour; adds information classification, evidence privacy, commit identity and retention |
+| M-02 SEC-DOC-001: Security, Privacy and Information Governance | H1 | Minimum slice (classification, pilot data handling, verifier disclosure) integrated; remaining scope open | P1 · DA-D08-01(R1), -04, -05, -06 | documentation only; discloses current untracked-content behaviour; adds information classification, evidence privacy, commit identity and retention |
 | M-03 VERIFIER-UNTRACKED-001: verifier confidentiality and scope integrity | H1 | Proposed, **candidate public-release blocker**; decision-gated | P1 · DA-D08-01 | design choice not approved; deterministic scope verification must not be weakened; see security posture below |
 | M-04 RELEASE-ENG-001 | H1 | Proposed | P1 · DA-D10-01..03, DA-D09-05/06 | needs RG-1, RG-2, RG-3 and the release-policy decision |
 | M-05 OSS-HYGIENE-001 | H1 | Proposed | P2 · DA-D11-01/02 | owner contacts and files |
 | M-06 PLATFORM-PREFLIGHT-001 (resumes WSL2-001, suspended) | H1 | Deferred (OD-31); suspended work and evidence preserved | P1 · DA-D06-01 | WSL2 claim only if observed; needs the hygiene decision first |
 | M-07 AGENT-QUAL-001 | H1 | Proposed | P1 · DA-D04-01/02, DA-D07-03 | live budget and authorization pending (RG-6); one exact Claude Code version |
 | M-08 DOCS-IA-001 | H1 | Proposed | P1 · DA-D01-01/02, DA-D12-01..03 | owns the single `README.md` rewrite (README is not changed by the alignment mission) |
-| M-09 W01 | H2 | **Committed** sequence (OD-07, OD-11); preparation (M064-A) in progress | P1 · DA-D03-03, DA-D13-02 | static personal website; execution pending accepted M064-A, preflight and separate authorizations |
+| M-09 W01 | H2 | **Committed** sequence (OD-07, OD-11); M064-A preparation contract integrated | P1 · DA-D03-03, DA-D13-02 | static personal website; execution pending accepted M064-A, preflight and separate authorizations |
 | M-10 SITE-W02 | H2 | Proposed | P2 · DA-D12, DA-D14-01 | after W01 unless the owner changes it |
 | M-11 INDEP-QUAL-001 | H1 | Proposed | P1 · DA-D13-02, DA-D05-01 | independent person (RG-8) for `G3`/`G10` |
 | M-12 BENCH-RESEARCH-001 | H2 | Completed: accepted 2026-11-27 with limitations (EB-07 and part of EB-03 unresolved; no benchmark run) | P2 | focused non-blocking complement before M-13 pre-registration (OD-33); network access needs authorization |
