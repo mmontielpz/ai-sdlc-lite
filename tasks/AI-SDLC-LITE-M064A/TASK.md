@@ -52,7 +52,7 @@ Run on the owner-designated Ubuntu 24.04 environment before Gate 1 of the first 
 
 | Step | Command or action | Expected |
 |---|---|---|
-| P1 | `grep -E '^(ID|VERSION_ID)=' /etc/os-release` | `ubuntu`, `24.04` |
+| P1 | `grep -e '^ID=' -e '^VERSION_ID=' /etc/os-release` | `ubuntu`, `24.04` |
 | P2 | `python3 --version`; `git --version`; `python3 -c 'import setuptools'` | Python 3.9 or later; exit 0 |
 | P3 | `claude --version` | exact version recorded |
 | P4 | at the pinned commit: `python3 -m pip wheel --no-build-isolation --no-deps -w dist .`; `sha256sum dist/*.whl` | wheel built, digest recorded |
