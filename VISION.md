@@ -26,6 +26,8 @@
 
 **Trustworthiness (OD-27).** Trustworthiness is a cross-cutting framing of this direction: the aim is efficient software engineering that humans can delegate within governed boundaries, with verifiable outcomes. It renames no accepted statement (OD-12, OD-14), changes none of `H1`–`H6`, BOV, MSI, progressive autonomy or the research hypotheses, and claims no capability.
 
+**Bounded autonomy aspiration (OD-34).** The long-term aim is to let people delegate complex objectives to efficient, adaptive, governed and verifiable agentic systems capable of research, design, experimentation, implementation, validation and experience-driven improvement, with high levels of bounded autonomy for engineering and innovation. This is an aspiration under `H1`–`H6`, not a demonstrated capability; both human gates stay in force.
+
 ## Current position and limits
 
 - `2.0.0.dev1`, `EXPERIMENTAL`: an offline Python stdlib CLI, the BOV Skill bundle, the deterministic verifier and the local Experience journal are implemented. Qualification status and claims: `QUALIFICATION_MATRIX.md`.
