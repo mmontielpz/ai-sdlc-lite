@@ -3,7 +3,7 @@
 ## Bound and identity
 
 - Active contract and approval: user mission `AI-SDLC-LITE-V2-04F-CODEX-CLI-001`, supplied 2026-11-14. It explicitly authorizes reconstruction, validation, target branch creation and one local commit after local gates. Root TASK.md is an unfilled template; this mission is authoritative. This task-local record preserves the historical root RESULT.md.
-- Repository / verification cwd: `/home/mike/repos/ai-sdlc-lite-public-baseline`.
+- Repository / verification cwd: `<HOME>/repos/ai-sdlc-lite-public-baseline`.
 - Baseline: `c97cd3a306bdbc6033f6ef039ae4033bd8e7c472`, initial branch `feature/v2-04e-delivery-planner`, clean index/worktree. No divergence. Origin is the expected GitHub repository; no remote calls were made. PR #6 state is user-supplied, not independently verified.
 - Recovery: `git cat-file -t 29d98d0b2a4c4bdba7c82497d868f84f248d2457` exited 128 (object unavailable). Local branches, reflogs, unreachable-object inspection and matching local artifact filenames yielded no V2-04F implementation. This implementation is reconstructed, not the original isolated commit.
 - Applicable controls: root AGENTS.md, WORKFLOW.md, CHECKLIST.md, README.md and ai-sdlc-lite skill; no nested AGENTS.md in affected directories. Mission supplies approval; no additional approval is inferred from blank templates.

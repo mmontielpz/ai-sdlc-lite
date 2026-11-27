@@ -4,7 +4,7 @@
 
 - Mission: `AI-SDLC-LITE-SAFETY-D4-002`
 - Baseline: `develop` `26472d169ed124e401c8f3d08bd541c308763076`
-- Branch: `fix/d4-commit-provenance` (isolated worktree `/home/mike/worktrees/ai-sdlc-lite-d4`)
+- Branch: `fix/d4-commit-provenance` (isolated worktree `<HOME>/worktrees/ai-sdlc-lite-d4`)
 
 ## Root cause and reproduction
 

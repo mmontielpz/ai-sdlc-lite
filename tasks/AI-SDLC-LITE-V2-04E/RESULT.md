@@ -4,7 +4,7 @@
 
 - Active contract and plan approval: user mission `MISSION=AI-SDLC-LITE-V2-04E`, titled **Deterministic Git Delivery Planner**, IMPLEMENTATION — OFFLINE ONLY. This explicit mission supplies authorization under AGENTS.md; root TASK.md remains an unused blank template.
 - Baseline: `7f925cd0c45b6501d743d09ebd8c9569edced40e`; master and HEAD matched; checkout initially clean.
-- Environment: repository `/home/mike/repos/ai-sdlc-lite-public-baseline`, Linux, Python 3.14.9, managed workspace-write sandbox, approval policy never. No network tools used, dependencies installed, or provider inference requested.
+- Environment: repository `<HOME>/repos/ai-sdlc-lite-public-baseline`, Linux, Python 3.14.9, managed workspace-write sandbox, approval policy never. No network tools used, dependencies installed, or provider inference requested.
 - Applicable instructions: root AGENTS.md, CHECKLIST.md, WORKFLOW.md, README.md and `.agents/skills/ai-sdlc-lite/SKILL.md`. No directory-specific AGENTS.md found. Mission authorizes this task-specific result path instead of historical root RESULT.md.
 - Plan: direct regular-file Git metadata reads, strict request/schema validation, canonical SHA-256 sealing, live snapshot verification, sanitized report; additive lazy CLI routing, adversarial tests, documentation, CI inventory. Preserve all existing behavior and golden fixtures. Stop for unavailable metadata writes; no bypass.
 
@@ -39,7 +39,7 @@ The checked snapshot is baseline plus these uncommitted file SHA-256 values. Thi
 | Python 3.9 compatibility | PARTIAL | All changed Python files parse with Python 3.9 grammar; no local python3.9 interpreter; actual 3.9 runtime NOT_RUN. Existing 3.9 CI matrix retained but hosted CI NOT_RUN |
 | Feature branch and commit | BLOCKED | Sandbox reports `.git` W_OK false. No metadata write attempted, no broader permission sought. Requested branch remains uncreated |
 
-All commands below use working directory `/home/mike/repos/ai-sdlc-lite-public-baseline`. Test process logs are ephemeral local evidence under `/tmp`; durable summaries follow. `UPDATE_GOLDEN` was not enabled. Tests use disposable fixtures and may run their existing local helper subprocesses; the delivery commands themselves do not execute subprocesses.
+All commands below use working directory `<HOME>/repos/ai-sdlc-lite-public-baseline`. Test process logs are ephemeral local evidence under `/tmp`; durable summaries follow. `UPDATE_GOLDEN` was not enabled. Tests use disposable fixtures and may run their existing local helper subprocesses; the delivery commands themselves do not execute subprocesses.
 
 | Phase / check | Exact command / procedure | Exit | Observed result |
 | --- | --- | --- | --- |
