@@ -24,11 +24,13 @@
 
 **How to read these statements.** They are direction and ambition, not achieved capabilities: no standard, standards body, certification or external adoption exists, and "increasingly autonomous" means evidence-gated and owner-approved with both human gates kept. "Provider-independent" means a provider-neutral core; qualification stays provider-specific (OD-01: Claude Code first; "supported" only with a dated VERIFIED row, `QUALIFICATION_MATRIX.md`). Quality, security, reliability, accountability and verifiability are constraints on every efficiency goal, and the reductions named in the product goal are hypotheses to measure, not results.
 
+**Trustworthiness (OD-27).** Trustworthiness is a cross-cutting framing of this direction: the aim is efficient software engineering that humans can delegate within governed boundaries, with verifiable outcomes. It renames no accepted statement (OD-12, OD-14), changes none of `H1`–`H6`, BOV, MSI, progressive autonomy or the research hypotheses, and claims no capability.
+
 ## Current position and limits
 
 - `2.0.0.dev1`, `EXPERIMENTAL`: an offline Python stdlib CLI, the BOV Skill bundle, the deterministic verifier and the local Experience journal are implemented. Qualification status and claims: `QUALIFICATION_MATRIX.md`.
 - Public distribution, release and tagging are **not currently authorized** (OD-10). The release policy (including how a Developer Preview relates to gates `G1`–`G10`) is unresolved; no qualification exception is approved, and `G1`–`G10` and both human gates stay in force.
-- Initial Developer Preview audience (OD-17): developers using Claude Code on small Linux repositories. Ubuntu 24.04 LTS is the initial qualification target; Ubuntu WSL2 is conditional on observed qualification; development environments such as CachyOS or Arch are observed only, never inferred as supported.
+- Initial Developer Preview audience (OD-17): developers using Claude Code on small Linux repositories. Ubuntu 24.04 LTS is the priority qualification target; Ubuntu WSL2 is deferred; Debian and Fedora are later candidates; CachyOS and Arch are observed only, never inferred as supported; macOS and native Windows are outside the immediate scope (OD-31).
 - No benchmark has run; efficiency, multi-agent and autonomy statements below are hypotheses or ambition, classified in `docs/research/RESEARCH_AGENDA.md`.
 
 ---
@@ -93,6 +95,8 @@ The six earlier pillars are preserved verbatim as the former organization; they 
 ---
 
 ## 4. Long-Term Product Evolution (Conceptual; earlier flow, preserved)
+
+Note: OD-28 places the first website pilot (`W01`) before the experimental public release. The earlier flow below is preserved; the current sequence is in `ROADMAP.md`.
 
 ```mermaid
 flowchart LR
