@@ -8,9 +8,10 @@ Template: replace placeholders for one task. A blank approval is pending. An exi
 - **Task revision:** <revision label; increment when the contract changes>
 - **Repository and baseline:** <repository; commit SHA, or NO COMMIT for a new repository; existing changes>
 - **Objective:** <problem and desired behavior>
-- **In scope:** <allowed files or areas and changes>
+- **In scope:** <allowed files or areas and changes; include the checkpoint file if it will be updated>
 - **Out of scope:** <excluded work>
 - **Constraints:** <dependencies, environment, data, time, and prohibited actions>
+- **Evidence dimensions:** <IMPLEMENTED, VERIFIED and HUMAN ACCEPTED apply by default; state NOT APPLICABLE with a reason for INTEGRATED and VALIDATED, or the evidence they require>
 
 ## Design — Bound
 

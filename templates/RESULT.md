@@ -37,6 +37,13 @@ Missing measurements are UNKNOWN, never zero. A measured zero needs a source. Re
 | Observed tokens (separate rows per reported category) | UNKNOWN | tokens | UNKNOWN | UNKNOWN |
 | Provider-reported billed units | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN |
 | Monetary cost (actual charges) | UNKNOWN | UNKNOWN currency | UNKNOWN billing evidence | UNKNOWN |
+| Corrective interventions after Gate 1 (count; list each with its reason) | UNKNOWN | count | UNKNOWN | UNKNOWN |
+| Governance interventions (Gate 1, Gate 2, plan-required permission approvals; never counted as corrective) | UNKNOWN | count | UNKNOWN | UNKNOWN |
+| Rework cycles (a return to a previously complete state because a stated requirement or acceptance criterion demonstrably failed, found by verify, Gate 2, a check, review or the agent's own check before formal verification; planned iterations and approved scope revisions are not rework) | UNKNOWN | cycles | UNKNOWN | UNKNOWN |
+| Instruction conflicts encountered (an instruction found to conflict with another or to be outdated; cite the files) | UNKNOWN | count | UNKNOWN | UNKNOWN |
+| Terminal status and elapsed observation time (accepted / rejected / blocked / abandoned / in progress) | UNKNOWN | status; seconds | UNKNOWN | UNKNOWN |
+
+Record every task, including unsuccessful, blocked, abandoned and rejected ones. Ratios per accepted task use accepted tasks only and report the number of non-accepted tasks beside them. A lower time, token or intervention count is not an improvement when verification or acceptance outcomes are worse; a single run supports no causal claim.
 
 Elapsed time includes waiting unless separately measured; record start/end timestamps with timezone in its source. Identify the operation counted for retries. Token counts do not establish charges. If a cost estimate is useful, add a separate row labeled ESTIMATE with currency, price source, assumptions, and window; do not replace actual charges with it.
 
@@ -52,6 +59,18 @@ A zero native-permission count requires a complete operator-maintained count or 
 - **Build / Test:** <implementation and verification references above>
 - **Deploy:** NOT PERFORMED — no release action authorized by this template. <If performed, record separate authorization, target revision, verification, and rollback evidence.>
 - **Maintain:** <remaining issues, owner, next action; or not applicable with reason>
+
+### Evidence states (dimensions, not gates)
+
+The approved `TASK.md` declares which dimensions apply. Outcomes: PASS, FAIL, PARTIAL, BLOCKED, NOT RUN, UNKNOWN, NOT APPLICABLE (with a reason). The technical outcome above stays PASS, PARTIAL or BLOCKED.
+
+| Dimension | Outcome | Evidence reference and who ran it |
+| --- | --- | --- |
+| IMPLEMENTED | UNKNOWN | <diff and status> |
+| VERIFIED | UNKNOWN | <verification rows; agent, human or CI> |
+| INTEGRATED | NOT APPLICABLE | <reason, or evidence from the composed form such as the installed package or merged branch> |
+| VALIDATED | NOT APPLICABLE | <reason, or real-world observation in the intended environment> |
+| HUMAN ACCEPTED | UNKNOWN | <decision pending; see Human acceptance below> |
 
 ## Human acceptance — separate gate
 
