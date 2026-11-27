@@ -1,8 +1,27 @@
 # AI-SDLC Lite: roadmap
 
-## Strategic Product & Research Sequence (Added 2026-11-21)
+## Strategic Horizons H1–H6 and Current Sequence (horizons aligned 2026-11-27, AI-SDLC-LITE-STRATEGIC-DOCS-ALIGNMENT-001)
 
 **Current status:** `2.0.0.dev1` (`EXPERIMENTAL`, `Q1` PASS, `Q2` PARTIAL, `Q3` NOT_MET, `G3`/`G10` PENDING). See `VISION.md`, `docs/research/RESEARCH_AGENDA.md`, `docs/engineering/ENGINEERING_BASELINE.md`, `docs/engineering/FINDINGS_REGISTER.csv`, and `docs/engineering/METRICS_CATALOG.csv`.
+
+This is the single active strategic roadmap. Horizons `H1`–`H6` (OD-15) give direction; they are **not** executable missions, carry **no dates**, and are advanced by exit evidence, not by time. Identifiers are preserved: horizons H1–H6, finding priorities P0–P3, gates `G1`–`G10`, tracks `R01`–`R08`, metrics `M1`–`M5`, missions `M-01`–`M-14` (accepted Deep Audit, finding IDs `DA-*`), decisions `OD-*`/`D*`/`RG-*`. The strategic identity (North Star, pillars SP-01–SP-06) is in `VISION.md`. Historical stages, Part A/B and decisions D1–D14 below are unchanged; "P0–P6" in Part B means phases, not finding priorities.
+
+**Current position:** `2.0.0.dev1` is an `EXPERIMENTAL` baseline. H1 is in progress: the framework and open-source readiness are implemented, and release engineering, hosted settings, platform and agent qualification are unobserved or open. **No implementation mission is authorized by this roadmap, and public distribution is not currently authorized** (OD-10). Both human gates and `G1`–`G10` stay in force; no qualification exception is approved.
+
+### Horizons
+
+| H | Direction | Exit evidence (advances the horizon) | Pillars |
+|---|---|---|---|
+| H1 | Professional Foundation: a credible, secure, maintainable pre-release on Ubuntu 24.04 with Claude Code evidence, for the Developer Preview audience (OD-17) | accepted release path, gates met or release policy resolved, current claims table, owner-approved release decision | SP-04, SP-06, SP-02 |
+| H2 | Efficient Agentic Engineering: measure, against a native-agent control and with failures included, whether BOV improves quality-adjusted cost | pre-registered pilot or benchmark data (`M1`–`M5` plus candidates), reported with null and negative results | SP-01, SP-05 |
+| H3 | Multi-Agent Interoperability: same task and evidence contracts across agents; value of multi-agent roles tested, not assumed | two agents observed on one contract; multi-agent arm result against single-agent | SP-02, SP-03 |
+| H4 | Adaptive Engineering Intelligence: experience-driven adaptation and routing tested | effect or null result on rework and time | SP-03, SP-01 |
+| H5 | Autonomous Engineering: bounded autonomy classes with preserved accountability (`A3`–`A5` are research candidates, OD-16) | escaped-defect and intervention data plus an explicit owner decision | SP-03, SP-04 |
+| H6 | Open Industry Standard (ambition): independently implementable specification, conformance and community | independent implementation and external adoption evidence | SP-06, SP-02 |
+
+H2 research is **not** blocked on completing H1: early measurement and pilot design may proceed before any public release (framework overhead, `M1`–`M5`, efficiency observations as early as practical), each needing its own execution authorization. W01 remains the first accepted real-world pilot, and W01 comes before W02 unless the owner changes it. A single pilot supports no causal claim.
+
+### Existing stage sequence (accepted 2026-11-21; unchanged) with horizon mapping
 
 1. **Framework Foundation** *(Implemented on `develop`)* — Deterministic `ai-sdlc` CLI, BOV contracts, wheel distribution, worktree `init` & Skill lifecycle.
 2. **Open Source Readiness** *(Implemented on `develop`)* — Repository/branch hygiene, redesigned `README.md`, canonical Mermaid diagrams, minimal governance, engineering baseline (`GF-02` local triage optional).
@@ -21,6 +40,45 @@
 9. **Experience-Driven Adaptation** — Cross-project Experience analysis and safe policy adaptation (`GF-04`, `GF-18`).
 10. **Cross-Domain Generalization** — Later domains after Website: **JACK**, **TAKO**, **FOB**, and **Physical AI** (`GF-16` if cross-OS demand arises).
 11. **Scientific Publication** — Reproducible benchmark package and arXiv preprint.
+
+Horizon mapping: stages 1, 2, 4 → H1 (stage 4 is the Developer Preview ladder step; naming and policy open, see below); 3, 5, 6 → H2 (W01 is the first evidence source; W02 also supports H1 communication); 7 → H2 then H3; 8, 9 → H4; 10 → H4–H5 (GQ/FOB/Studio stay outside the critical path, OD-09); 11 → H2 for demonstrated results, H6 for a specification. Tracks: `R01`, `R02`, `R05` → H2; `R07` → H1–H3; `R03`, `R04`, `R06` → H4; `R08` → H2 to H5.
+
+### Mission index (Deep Audit `M-01`–`M-14`; none is authorized)
+
+Classes: **Committed** (owner-accepted sequence), **Proposed** (near-term, needs its own Gate 1), **Conditional** (only on a trigger or decision), **Research** (needs separate execution authorization). Priority and findings are those of the accepted audit.
+
+| Mission | H | Class | Priority · findings | Dependency / note |
+|---|---|---|---|---|
+| M-01 GOV-TRUNK-001 | H1 | Proposed | P0 · DA-D09-01..03, DA-D10-04, DA-D08-04 | verify hosted settings first; O2 direction below; before any tag |
+| M-02 SEC-DOC-001 | H1 | Proposed | P1 · DA-D08-01(R1), -04, -05, -06 | documentation only; discloses current untracked-content behaviour |
+| M-03 VERIFIER-UNTRACKED-001 | H1 | Proposed, **candidate public-release blocker**; decision-gated | P1 · DA-D08-01 | design choice not approved; see security posture below |
+| M-04 RELEASE-ENG-001 | H1 | Proposed | P1 · DA-D10-01..03, DA-D09-05/06 | needs RG-1, RG-2, RG-3 and the release-policy decision |
+| M-05 OSS-HYGIENE-001 | H1 | Proposed | P2 · DA-D11-01/02 | owner contacts and files |
+| M-06 PLATFORM-PREFLIGHT-001 (resumes WSL2-001, suspended) | H1 | Proposed | P1 · DA-D06-01 | WSL2 claim only if observed; needs the hygiene decision first |
+| M-07 AGENT-QUAL-001 | H1 | Proposed | P1 · DA-D04-01/02, DA-D07-03 | live budget and authorization pending (RG-6); one exact Claude Code version |
+| M-08 DOCS-IA-001 | H1 | Proposed | P1 · DA-D01-01/02, DA-D12-01..03 | owns the single `README.md` rewrite (README is not changed by the alignment mission) |
+| M-09 W01 | H2 | **Committed** sequence (OD-07, OD-11) | P1 · DA-D03-03, DA-D13-02 | execution pending M064-A and separate authorizations |
+| M-10 SITE-W02 | H2 | Proposed | P2 · DA-D12, DA-D14-01 | after W01 unless the owner changes it |
+| M-11 INDEP-QUAL-001 | H1 | Proposed | P1 · DA-D13-02, DA-D05-01 | independent person (RG-8) for `G3`/`G10` |
+| M-12 BENCH-RESEARCH-001 | H2 | Research | P2 | needs network authorization |
+| M-13 BENCH-001 | H2 (arms later H3/H4) | Research | P3 · DA-D13-01 | needs pre-registration and execution authorization |
+| M-14 ARCH-DEBT-001 | H1 | Conditional | P3 · DA-D02-01..04 | only when its triggers occur |
+
+Candidate shortest path to a Developer Preview (owner decisions, then M-01, M-02, reduced M-08, reduced M-04, M-07, M-11, with M-03 as a candidate blocker) is estimated in the accepted audit at about 7–13.5 working days; that estimate is unvalidated and no date follows from it. Keep at most two active missions at once, documentation before code.
+
+### Owner direction recorded here (not decisions; no OD number assigned)
+
+- **Security posture:** secure-by-default is the intended posture. The verifier's reading and SHA-256 hashing of all untracked files (DA-D08-01) is a **candidate public-release blocker** until its confidentiality and scope-integrity implications are resolved; fail-closed behaviour with explicit authorization for additional inspection modes is to be evaluated. No implementation is approved, and deterministic scope verification must not be weakened. Until resolved, public claims must not present the verifier as safe on arbitrary working trees.
+- **Governance:** the proposed direction for M-01 is **O2**, a controlled migration to `main` as the single permanent trunk with temporary feature branches, pull requests, required CI and tagged releases. It is not authorization to rename or modify any branch; hosted settings and migration cost are verified first.
+- **Release policy:** the existing contradiction between `docs/engineering/ENGINEERING_BASELINE.md` and `docs/product/RELEASE_GATES_RECONCILED.md` must be resolved before public distribution. "Developer Preview" does not bypass security, correctness or qualification requirements, and private evaluation stays distinct from public distribution. No blanket exception is approved.
+- **Platforms:** Linux first; Ubuntu 24.04 LTS is the initial qualification target; Ubuntu WSL2 is a high-priority target conditional on observed qualification; CachyOS and Arch are development or observed-only environments until qualified. Support is never inferred from development use.
+
+### Dependencies, owner decisions and acceptance evidence
+
+- **Release blockers:** the release-policy decision; RG-1, RG-2, RG-3; reporting route and hosted settings (DA-D08-04); DA-D08-01 resolution; independent `G3`/`G10` evidence; Claude Code smoke evidence for one exact version.
+- **Open owner decisions:** RG-1 to RG-6 and RG-8, DA-D08-01 posture, history-hygiene policy, Python floor, WSL2-001 resumption, live budget (RG-6), external research authorization. All remain open (`docs/product/OWNER_DECISION_AMENDMENTS.md`).
+- **Acceptance evidence:** each mission needs its own Gate 1 and a Gate 2 with a dated evidence package; horizon exit evidence is as tabled above. Qualification status stays in `QUALIFICATION_MATRIX.md`.
+- **Research candidates:** hypotheses HY-01 to HY-10, benchmark arms and quality-adjusted cost are research candidates (OD-18), defined in `docs/research/RESEARCH_AGENDA.md` and `docs/research/BENCHMARK_PROTOCOL.md`; they authorize no experiment, provider call or instrumentation.
 
 ---
 
