@@ -107,7 +107,7 @@ flowchart LR
   E --> W["4. Website Program (W01-W05)"]
   W --> B["5. Controlled Benchmarking & Optimization"]
   B --> H["6. Adaptive SLM/LLM & Experience"]
-  H --> X["7. Cross-Domain (JACK, TAKO, FOB, Physical AI)"]
+  H --> X["7. Cross-Domain (JACK, TAKO, Private Project A, Physical AI)"]
   X --> P["8. Scientific Publication (arXiv & Reproducibility Pkg)"]
 ```
 

@@ -245,7 +245,7 @@ class InvalidConfigurations(Base):
 
 class UnsafePathsAndRunners(Base):
     BAD_PATHS = ['/etc/passwd', '../escape', 'a/../../b', 'a\\b', '~/saves', '$HOME/x', '%APPDATA%/x', 'res://x',
-                 'user://fob.cfg', 'C:/x', './x', 'a//b', '', 'bad\0name']
+                 'user://sample.cfg', 'C:/x', './x', 'a//b', '', 'bad\0name']
 
     def test_unsafe_patterns_are_refused_in_every_path_list(self):
         for section in ('protected', 'allowed', 'sensitive_allowed', 'generated', 'ignorable'):
@@ -292,7 +292,7 @@ class UnsafePathsAndRunners(Base):
         self.assertBlocked(self.run_validate(), 'runner_isolation_unasserted')
 
     def test_arguments_cannot_reach_user_data_or_leave_the_project(self):
-        for arg in ('user://fob.cfg', '--user=/synthetic/.local/share/godot/app_userdata', '/etc/passwd', '../x', '$HOME',
+        for arg in ('user://sample.cfg', '--user=/synthetic/.local/share/godot/app_userdata', '/etc/passwd', '../x', '$HOME',
                     '~/x', '--cfg=~/.config/godot/editor_settings'):
             with self.subTest(arg=arg):
                 broken = copy.deepcopy(self.config)
@@ -419,12 +419,29 @@ class DocumentationStaysInSync(unittest.TestCase):
             self.assertEqual(va.main(['--config', 'x', '--project', 'y', '--codes']), 0)
         self.assertEqual(set(json.loads(buffer.getvalue())), set(va.FINDING_CODES))
 
-    def test_adapter_has_no_fob_or_agent_specific_content(self):
-        for path in ADAPTER.rglob('*'):
+    # Synthetic stand-ins only. Real private identifiers are never written here;
+    # maintainers check them with a separate restricted scan.
+    FORBIDDEN_WORDS = ('synthetic-private-project', 'synthetic private studio', 'claude', 'codex', 'copilot')
+
+    def forbidden_hits(self, root):
+        hits = []
+        for path in sorted(root.rglob('*')):
             if path.is_file() and path.suffix in {'.py', '.json', '.md', '.gd', '.sh', '.godot'}:
                 text = path.read_text().lower()
-                for word in ('fix one', 'fob', 'game studio', 'claude', 'codex', 'copilot'):
-                    self.assertNotRegex(text, rf'\b{re.escape(word)}\b', f'{word} in {path.name}')
+                hits += [(path.name, word) for word in self.FORBIDDEN_WORDS
+                         if re.search(rf'\b{re.escape(word)}\b', text)]
+        return hits
+
+    def test_adapter_has_no_project_or_agent_specific_content(self):
+        self.assertEqual(self.forbidden_hits(ADAPTER), [])
+
+    def test_forbidden_content_check_detects_synthetic_identifiers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'planted.md').write_text('Built for Synthetic-Private-Project in the Synthetic Private Studio.\n')
+            (root / 'clean.md').write_text('A generic Godot project declaration.\n')
+            self.assertEqual(self.forbidden_hits(root), [('planted.md', 'synthetic-private-project'),
+                                                         ('planted.md', 'synthetic private studio')])
 
 
 if __name__ == '__main__':
