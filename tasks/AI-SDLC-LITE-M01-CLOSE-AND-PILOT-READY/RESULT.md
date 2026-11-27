@@ -80,9 +80,35 @@ Descriptive comparison with the partial S7-S9a baseline (7 owner mission message
 - **Existing public content:** impact review and a minimal remediation scope are held in restricted evidence for a separately authorized mission. No current public document, history, branch or pull request was changed for it.
 - **Owner mission messages:** 4. **Upload:** none.
 
+## Final custody execution (supersedes earlier pending statements)
+
+| Check | Outcome |
+| --- | --- |
+| Owner confirmations | two-factor authentication, application review, token access, upload set and local-only exception (OD-36) |
+| Upload | the approved commit `8488c99cc057a1cc1c99f59922c95871a6e89a87`: 8 evidence IDs, 98 files, 485,121 bytes |
+| Remote integrity | 102 file object IDs and paths identical to the approved local tree; private, Actions disabled, one collaborator, no webhooks, deploy keys, Pages, releases or runs; anonymous request returns 404 |
+| Restore from remote custody | fresh public clone of this branch and fresh private clone into an empty directory: all packages verify against public anchors, derivative provenance matches original anchors, legacy tips reachable; a modified copy fails. Same machine; independent machine NOT_TESTED |
+| Hosted read-back | `main` default; both rulesets active without bypass actors; legacy tips unchanged |
+| Encrypted package | owner reported encryption and verification PASS; the agent confirmed the encrypted file digest only |
+
+| Metric | Value | Source |
+| --- | --- | --- |
+| Owner mission messages | 6 (mission approval, partial authorization, two classification directions, packaging request, final authorization) | conversation |
+| Agent reports asking for owner action | 5 | conversation |
+| Integrated pull requests | 1; this one pending | repository |
+| Wall time | 2026-11-27T20:41:20Z to 2026-11-27T21:41:13Z, including owner waiting | timestamps |
+| Active execution time, tokens, billed units, cost, native permission prompts | UNKNOWN | not observed |
+| Corrections | eligibility scans missed home-relative paths and identifiers inside test names; one derivative rebuilt; one invalid tamper control redone | logs |
+| Failures | scaffold push refspec; one staging step not started (log path); a staging copy with unreferenced held objects replaced before any push | logs |
+| Deviations | three missions overlapped (recorded above) | agent |
+| Scope violations | none observed | agent |
+
+Compared descriptively with the partial earlier baseline, this mission used 6 owner messages for two pull requests, custody and restore; the work differs, so no efficiency improvement is claimed.
+
 ## Outcome and lifecycle
 
-- **Technical outcome:** PARTIAL. Owner-only security actions, upload, restore from custody and restricted storage are pending.
-- **M-01:** NOT closed.
+- **Technical outcome:** PASS for the authorized scope, with the limitations below.
+- **Limitations:** offline and remote restricted copies outstanding until 2026-12-27; later mission records are local and unencrypted; restore tested on one machine; write-once custody paths are a convention; push and deletion rejection NOT_TESTED; follow-up content review not started.
+- **M-01:** closes on Gate 2, integration and confirmed synchronization.
 - **Gate 2:** PENDING.
 - **Deploy:** NOT PERFORMED.

@@ -25,13 +25,13 @@ At most two missions are active at once. W01 requires step 1 integrated, a pilot
 
 | ID | Criterion | State on 2026-11-27 |
 |---|---|---|
-| C1 | `main` is default and its ruleset is read back at closure | met at the last read-back; repeat at closure |
+| C1 | `main` is default and its ruleset is read back at closure | met: read back 2026-11-27 |
 | C2 | legacy `master` and `develop` frozen and retained, decision recorded, `master` install URL preserved | met (OD-30) |
-| C3 | essential evidence in the approved private repository, anchored by digest in the public index | **not met**: repository created, no evidence uploaded; sanitized derivatives proposed for seven held packages (OD-35) |
-| C4 | restore of all essential evidence in a clean environment (fresh clones, no original evidence folders), digests matching public anchors, legacy tip checks passing, record reviewed at Gate 2 | **not met**: a local rehearsal from staging is not a restore from custody |
-| C5 | available originals in restricted storage with verified copies, or a recorded owner exception (OD-21) | **not met**: two-location strategy proposed (OD-35); no verified copy |
-| C6 | missing records listed as `MISSING_OR_UNKNOWN` and accepted at closure | listed; acceptance pending |
-| C7 | current documents reconciled through pull requests with `ci-gate` | in progress |
+| C3 | essential evidence in the approved private repository, anchored by digest in the public index | met: 8 essential evidence IDs uploaded and verified; anchors reach `main` with this change |
+| C4 | restore of all essential evidence in a clean environment (fresh clones, no original evidence folders), digests matching public anchors, legacy tip checks passing, record reviewed at Gate 2 | met, pending Gate 2 review: restored from the private repository into an empty directory on the same machine; an independent machine was not tested |
+| C5 | available originals in restricted storage with verified copies, or a recorded owner exception (OD-21) | met by recorded exception until 2026-12-27 (OD-36): encrypted local package verified; offline and remote copies outstanding |
+| C6 | missing records listed as `MISSING_OR_UNKNOWN` and accepted at closure | listed; accepted by Gate 2 of this change |
+| C7 | current documents reconciled through pull requests with `ci-gate` | met on integration of this change |
 
 The final change gets Gate 2 before integration. Remote synchronization is then confirmed as the closure postcondition, not as a further approval. Closure does not require branch deletion, optional evidence migration, sanitized copies, bundle upload, immutable releases or tag protection (M-04). Rejection of direct pushes, force-pushes and deletion is `NOT_TESTED`; closing with that limitation needs owner acceptance.
 
@@ -76,8 +76,8 @@ Classes: **Committed** (owner-accepted sequence), **Proposed** (near-term, needs
 
 | Mission | H | Class | Priority · findings | Dependency / note |
 |---|---|---|---|---|
-| M-01 GOV-TRUNK-001 | H1 | In progress: Phase 1 accepted; Phase 2 S0-S7 complete, S8 preparation partial; legacy branches frozen and retained (OD-30); durable remote evidence custody pending; remote closure NOT_MET | P0 · DA-D09-01..03, DA-D10-04, DA-D08-04 | hosted state read 2026-11-27; trunk `main` (OD-24, OD-26); custody per OD-29; before any tag |
-| M-02 SEC-DOC-001: Security, Privacy and Information Governance | H1 | Minimum slice (classification, pilot data handling, verifier disclosure) integrated; remaining scope open | P1 · DA-D08-01(R1), -04, -05, -06 | documentation only; discloses current untracked-content behaviour; adds information classification, evidence privacy, commit identity and retention |
+| M-01 GOV-TRUNK-001 | H1 | Closes on Gate 2 and integration of the S9b change, once remote synchronization is confirmed (criteria above); open follow-up: restricted copies by 2026-12-27 (OD-36); push and deletion rejection NOT_TESTED | P0 · DA-D09-01..03, DA-D10-04, DA-D08-04 | trunk `main` (OD-24, OD-26); legacy branches frozen and retained (OD-30); custody per OD-29, OD-35, OD-36; before any tag |
+| M-02 SEC-DOC-001: Security, Privacy and Information Governance | H1 | Minimum slice (classification, pilot data handling, verifier disclosure) integrated; remaining scope open, including a follow-up content review that needs its own Gate 1 | P1 · DA-D08-01(R1), -04, -05, -06 | documentation only; discloses current untracked-content behaviour; adds information classification, evidence privacy, commit identity and retention |
 | M-03 VERIFIER-UNTRACKED-001: verifier confidentiality and scope integrity | H1 | Proposed, **candidate public-release blocker**; decision-gated | P1 · DA-D08-01 | design choice not approved; deterministic scope verification must not be weakened; see security posture below |
 | M-04 RELEASE-ENG-001 | H1 | Proposed | P1 · DA-D10-01..03, DA-D09-05/06 | needs RG-1, RG-2, RG-3 and the release-policy decision |
 | M-05 OSS-HYGIENE-001 | H1 | Proposed | P2 · DA-D11-01/02 | owner contacts and files |
@@ -96,14 +96,14 @@ Candidate shortest path to a Developer Preview (owner decisions, then M-01, M-02
 ### Owner direction recorded here (not decisions; no OD number assigned)
 
 - **Security posture:** secure-by-default is the intended posture. The verifier's reading and SHA-256 hashing of all untracked files (DA-D08-01) is a **candidate public-release blocker** until its confidentiality and scope-integrity implications are resolved; fail-closed behaviour with explicit authorization for additional inspection modes is to be evaluated. No implementation is approved, and deterministic scope verification must not be weakened. Until resolved, public claims must not present the verifier as safe on arbitrary working trees.
-- **Governance (OD-20, OD-24, OD-26, OD-29, OD-30):** Repository-First Governance is operational for code and documentation: `main` is the default branch and canonical trunk, protected by an active ruleset (PR, strict `ci-gate`, no bypass actors, no force-push or deletion), merge commits only. Legacy `master` and `develop` are frozen by a second active ruleset and retained; eventual retirement needs the OD-30 conditions and separate authorization. Durable remote evidence custody, immutable releases and tag protection remain pending and each needs its own approved plan. M-01 is not yet closed.
+- **Governance (OD-20, OD-24, OD-26, OD-29, OD-30):** Repository-First Governance is operational for code and documentation: `main` is the default branch and canonical trunk, protected by an active ruleset (PR, strict `ci-gate`, no bypass actors, no force-push or deletion), merge commits only. Legacy `master` and `develop` are frozen by a second active ruleset and retained; eventual retirement needs the OD-30 conditions and separate authorization. Essential evidence is held in a private companion repository and restricted originals remain local until 2026-12-27 (OD-36). Immutable releases and tag protection remain pending and each needs its own approved plan. M-01 closure follows the criteria above.
 - **Release policy:** the existing contradiction between `docs/engineering/ENGINEERING_BASELINE.md` and `docs/product/RELEASE_GATES_RECONCILED.md` must be resolved before public distribution. "Developer Preview" does not bypass security, correctness or qualification requirements, and private evaluation stays distinct from public distribution. No blanket exception is approved.
 - **Platforms (OD-31):** Linux first; Ubuntu 24.04 LTS with Claude Code is the priority qualification target; Ubuntu WSL2 is deferred and any claim stays conditional on observed qualification; Debian and Fedora are later candidates; CachyOS and Arch are development or observed-only environments; macOS and native Windows are outside the immediate scope, and `G6` is unchanged. Support is never inferred from development use.
 
 ### Dependencies, owner decisions and acceptance evidence
 
 - **Release blockers:** the release-policy decision; RG-1, RG-2, RG-3; reporting route and hosted settings (DA-D08-04); DA-D08-01 resolution; independent `G3`/`G10` evidence; Claude Code smoke evidence for one exact version.
-- **Open owner decisions:** RG-1 to RG-6 and RG-8, DA-D08-01 posture, history-hygiene policy, Python floor, live budget (RG-6), restricted-storage locations, private evidence repository creation, external research execution. All remain open (`docs/product/OWNER_DECISION_AMENDMENTS.md`). WSL2-001 resumption is deferred (OD-31).
+- **Open owner decisions:** RG-1 to RG-6 and RG-8, DA-D08-01 posture, history-hygiene policy, Python floor, live budget (RG-6), restricted-storage copies (OD-36), external research execution. All remain open (`docs/product/OWNER_DECISION_AMENDMENTS.md`). WSL2-001 resumption is deferred (OD-31).
 - **Acceptance evidence:** each mission needs its own Gate 1 and a Gate 2 with a dated evidence package; horizon exit evidence is as tabled above. Qualification status stays in `QUALIFICATION_MATRIX.md`.
 - **Research candidates:** hypotheses HY-01 to HY-10, benchmark arms and quality-adjusted cost are research candidates (OD-18), defined in `docs/research/RESEARCH_AGENDA.md` and `docs/research/BENCHMARK_PROTOCOL.md`; they authorize no experiment, provider call or instrumentation.
 
