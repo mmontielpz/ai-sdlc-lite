@@ -8,6 +8,19 @@ This is the single active strategic roadmap. Horizons `H1`–`H6` (OD-15) give d
 
 **Current position:** `2.0.0.dev1` is an `EXPERIMENTAL` baseline. H1 is in progress: the framework and open-source readiness are implemented, and release engineering, hosted settings, platform and agent qualification are unobserved or open. **No implementation mission is authorized by this roadmap, and public distribution is not currently authorized** (OD-10). Both human gates and `G1`–`G10` stay in force; no qualification exception is approved.
 
+### Sequence through W01 (OD-28, recorded 2026-11-27)
+
+This sequence records order only and authorizes nothing; each step needs its own approval. OD-28 places W01 before the experimental public release, which amends the order of stages 4 and 5 in the stage sequence below; that text is preserved.
+
+1. S9a (decisions, evidence anchors, roadmap alignment): Gate 1, implementation, Gate 2, integration, then synchronization confirmed as the closure postcondition.
+2. Evidence custody execution and restore (separate Gate 1), with the M-02 slice beside it.
+3. S9b: custody status and M-01 closure.
+4. M064-A (W01 scope and measurement), W01 preflight (live execution and RG-6 budget separately authorized), then W01.
+5. After W01: W02, the official website of the methodology and framework ecosystem (OD-32). M-13 follows the focused M-12 complement (OD-33) and pre-registration. The relative order of W02 and M-13 is open.
+6. Experimental release only when the release policy and gates permit (OD-10, OD-32).
+
+At most two missions are active at once. W01 requires step 1 integrated, a pilot evidence custody decision (OD-29), M064-A and preflight. Completing steps 2 and 3 first is preferred, not required.
+
 ### Horizons
 
 | H | Direction | Exit evidence (advances the horizon) | Pillars |
@@ -43,24 +56,24 @@ H2 research is **not** blocked on completing H1: early measurement and pilot des
 
 Horizon mapping: stages 1, 2, 4 → H1 (stage 4 is the Developer Preview ladder step; naming and policy open, see below); 3, 5, 6 → H2 (W01 is the first evidence source; W02 also supports H1 communication); 7 → H2 then H3; 8, 9 → H4; 10 → H4–H5 (GQ/FOB/Studio stay outside the critical path, OD-09); 11 → H2 for demonstrated results, H6 for a specification. Tracks: `R01`, `R02`, `R05` → H2; `R07` → H1–H3; `R03`, `R04`, `R06` → H4; `R08` → H2 to H5.
 
-### Mission index (Deep Audit `M-01`–`M-14`; none is authorized)
+### Mission index (Deep Audit `M-01`–`M-14`; authorization is recorded per mission)
 
 Classes: **Committed** (owner-accepted sequence), **Proposed** (near-term, needs its own Gate 1), **Conditional** (only on a trigger or decision), **Research** (needs separate execution authorization). Priority and findings are those of the accepted audit.
 
 | Mission | H | Class | Priority · findings | Dependency / note |
 |---|---|---|---|---|
-| M-01 GOV-TRUNK-001 | H1 | In progress: Phase 1 accepted; hosted transition executed (S0-S5); remote closure NOT_MET (legacy branch retirement and durable remote evidence custody pending) | P0 · DA-D09-01..03, DA-D10-04, DA-D08-04 | hosted state read 2026-11-27; trunk `main` (OD-24, OD-26); before any tag |
-| M-02 SEC-DOC-001 | H1 | Proposed | P1 · DA-D08-01(R1), -04, -05, -06 | documentation only; discloses current untracked-content behaviour |
-| M-03 VERIFIER-UNTRACKED-001 | H1 | Proposed, **candidate public-release blocker**; decision-gated | P1 · DA-D08-01 | design choice not approved; see security posture below |
+| M-01 GOV-TRUNK-001 | H1 | In progress: Phase 1 accepted; Phase 2 S0-S7 complete, S8 preparation partial; legacy branches frozen and retained (OD-30); durable remote evidence custody pending; remote closure NOT_MET | P0 · DA-D09-01..03, DA-D10-04, DA-D08-04 | hosted state read 2026-11-27; trunk `main` (OD-24, OD-26); custody per OD-29; before any tag |
+| M-02 SEC-DOC-001: Security, Privacy and Information Governance | H1 | Proposed; preparation of a first slice approved (OD-28) | P1 · DA-D08-01(R1), -04, -05, -06 | documentation only; discloses current untracked-content behaviour; adds information classification, evidence privacy, commit identity and retention |
+| M-03 VERIFIER-UNTRACKED-001: verifier confidentiality and scope integrity | H1 | Proposed, **candidate public-release blocker**; decision-gated | P1 · DA-D08-01 | design choice not approved; deterministic scope verification must not be weakened; see security posture below |
 | M-04 RELEASE-ENG-001 | H1 | Proposed | P1 · DA-D10-01..03, DA-D09-05/06 | needs RG-1, RG-2, RG-3 and the release-policy decision |
 | M-05 OSS-HYGIENE-001 | H1 | Proposed | P2 · DA-D11-01/02 | owner contacts and files |
-| M-06 PLATFORM-PREFLIGHT-001 (resumes WSL2-001, suspended) | H1 | Proposed | P1 · DA-D06-01 | WSL2 claim only if observed; needs the hygiene decision first |
+| M-06 PLATFORM-PREFLIGHT-001 (resumes WSL2-001, suspended) | H1 | Deferred (OD-31); suspended work and evidence preserved | P1 · DA-D06-01 | WSL2 claim only if observed; needs the hygiene decision first |
 | M-07 AGENT-QUAL-001 | H1 | Proposed | P1 · DA-D04-01/02, DA-D07-03 | live budget and authorization pending (RG-6); one exact Claude Code version |
 | M-08 DOCS-IA-001 | H1 | Proposed | P1 · DA-D01-01/02, DA-D12-01..03 | owns the single `README.md` rewrite (README is not changed by the alignment mission) |
 | M-09 W01 | H2 | **Committed** sequence (OD-07, OD-11) | P1 · DA-D03-03, DA-D13-02 | execution pending M064-A and separate authorizations |
 | M-10 SITE-W02 | H2 | Proposed | P2 · DA-D12, DA-D14-01 | after W01 unless the owner changes it |
 | M-11 INDEP-QUAL-001 | H1 | Proposed | P1 · DA-D13-02, DA-D05-01 | independent person (RG-8) for `G3`/`G10` |
-| M-12 BENCH-RESEARCH-001 | H2 | Research | P2 | needs network authorization |
+| M-12 BENCH-RESEARCH-001 | H2 | Completed: accepted 2026-11-27 with limitations (EB-07 and part of EB-03 unresolved; no benchmark run) | P2 | focused non-blocking complement before M-13 pre-registration (OD-33); network access needs authorization |
 | M-13 BENCH-001 | H2 (arms later H3/H4) | Research | P3 · DA-D13-01 | needs pre-registration and execution authorization |
 | M-14 ARCH-DEBT-001 | H1 | Conditional | P3 · DA-D02-01..04 | only when its triggers occur |
 
@@ -69,14 +82,14 @@ Candidate shortest path to a Developer Preview (owner decisions, then M-01, M-02
 ### Owner direction recorded here (not decisions; no OD number assigned)
 
 - **Security posture:** secure-by-default is the intended posture. The verifier's reading and SHA-256 hashing of all untracked files (DA-D08-01) is a **candidate public-release blocker** until its confidentiality and scope-integrity implications are resolved; fail-closed behaviour with explicit authorization for additional inspection modes is to be evaluated. No implementation is approved, and deterministic scope verification must not be weakened. Until resolved, public claims must not present the verifier as safe on arbitrary working trees.
-- **Governance (OD-20, OD-24, OD-26):** Repository-First Governance is operational for code and documentation: `main` is the default branch and canonical trunk, protected by an active ruleset (PR, strict `ci-gate`, no bypass actors, no force-push or deletion), merge commits only. Legacy `master` and `develop` are neither frozen nor retired; retirement, durable remote evidence custody, immutable releases and tag protection remain pending and each needs its own approved plan. M-01 is not yet fully closed.
+- **Governance (OD-20, OD-24, OD-26, OD-29, OD-30):** Repository-First Governance is operational for code and documentation: `main` is the default branch and canonical trunk, protected by an active ruleset (PR, strict `ci-gate`, no bypass actors, no force-push or deletion), merge commits only. Legacy `master` and `develop` are frozen by a second active ruleset and retained; eventual retirement needs the OD-30 conditions and separate authorization. Durable remote evidence custody, immutable releases and tag protection remain pending and each needs its own approved plan. M-01 is not yet closed.
 - **Release policy:** the existing contradiction between `docs/engineering/ENGINEERING_BASELINE.md` and `docs/product/RELEASE_GATES_RECONCILED.md` must be resolved before public distribution. "Developer Preview" does not bypass security, correctness or qualification requirements, and private evaluation stays distinct from public distribution. No blanket exception is approved.
-- **Platforms:** Linux first; Ubuntu 24.04 LTS is the initial qualification target; Ubuntu WSL2 is a high-priority target conditional on observed qualification; CachyOS and Arch are development or observed-only environments until qualified. Support is never inferred from development use.
+- **Platforms (OD-31):** Linux first; Ubuntu 24.04 LTS with Claude Code is the priority qualification target; Ubuntu WSL2 is deferred and any claim stays conditional on observed qualification; Debian and Fedora are later candidates; CachyOS and Arch are development or observed-only environments; macOS and native Windows are outside the immediate scope, and `G6` is unchanged. Support is never inferred from development use.
 
 ### Dependencies, owner decisions and acceptance evidence
 
 - **Release blockers:** the release-policy decision; RG-1, RG-2, RG-3; reporting route and hosted settings (DA-D08-04); DA-D08-01 resolution; independent `G3`/`G10` evidence; Claude Code smoke evidence for one exact version.
-- **Open owner decisions:** RG-1 to RG-6 and RG-8, DA-D08-01 posture, history-hygiene policy, Python floor, WSL2-001 resumption, live budget (RG-6), external research authorization. All remain open (`docs/product/OWNER_DECISION_AMENDMENTS.md`).
+- **Open owner decisions:** RG-1 to RG-6 and RG-8, DA-D08-01 posture, history-hygiene policy, Python floor, live budget (RG-6), restricted-storage locations, private evidence repository creation, external research execution. All remain open (`docs/product/OWNER_DECISION_AMENDMENTS.md`). WSL2-001 resumption is deferred (OD-31).
 - **Acceptance evidence:** each mission needs its own Gate 1 and a Gate 2 with a dated evidence package; horizon exit evidence is as tabled above. Qualification status stays in `QUALIFICATION_MATRIX.md`.
 - **Research candidates:** hypotheses HY-01 to HY-10, benchmark arms and quality-adjusted cost are research candidates (OD-18), defined in `docs/research/RESEARCH_AGENDA.md` and `docs/research/BENCHMARK_PROTOCOL.md`; they authorize no experiment, provider call or instrumentation.
 

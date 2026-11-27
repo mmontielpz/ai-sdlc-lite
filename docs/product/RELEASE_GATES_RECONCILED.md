@@ -54,6 +54,38 @@ No conflict requires weakening, replacing or bypassing a gate.
 
 The original G7 requirement (at least four unlike use cases, including one brownfield) is preserved for both Preview and Stable. An earlier draft proposed treating G7 as "partial" for Preview. That idea is **withdrawn from this document** and is not part of the current release policy. Any future proposal to relax a Preview gate is **unapproved, outside the current release policy**, and would require a separate explicit owner decision recorded in ROADMAP; until then no document may describe a release with partial G7 as gate-compliant. A release that does not meet every Preview-required row may be published only under a different name (such as V1 Experimental) and must not claim G1–G10 compliance.
 
+### 3.2 Professional experimental release objective (OD-32): readiness checklist and capability maturity
+
+This subsection adds no gate and changes none: sections 1 to 3.1 govern, including `G7` in full for any gate-compliant Preview. **Professional public repository presentation** (documentation, hygiene, branding and contribution experience in the public repository) is distinct from **formal tagged release qualification**. Presentation work claims no gate, and nothing here authorizes a tag, publication or release.
+
+Qualification status stays in `QUALIFICATION_MATRIX.md`. "Ready" in this checklist never stands in for missing gate evidence.
+
+| Area | Ready when | Existing reference |
+|---|---|---|
+| Repository and branch hygiene | M-01 closed | M-01 |
+| Security and privacy | disclosure accepted, verifier blocker resolved, reporting route verified | M-02, M-03, G2, G9 |
+| CI and tests | required matrix and recovery fixtures evidenced | G1, G4, G8 |
+| Packaging and installation | versioned artifact with digest; clean-room install | M-04, G10 |
+| Developer experience and presentation | README, contribution path, branding and release notes accepted | M-05, M-08 |
+| Methodology and harness engineering | BOV and harness boundaries documented and tied to checks | G1, G2 |
+| Agent and platform | dated rows; exclusions stated; independent run | G3, G5, G6; M-07, M-11 |
+| Product validation | `W01` and further use cases recorded | G7 |
+| Benchmarking and official website | results or an explicit "not run"; `W02` published when authorized | M-13, M-10 |
+| Publication | release policy resolved and owner authorization | RG-1 to RG-3 |
+
+**Capability maturity method.** Rate each capability by the highest step that has evidence; each step requires the earlier ones. There are no scores or averages.
+
+| Step | Evidence required |
+|---|---|
+| Documented | accepted description only |
+| Implemented | files at a pinned revision |
+| Tested | deterministic checks recorded at that revision |
+| Observed | dated run with agent, platform and version |
+| Qualified | `QUALIFICATION_MATRIX.md` reporting rules: smoke for "supported", deep for "qualified" |
+| Pilot-used | accepted real task, with failures included in the record |
+
+Independent verification (`G3`) is a separate evidence dimension, recorded beside the step. Record revision, evidence ID and limitations. A changed revision makes a rating stale until rechecked; missing evidence is `UNKNOWN`. No capability is rated here.
+
 ## 4. Proposed PB acceptance criteria (additions, not replacements)
 Independent of G1–G10, the product acceptance criteria from PB-002 (determinism of discovery, adversarial fixtures, no execution/network/model calls, schema validators + goldens, governance override rules, task lint, trust wording, compatibility checklist, docs truth) remain **proposed** criteria supporting G1/G2/G10. They are additive evidence for the gates above, not owner-approved gates.
 

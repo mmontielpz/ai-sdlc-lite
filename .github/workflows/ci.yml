@@ -1,11 +1,10 @@
 name: CI
 
-# main is transitional coverage for the approved single-trunk target (OD-24); remove develop and master only after the hosted migration.
 on:
   pull_request:
-    branches: [develop, master, main]
+    branches: [main]
   push:
-    branches: [develop, master, main]
+    branches: [main]
   workflow_dispatch:
     inputs:
       python_39:
