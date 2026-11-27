@@ -49,7 +49,7 @@ Classes: **Committed** (owner-accepted sequence), **Proposed** (near-term, needs
 
 | Mission | H | Class | Priority · findings | Dependency / note |
 |---|---|---|---|---|
-| M-01 GOV-TRUNK-001 | H1 | Proposed | P0 · DA-D09-01..03, DA-D10-04, DA-D08-04 | verify hosted settings first; O2 direction below; before any tag |
+| M-01 GOV-TRUNK-001 | H1 | Proposed; Phase 1 local candidate (hosted execution and publication not authorized) | P0 · DA-D09-01..03, DA-D10-04, DA-D08-04 | hosted state read 2026-11-27 (read-only); target trunk `main` (OD-24); before any tag |
 | M-02 SEC-DOC-001 | H1 | Proposed | P1 · DA-D08-01(R1), -04, -05, -06 | documentation only; discloses current untracked-content behaviour |
 | M-03 VERIFIER-UNTRACKED-001 | H1 | Proposed, **candidate public-release blocker**; decision-gated | P1 · DA-D08-01 | design choice not approved; see security posture below |
 | M-04 RELEASE-ENG-001 | H1 | Proposed | P1 · DA-D10-01..03, DA-D09-05/06 | needs RG-1, RG-2, RG-3 and the release-policy decision |
@@ -69,7 +69,7 @@ Candidate shortest path to a Developer Preview (owner decisions, then M-01, M-02
 ### Owner direction recorded here (not decisions; no OD number assigned)
 
 - **Security posture:** secure-by-default is the intended posture. The verifier's reading and SHA-256 hashing of all untracked files (DA-D08-01) is a **candidate public-release blocker** until its confidentiality and scope-integrity implications are resolved; fail-closed behaviour with explicit authorization for additional inspection modes is to be evaluated. No implementation is approved, and deterministic scope verification must not be weakened. Until resolved, public claims must not present the verifier as safe on arbitrary working trees.
-- **Governance:** the proposed direction for M-01 is **O2**, a controlled migration to `main` as the single permanent trunk with temporary feature branches, pull requests, required CI and tagged releases. It is not authorization to rename or modify any branch; hosted settings and migration cost are verified first.
+- **Governance (OD-20, OD-24):** Repository-First Governance is approved direction. The target architecture is O2, a single permanent trunk `main` created from the verified integrated tip, with temporary feature branches, pull requests, required CI, a ruleset without routine administrator bypass, merge commits and tagged releases. Current state: the GitHub default branch is `master`, integration happens on `develop`, and `main` does not exist yet. Phase 1 (a local candidate) changes no hosted setting; branch creation, rename, deletion, default-branch changes, protection changes and any publication each need an approved execution plan.
 - **Release policy:** the existing contradiction between `docs/engineering/ENGINEERING_BASELINE.md` and `docs/product/RELEASE_GATES_RECONCILED.md` must be resolved before public distribution. "Developer Preview" does not bypass security, correctness or qualification requirements, and private evaluation stays distinct from public distribution. No blanket exception is approved.
 - **Platforms:** Linux first; Ubuntu 24.04 LTS is the initial qualification target; Ubuntu WSL2 is a high-priority target conditional on observed qualification; CachyOS and Arch are development or observed-only environments until qualified. Support is never inferred from development use.
 

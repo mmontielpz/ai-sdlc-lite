@@ -173,6 +173,13 @@ Use this mapping when the project works through GitHub. Local tasks use the same
 | PR | Link the task and result; summarize the problem, resulting behavior, and remaining limitations. |
 | Review | Inspect the diff and criterion evidence; the human explicitly accepts or rejects the identified snapshot. Recheck affected evidence after review changes. |
 | Merge | Follow repository rules and explicit merge authorization for the target and reviewed revision. A merge does not authorize release or deployment. |
+| Closure | After integration, synchronize the accepted revision with the canonical remote and record closure, or record a temporary exception with its reason and expiry. Closure is an operational postcondition, not a third human gate. |
+
+### Repository-first lifecycle and closure
+
+Order: authorized task or issue, Gate 1, scoped implementation, verification and review, Gate 2, integration, remote synchronization and closure. Gate 1 authorizes implementation. Gate 2 accepts the verified implementation and authorizes integration; it does not require an already merged pull request. Closure confirms that the integrated revision is synchronized with the canonical remote. A change accepted locally but not synchronized is not remotely closed, and after the repository-first transition it must not stay exclusively local indefinitely. Synchronization and publication still need their own explicit authorization.
+
+A pull-request checklist is advisory and human-reviewed unless a mechanism enforces it. GitHub's approving-review count (zero for the current one-maintainer model) is separate from the human acceptance recorded at Gate 2. This is the AI-SDLC Lite project's own GitHub practice (see [CONTRIBUTING.md](CONTRIBUTING.md)); the framework contracts do not require GitHub, and any Git platform with equivalent mechanisms satisfies them. Before starting work, verify the authorized baseline and recover context from the canonical records, never from earlier conversations.
 
 Permission to implement does not imply permission to commit, push, or create a PR. The approved brief can explicitly authorize those actions together within scope; do not ask again for authority already granted. Human acceptance and merge permission are distinct decisions that may be stated in one owner message. Repository permissions and required reviews/checks still apply; release authority remains separate. No GitHub CLI, CI, templates, or additional tooling is required by this mapping.
 
