@@ -1,0 +1,18 @@
+# Comment lines of the original SOURCE_MANIFEST.tsv, verbatim, in original order. Prefix: original line number.
+94: # Pinned repository HEAD commits resolved by anonymous ls-remote on 2026-11-27 (repo, HEAD sha, last tag by version sort, date):
+95: # anthropics/claude-code | 102fafb0953d90cff472b438e443485e7d131d36 | eb8e6d253d0dbee6e52fb0d5fdcb72c9396fe3e8 v2.1.332 | 2026-11-27
+96: # openai/codex | 30ffdd0619a74f8ad74b8a5393b82bbc1592627c | 3aee569b7f5c9387f8ad36c81b61d12d8b0e17ad winget-test-rust-v0.106.0-alpha.9 | 2026-11-27
+97: # github/spec-kit | f2010547121b3351e4923fe467205079e4593a32 | 448b778d2605883621b2f10d131934c073ef9734 v1.4.5 | 2026-11-27
+98: # NVIDIA/NeMo-Guardrails | 5112cf1cae863e5a96a21766046b933c43a1c6d8 | 518d0c8a139c5a2bb6614dc3dbf0a82ec8a1a52a v0.25.0 | 2026-11-27
+99: # astral-sh/uv | 9bf01bef71c76643290ca17635970076fab1bd0d | e3e7c1eacb980339352a5ad69affcd3b6c206c92 0.13.10 | 2026-11-27
+100: # pytest-dev/pytest | 67b5a463f2d66060a5190d4c2226c39400ae3a0e | 2b00a9c7e27046596c8464aa69ad4a45b7c29afb v7.4.3 | 2026-11-27
+101: # ossf/scorecard | 789a810815a4398abf14b10898b111d3ced5d94d | 61b21958825a1e24d3e2006768835b7c0bc4ecf2 v5.7.0 | 2026-11-27
+102: # coreinfrastructure/best-practices-badge | 32447ea1c63d44c6b8bb749779979d5781d5a773 | 32447ea1c63d44c6b8bb749779979d5781d5a773 sbom-staging-20261119-32447ea1 | 2026-11-27
+103: # github/docs | 40bcd7e268bbc31873899d313fbab3066b5db91f | a2f178351afc3ad570c5089a9deec80bc9e5f0e7 v1.0.1 | 2026-11-27
+104: # slsa-framework/slsa | b2d82a4ee232f7a85d7311bcfe54cfa3ccdd500c | 00ec11b996b416a7f875530c3ff9679758a719bd v2021-04-21 | 2026-11-27
+105: # semver/semver | f99d5485190a47c0863949e7da810a5553e0ed4d | 7c834b3f3a4940d77ab593bc32583004d6a426a9 v2.0.0 | 2026-11-27
+106: # olivierlacan/keep-a-changelog | 08d0df5a7e93b71d902def8be0f0d40025b56289 | 73d1eb18334d12dd217a3ca4beab0cbfd0620033 v1.1.2 | 2026-11-27
+107: # Fission-AI/OpenSpec | f1cd852f4edce22b8df9548a4df889172ca8ff25 | 357987a7caabe14cbf2d74836abcf0c657d0075a @fission-ai/openspec@2.2.0 | 2026-11-27
+108: # bmad-code-org/BMAD-METHOD | e435a22574fe55722841086e5566420178b98df3 | 2b76d033161bb02cde9841cff1fb5a5cb0428538 web-bundles-v1.0.0 | 2026-11-27
+109: # Note: the retained snapshots are kept in a restricted session scratch directory, not copied here; hashes identify the bytes read and do not authenticate their claims.
+110: # Vendor and GitHub documentation pages are unversioned; repository files are pinned by commit in the URL.
