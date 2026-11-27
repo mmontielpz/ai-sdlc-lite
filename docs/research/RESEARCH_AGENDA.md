@@ -25,7 +25,7 @@
 | **R05** | **Context Engineering & Optimization** | How does structured BOV context reduce wasted tokens and rework without sacrificing correctness? |
 | **R06** | **Experience-Driven Learning** | How can validated outcome journals (`ai-sdlc-experience-event/1`) guide safer, cheaper execution across projects? |
 | **R07** | **Deterministic Governance & Verification** | Which invariants belong in zero-inference deterministic code (`verify`, `seal`, `baseline`) vs model prompts? |
-| **R08** | **Cross-Domain Generalization** | How do findings transfer across Website (`W01`–`W05`), CLI (`JACK`), `TAKO`, `FOB`, and `Physical AI`? |
+| **R08** | **Cross-Domain Generalization** | How do findings transfer across Website (`W01`–`W05`), CLI (`JACK`), `TAKO`, `Private Project A`, and `Physical AI`? |
 
 ---
 

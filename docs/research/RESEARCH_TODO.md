@@ -46,7 +46,7 @@ Canonical engineering findings (`GF-01`–`GF-18`) and metrics (`20` metrics) re
 | **16. Multi-agent architectures** | `DEFERRED` | `R01`, `R04` | Intentionally single-agent (`A1–A2`) per Anthropic/OpenAI "start simple" guidance; revisit only on demonstrated need. |
 | **17. Experience capture & reuse** | `PARTIAL` | `R06`, `GF-04`, `OPT-05` | `ai-sdlc experience` JSONL capture/validate implemented (`EXP-01A/B`); cross-project reuse `DEFERRED`; schema `/2` (`GF-04`) evaluated post-pilot. |
 | **18. Website experiments (`W01`–`W05`)** | `TODO` | `GF-07`, `GF-09`, `GF-10`, `OPT-03` | Transitioning immediately to **M064** (`W01` Static Website first). `WEBSITE_EXPERIMENTAL_PLAN.md` to be scoped inside M064. |
-| **19. Cross-domain generalization** | `DEFERRED` | `R08`, `GF-16` | Deferred until post-Website (`JACK`, `TAKO`, `FOB`, `Physical AI`; cross-OS support `GF-16` if demand arises). |
+| **19. Cross-domain generalization** | `DEFERRED` | `R08`, `GF-16` | Deferred until post-Website (`JACK`, `TAKO`, `Private Project A`, `Physical AI`; cross-OS support `GF-16` if demand arises). |
 | **20. Ablations** | `TODO` | `R05`, `OPT-06` | Planned: Skill-only vs Skill + `verify`, minimal `SKILL.md` vs full docs. Depends on Website task suite. |
 | **21. Scientific reproducibility** | `TODO` | `GF-05`, `OPT-04` | Requires pinned SHAs, anonymized `experience` journals, external evidence logs, and SLSA-style release provenance (`OPT-04`). |
 | **22. arXiv publication** | `DEFERRED` | `Stage 11` | Candidate preprint after `W01`–`W05`, controlled benchmarks, and ablations *(note: arXiv != peer-reviewed validation)*. |
