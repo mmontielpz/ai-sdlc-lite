@@ -1,6 +1,7 @@
 # AI-SDLC Lite — Research Agenda
 
 **Research Domain:** Efficient Agentic Software Engineering
+**Long-Term Strategic Direction:** Efficient Autonomous Software Engineering: an intended evolution, **not** an achieved capability. The research discipline above is not renamed (OD-14). Pillars: SP-01 to SP-06 in `VISION.md`.
 **Status:** `RESEARCH_PLAN` (conceptual research tracks and experimental protocols; **not** implemented runtime capabilities).
 
 ---
@@ -52,6 +53,8 @@
 | **L3** | Frontier Language Models | Complex architecture, ambiguous debugging, multi-file reasoning |
 | **L4** | Human Judgment & Acceptance | Gate 1 plan approval, Gate 2 independent verification & acceptance |
 
+The `L0`–`L4` tiers (execution) and the `A1`–`A5` autonomy levels (governance; `A1`, `A2` implemented, `A3`–`A5` conceptual research candidates, OD-16) are separate axes; this agenda introduces no competing classification.
+
 ```mermaid
 flowchart TB
   REQ["Bounded Task (Gate 1 Approved)"] --> L0["L0: Deterministic CLI & Checks"]
@@ -93,3 +96,24 @@ flowchart LR
   ANA --> HYP["Updated Hypotheses & Framework Improvements"]
   HYP --> EXP
 ```
+
+---
+
+## 7. Falsifiable Research Candidates (`HY-01`–`HY-10`)
+
+Research candidates only (OD-18). They are **hypotheses until tested**; they authorize no experiment, provider call or new instrumentation, and nothing here is a result. They extend `R01`–`R08` and the pilot metrics `M1`–`M5`, which are unchanged. Margins are not set here: they are pre-registered only after pilot variance is known, so no arbitrary efficiency target exists.
+
+| ID | Hypothesis | Falsified if | Measure | Track |
+|---|---|---|---|---|
+| HY-01 token | BOV-assisted execution does not raise tokens per accepted task beyond a pre-registered margin versus the native control | margin exceeded with no quality gain | tokens, quality-adjusted cost (QAC) | R01, R05 |
+| HY-02 prompt | Corrective human interventions (`M2`) per accepted task are lower with contracts than with the native control | not lower, or higher | `M2` | R01 |
+| HY-03 context | Progressive-disclosure context matches acceptance with fewer input tokens than full-documents context | acceptance drops or tokens do not fall | ablation (`OPT-06`) | R05 |
+| HY-04 overhead | Framework overhead (extra tokens, time, ceremony) is smaller than the measured benefit in rework and quality | overhead is not smaller than benefit | overhead versus the native control, QAC | R01, R02 |
+| HY-05 QAC | The AI-SDLC Lite arm is not Pareto-dominated by the native arm on cost, time and quality | dominated on all tasks of a class | Pareto analysis | R02 |
+| HY-06 multi-agent | An added reviewer or specialist agent does **not** improve QAC on tasks below a complexity threshold (null favoured; multi-agent is not assumed superior) | QAC improves beyond the margin once coordination overhead is counted | single versus multi-agent arms | R04 |
+| HY-07 experience | Prior journal data lowers rework and time on later similar tasks | no effect or harm | `M3`, `M1` across sessions | R06 |
+| HY-08 autonomy | A higher autonomy level lowers human active time without raising escaped defects beyond the margin | escaped defects rise | escaped defects, human time | R04, R06 |
+| HY-09 interventions | Better task contracts reduce corrective (not governance) interventions | no reduction | `M2` (corrective only) | R01 |
+| HY-10 reproducibility | An independent rerun of a pinned task and arm reproduces the outcome class | low agreement | agreement rate | R07, R08 |
+
+**Reporting rules (apply to every hypothesis).** Quality-adjusted cost is computed over **all** attempts (accepted, rejected, abandoned, failed), never from successes alone, and is always reported with the acceptance rate, total resource consumption and quality outcomes; see `BENCHMARK_PROTOCOL.md` for the zero-accepted rule. Null and negative results are reported with the same prominence. Coordination overhead is part of any multi-agent result. Hypotheses and evaluation methods are pre-registered before confirmatory experiments; pilot data (for example W01) may inform later margins but is not reusable as independent confirmatory evidence without disclosure.

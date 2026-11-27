@@ -11,7 +11,9 @@
 
 1. **Arm A (Baseline):** Native coding agent (e.g., Claude Code) with identical model, permissions, and repository baseline, without an external SDLC framework.
 2. **Arm B (AI-SDLC Lite):** Same agent + `ai-sdlc-lite` (`2.0.0.dev1` wheel + `SKILL.md` + BOV Gate 1 / Gate 2).
-3. **Comparator Arms (where applicable):** **GitHub Spec Kit**, **OpenSpec**, **BMAD Method**, and **AWS AI-DLC** (version-pinned before execution).
+3. **Candidate Arm C (multi-agent, research candidate):** the same task with several agents or roles (for example an independent reviewer) under the existing task, result and evidence contracts. It must justify its coordination overhead and is not assumed superior to Arm B.
+4. **Candidate Arm D (adaptive, research candidate):** policies or model choice adapted from validated experience journals; any policy change needs human approval.
+5. **Comparator Arms (where applicable):** **GitHub Spec Kit**, **OpenSpec**, **BMAD Method**, and **AWS AI-DLC** (version-pinned before execution).
 
 ---
 
@@ -45,9 +47,18 @@ Every comparative run must control and record:
 
 ---
 
+### Failure-inclusive accounting and quality-adjusted cost (research candidate)
+
+- **Quality-adjusted cost (QAC):** total resources (tokens, billed cost, time, human active time) across **all** attempts, including rejected, abandoned, failed and interrupted ones, divided by tasks accepted under an independent, pre-registered rubric. The count of non-accepted tasks and escaped defects found after acceptance are reported beside it.
+- **Zero accepted tasks:** report "no task accepted" together with the attempt count and the total resources consumed. Do not report an undefined ratio, drop the arm, substitute another denominator, or fill missing data with zero (missing stays `UNKNOWN`).
+- **Always alongside any composite:** acceptance rate, total resource consumption and quality outcomes.
+- **Framework overhead** is measured against Arm A, itemized by source (prompts, context, documentation, approvals, coordination, invocations, time, tokens); candidate extra metrics (escaped defects, context bytes loaded, ceremony steps) are research candidates and do not replace the metrics above or `M1`–`M5`.
+- No efficiency targets are set; margins are pre-registered after pilot variance is known.
+
 ## 4. Planned Analysis (Post-M064+ Data Collection)
 
 - **Exploratory vs. Confirmatory Runs:** Initial `N >= 3` runs per arm/task characterize feasibility and variance; larger `N` and formal statistical testing are required before making significance or superiority claims.
+- **Pre-registration and evidence classes:** hypotheses (`HY-01`–`HY-10`, `docs/research/RESEARCH_AGENDA.md`), analysis methods and margins are registered before any confirmatory experiment. Pilot data (such as W01, `N >= 3` exploratory runs) may inform margins but is not independent confirmatory evidence unless that reuse is disclosed. This protocol authorizes no experiment, provider call or new instrumentation.
 - **Pareto & Ablation Studies:** Evaluate quality vs. cost/time/human effort (`R02`, `OPT-08`) and ablations such as `SKILL.md`-only vs. `SKILL.md` + `verify`, and minimal context vs. full docs (`R05`, `OPT-06`).
 - **Reproducibility Package:** Publish pinned task SHAs, prompt/contract templates, tool versions, anonymized `experience` journals, and raw external run logs.
 
