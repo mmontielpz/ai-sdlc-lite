@@ -6,6 +6,8 @@ This is the portable evidence and result record for owner mission **AI-SDLC-LITE
 
 **Candidate preparation: PARTIAL. Release readiness: BLOCKED. Human release acceptance: PENDING.** A working private reporting route has not been established; the checkout has no configured Git remote and no target repository against which to verify it. No service settings were changed. There is NO COMMIT, no version tag, and no publication. The owner must review the candidate snapshot, resolve the private-route finding, and separately authorize any commit or release action.
 
+**Consolidation note (2026-11-26).** The banner above records the 2026-11-12 candidate-preparation state. Later evidence supersedes parts of it: the private reporting route was observed ENABLED on 2026-11-12T21:31:53Z (`SECURITY.md`), and current qualification status is kept in `QUALIFICATION_MATRIX.md`. This file is append-only evidence; no entry below was edited.
+
 This document summarizes verified historical evidence rather than publishing raw transcripts or temporary files. Approval references below identify owner mission/decision headings and task revisions. Exact owner-message arrival times and independently signed approval receipts are unavailable; do not infer them. Technical PASS is separate from human acceptance.
 
 ## Evidence sources and approval references

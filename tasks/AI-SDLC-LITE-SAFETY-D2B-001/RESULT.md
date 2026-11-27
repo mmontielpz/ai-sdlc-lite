@@ -4,7 +4,7 @@
 
 - Mission: `AI-SDLC-LITE-SAFETY-D2B-001`
 - Baseline: `develop` `d82f1a7e42c81d610e64e8d9ff74a8e6d725e291`
-- Branch: `fix/d2b-non-ascii-git-refs` (isolated worktree `/home/mike/worktrees/ai-sdlc-lite-d2b`)
+- Branch: `fix/d2b-non-ascii-git-refs` (isolated worktree `<HOME>/worktrees/ai-sdlc-lite-d2b`)
 
 ## Root cause and reproduction
 

@@ -4,7 +4,7 @@
 
 - Mission: `AI-SDLC-LITE-SAFETY-S3-001`
 - Baseline: `develop` `774fd69091143cbfaedef50c47325ac6afa6883b`
-- Branch: `fix/s3-packed-refs-recovery` (isolated worktree `/home/mike/worktrees/ai-sdlc-lite-s3-d1`)
+- Branch: `fix/s3-packed-refs-recovery` (isolated worktree `<HOME>/worktrees/ai-sdlc-lite-s3-d1`)
 
 ## Root cause and reproduction
 

@@ -15,6 +15,7 @@ Use this process with one bounded task at a time. The human owns approvals; the 
 - Stop when agreed verification cannot be completed or a failure cannot be resolved within the approved plan. Preserve the evidence and report the obstacle. Never weaken checks merely to obtain PASS.
 - Do not push, merge, deploy, publish, tag, use paid services, add dependencies, or perform destructive operations without explicit authorization for that action. Technical PASS and human acceptance do not grant it.
 - Record actual changes, check attempts, failures, and limitations in [RESULT.md](RESULT.md). Keep secrets and private transcripts out of evidence.
+- Load context progressively and keep one source of truth per concern; see [WORKFLOW.md](WORKFLOW.md#authority-context-and-checkpoint). Git is authoritative for technical repository state; the task contract and explicit approvals are authoritative for authorization. Never infer authorization from a commit, status output or checkpoint, and update a checkpoint only within the approved scope.
 
 ## Before handoff: Verify
 

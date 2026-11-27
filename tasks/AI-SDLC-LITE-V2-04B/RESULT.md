@@ -62,7 +62,7 @@ the generated bundle's link closure.
 
 ## Checks and actual outcomes
 
-Working directory for every command: `/home/mike/repos/ai-sdlc-lite-public-baseline`.
+Working directory for every command: `<HOME>/repos/ai-sdlc-lite-public-baseline`.
 All test invocations used `-B` and `PATH=/usr/bin:/bin`; Copilot was absent from this
 PATH and UPDATE_GOLDEN was unset. This prevents native discovery tests from running.
 Logs in `/tmp` are supplemental local artifacts; the outcomes below are the durable

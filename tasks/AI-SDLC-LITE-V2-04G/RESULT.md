@@ -3,7 +3,7 @@
 ## Bound and identity
 
 - Active contract and approval: user mission `AI-SDLC-LITE-V2-04G-NATIVE-GIT-001`, supplied 2026-11-14. Root TASK.md is an unfilled template, so the mission is authoritative. It authorizes implementation, tests and documentation, and withholds commits, pushes, PRs, merges, tags, releases and branch deletion.
-- Repository / cwd: `/home/mike/repos/ai-sdlc-lite-public-baseline`.
+- Repository / cwd: `<HOME>/repos/ai-sdlc-lite-public-baseline`.
 - Baseline: `b16b7e53fc6e9a5cfdab03d25e1ccf27f3911010` on `feature/v2-04f-git-delivery-executor`; working tree clean at start. At implementation time no branch or commit existed; local integration followed under mission `AI-SDLC-LITE-V2-04G-COMMIT-002` (see Human acceptance).
 - Applicable controls: root AGENTS.md (Bound → Observe → Verify), README, CHECKLIST. No nested AGENTS.md.
 - Preflight: existing V2-04F executor contract read (`ai_sdlc/delivery.py`, `delivery_executor.py`); focused delivery suite 63 tests PASS before and after. Existing modules unchanged.
