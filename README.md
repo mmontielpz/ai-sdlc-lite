@@ -120,6 +120,7 @@ Full matrix and release gates: [QUALIFICATION_MATRIX.md](QUALIFICATION_MATRIX.md
 - **No automatic check execution (`T3` absent):** `verify` never executes commands named in `result.json`; humans must re-run required checks before accepting at Gate 2.
 - **Human approvals required:** Gate 1 (plan) and Gate 2 (acceptance) remain explicit human decisions.
 - **Platform & Experience limits:** Linux-only (`macOS`/`Windows` deferred); `ai-sdlc-experience-event/1` refuses dotted/leading-symbol `task_id`s and `record-verify` on `BLOCKED`/`PARTIAL` reports with empty `failure_reasons`.
+- **Repository state:** the GitHub default branch is currently `master` and integration happens on `develop`; a single `main` trunk is the approved target but does not exist yet (see [CONTRIBUTING.md](CONTRIBUTING.md#branch--release-governance-d04)). Accepted work counts as closed only once it is synchronized with the canonical remote.
 - **No unverified claims:** No production-readiness, token-saving, or acceleration claims are established.
 
 ---
