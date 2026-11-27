@@ -73,6 +73,13 @@ Descriptive comparison with the partial S7-S9a baseline (7 owner mission message
 - **Targeted confidentiality review of existing content:** completed read-only; findings kept in restricted evidence; owner decision pending.
 - **Owner mission messages:** 3. **Upload:** none.
 
+## Update after the final classification direction (supersedes the previous essential-set bullet)
+
+- **Private environment identifiers:** treated as CONFIDENTIAL. Seven essential originals are held; one is unchanged. Existing sanitized derivatives were reused without regeneration; one of them also redacts a public name, which does not affect confidentiality.
+- **Essential set:** 8 evidence IDs, 98 files, 485,121 bytes; no protected-pattern match in the staged repository objects.
+- **Existing public content:** impact review and a minimal remediation scope are held in restricted evidence for a separately authorized mission. No current public document, history, branch or pull request was changed for it.
+- **Owner mission messages:** 4. **Upload:** none.
+
 ## Outcome and lifecycle
 
 - **Technical outcome:** PARTIAL. Owner-only security actions, upload, restore from custody and restricted storage are pending.
