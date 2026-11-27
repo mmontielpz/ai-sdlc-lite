@@ -5,7 +5,7 @@
 **Research Domain:** Efficient Agentic Software Engineering
 **Core Methodology:** Bound — Observe — Verify (BOV)
 **Design Philosophy:** Minimum Sufficient Intelligence
-**Current Status:** `2.0.0.dev1` (`EXPERIMENTAL`; `Q1` PASS, `Q2` PARTIAL, `Q3` NOT_MET; `G3`/`G10` PENDING)
+**Current Status:** `2.0.0.dev1` (`EXPERIMENTAL`; `Q1` PASS, `Q2` PARTIAL, `Q3` NOT_MET; `G3`/`G10` PENDING) (as of 2026-11-21; authority for qualification status: `QUALIFICATION_MATRIX.md`)
 
 > **Boundary Note:** Sections below distinguish **Implemented Today** from **Future Research Directions**. Nothing in the research vision claims unverified runtime capabilities or performance gains.
 

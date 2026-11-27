@@ -24,6 +24,8 @@
 
 ---
 
+> **Reading guide (consolidated 2026-11-26, AI-SDLC-LITE-DOCS-CONSOLIDATION-001).** The sequence above governs priority and next steps. Everything below, starting with the line `**Status: PLAN with an owner-approved current execution sequence`, is the earlier plan (2026-11-12 to 2026-11-18), kept as a historical record and as the source of the N/S/P milestone and D1-D14 decision definitions. It is superseded in these respects: (1) Codex-first agent targeting and the CODEX-002..004 -> GQ-* dependency chain, by **OD-01** (2026-11-18: Claude Code is the only targeted agent for V1-V3) and **OD-09** (GQ/FOB/Studio are outside the immediate critical path and are not cancelled); (2) "Universal" / "agent-agnostic" product wording, by OD-01 (the package metadata description is a separate pending decision, P-9); (3) the next-step pointer near the end of this file, by the sequence above and `docs/engineering/PROJECT_STATE.md`. Decision IDs D1-D14 are unchanged; their current status is in the decision register (`docs/product/OWNER_DECISION_AMENDMENTS.md`).
+
 **Status: PLAN with an owner-approved current execution sequence (2026-11-12, mission AI-SDLC-LITE-CODEX-001B).** Approval covers this documentation reconciliation and execution priorities; it does not authorize implementation, commits, runtime runs or spending. The earlier FOB-first plan is preserved as historical context. Nothing below is released or qualified unless it cites evidence. See [ARCHITECTURE.md](ARCHITECTURE.md) for design and [QUALIFICATION_MATRIX.md](QUALIFICATION_MATRIX.md) for the test matrix.
 
 **Two roadmaps, one product.** The current execution sequence below governs priority. **Part A** preserves the historical **FOB-first MVP**: AI-SDLC-Lite → Godot → FOB → FOB Game Studio. **Part B** is the long-term **Universal V1.0** (the original P0–P6 phases and backlog S01–S22, preserved below and reclassified, not discarded). Later: Website pilot → independent-evaluator evaluation → Universal V1.0. Part A may not weaken Part B: the core stays project-agnostic and FOB-specific material lives only in adapters or in FOB's own repositories.
@@ -370,9 +372,9 @@ Authority: mission AI-SDLC-LITE-DX-001 authorizes research and documentation onl
 | DX-005-DELIVERY | Agent-native Git delivery with separate local/remote receipts | Explicit destination/action approval; no force/protected overwrite; exact SHA confirmation |
 | DX-006-MEASURE | Matched pilot, intervention/time/token attribution, separate CI follow-up | Complete windows/denominators or UNKNOWN; no unattended claim from design |
 
-DX-002 is the proposed next deterministic development slice, subject to owner approval. Live execution still requires CODEX-003 and existing deeper qualification gates. Network delivery stays outside the offline CLI, through the agent's native tools. D5 remains unchanged: verification does not run declared commands. No new infrastructure, dependency, global configuration or automatic permission change is proposed.
+DX-002 (local CLI entry point, offline `doctor`, verifier passthrough, read-only `status`) is implemented in the baseline CLI (`ai_sdlc/cli.py`, merged via PR #3). Live execution still requires CODEX-003 and existing deeper qualification gates. Network delivery stays outside the offline CLI, through the agent's native tools. D5 remains unchanged: verification does not run declared commands. No new infrastructure, dependency, global configuration or automatic permission change is proposed.
 
-NEXT=DX-002-LOCAL-CLI. OWNER_APPROVAL_REQUIRED=YES.
+Next-step pointer (replaced 2026-11-26; the earlier DX-002 pointer is recoverable from Git history): see the sequence at the top of this file and `docs/engineering/PROJECT_STATE.md`.
 
 ## Canonical import context
 

@@ -4,6 +4,8 @@
 
 OD-03: existing gates are preserved; none is weakened, replaced or bypassed. Gate text below is the ROADMAP's own wording. "Application" says how it is met under OD-01; it never lowers the bar. Status = develop @ 6430dca unless noted. Proposed additions (PB criteria) are labelled and **do not replace** G-gates.
 
+**As of note (2026-11-26).** Statuses in this document are as of develop @ 6430dca (2026-11-18). Current gate and qualification status is kept in `QUALIFICATION_MATRIX.md` (Q1-Q3 model, 2026-11-21); this document owns the gate requirements and the Preview / Stable definitions.
+
 ## 1. The ten gates
 | Gate | ROADMAP requirement (unchanged) | Claude-first impact | Application / evidence | Preview | Stable | Status today |
 |---|---|---|---|---|---|---|
@@ -59,7 +61,7 @@ Independent of G1–G10, the product acceptance criteria from PB-002 (determinis
 | ID | Decision | Notes |
 |---|---|---|
 | RG-1 | **Branch policy** (D8): release from `develop`? promote to `master`? (`master` is 34+ commits behind; README install URLs point at it) | owner |
-| RG-2 | **Tagging scheme and version** (pyproject says 0.1.0) | owner |
+| RG-2 | **Tagging scheme and version** (pyproject said 0.1.0 on 2026-11-18; the version is now `2.0.0.dev1`, preserved by OD-10; no release or tag is authorized) | owner |
 | RG-3 | **Publication** (GitHub release only? PyPI?) — D1 says module/`python -m` first, PyPI after platform work | owner |
 | RG-4 | **Platform support** (G6) per OS | owner |
 | RG-5 | **Claude Code support window** (tested version only vs range) | P-3 |

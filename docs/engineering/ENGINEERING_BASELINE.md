@@ -3,7 +3,7 @@
 **Audited Repository SHA:** `5e67e4598af156cb3ee9f049b7a95060189ce37a` (`develop`)
 **Assessment Date:** 2026-11-21
 **Product Version / Status:** `2.0.0.dev1` (`EXPERIMENTAL`)
-**R001 Research Status:** `NOT_EXECUTED` (handoff prepared; research agenda exists, empirical benchmarks not yet run)
+**R001 Research Status:** `NOT_EXECUTED` (handoff prepared; research agenda exists, empirical benchmarks not yet run) **Superseded:** R001 preparation closed as `PARTIAL` on 2026-11-21 (PR #35; `docs/research/RESEARCH_TODO.md`). This baseline is a dated audit of `5e67e45`.
 
 ---
 

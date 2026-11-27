@@ -38,6 +38,8 @@ This is candidate documentation, not a published version or release date. Human 
 
 ### Pending
 
+**Note (2026-11-26).** The Phase 05 / Phase 06 ordering below is superseded by OD-01 (Claude Code is the only targeted agent for V1-V3). The versioning policy below predates `2.0.0.dev1`; the current version `2.0.0.dev1` is preserved (OD-10) and the tag and release scheme remains an open decision (RG-1 to RG-3). No release or tag is authorized.
+
 - Owner acceptance of the identified candidate, a verified working private reporting route, and an authorized committed release snapshot before V1.0.0. Beginner usability, workshop use, and overhead remain unverified and require an explicit owner decision on release scope. Token measurement is optional; no productivity or token savings are established.
 - Phase 05 — Codex Audit & Qualification is the mandatory gate before Phase 06 — Copilot CLI Compatibility. Explicit Codex Skill invocation is demonstrated; automatic startup discovery remains unverified (historically PARTIAL). Phase 06 remains unverified and requires explicit owner authorization.
 

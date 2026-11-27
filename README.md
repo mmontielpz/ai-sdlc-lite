@@ -85,6 +85,8 @@ At **Gate 2**, the human operator independently re-runs the required checks, ins
 
 ## Supported Agents & Observed Qualification
 
+_As of `329c4a0` (2026-11-21). Authority for qualification status: `QUALIFICATION_MATRIX.md`._
+
 | Target | Status | Evidence |
 |---|---|---|
 | **Claude Code (`2.1.329`, Linux)** | **Experimental Smoke PASS** (operator-orchestrated) | Native Skill discovery under `.claude/skills/ai-sdlc-lite/`, BOV, Experience capture, negative control (`BLOCKED`), `--uninstall`. Independent human clean-room (`G3`/`G10`) **PENDING**; deep **NOT RUN**. |
