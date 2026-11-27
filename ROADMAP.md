@@ -23,15 +23,17 @@ At most two missions are active at once. W01 requires step 1 integrated, a pilot
 
 ### M-01 closure criteria (OD-29, OD-30; recorded 2026-11-27)
 
-| ID | Criterion | State on 2026-11-27 |
+**M-01 closed on 2026-11-27**: final change accepted at Gate 2 and merged (`f2b28672af8b398e11fc9d66033f5aaae4c050ca`), post-merge CI run `46081647064` passed, local and remote `main` synchronized, and the restore repeated against `main`. Open follow-ups are listed below the table.
+
+| ID | Criterion | State at closure |
 |---|---|---|
 | C1 | `main` is default and its ruleset is read back at closure | met: read back 2026-11-27 |
 | C2 | legacy `master` and `develop` frozen and retained, decision recorded, `master` install URL preserved | met (OD-30) |
-| C3 | essential evidence in the approved private repository, anchored by digest in the public index | met: 8 essential evidence IDs uploaded and verified; anchors reach `main` with this change |
-| C4 | restore of all essential evidence in a clean environment (fresh clones, no original evidence folders), digests matching public anchors, legacy tip checks passing, record reviewed at Gate 2 | met, pending Gate 2 review: restored from the private repository into an empty directory on the same machine; an independent machine was not tested |
-| C5 | available originals in restricted storage with verified copies, or a recorded owner exception (OD-21) | met by recorded exception until 2026-12-27 (OD-36): encrypted local package verified; offline and remote copies outstanding |
-| C6 | missing records listed as `MISSING_OR_UNKNOWN` and accepted at closure | listed; accepted by Gate 2 of this change |
-| C7 | current documents reconciled through pull requests with `ci-gate` | met on integration of this change |
+| C3 | essential evidence in the approved private repository, anchored by digest in the public index | met: 8 essential evidence IDs uploaded and verified; anchors are on `main` |
+| C4 | restore of all essential evidence in a clean environment (fresh clones, no original evidence folders), digests matching public anchors, legacy tip checks passing, record reviewed at Gate 2 | met: restored from the private repository into an empty directory, before and after integration, and accepted at Gate 2; same machine only, an independent machine was not tested |
+| C5 | available originals in restricted storage with verified copies, or a recorded owner exception (OD-21) | met by recorded exception until 2026-12-27 (OD-36): encrypted local package verified; **offline and remote copies outstanding** |
+| C6 | missing records listed as `MISSING_OR_UNKNOWN` and accepted at closure | met: listed and accepted at Gate 2 |
+| C7 | current documents reconciled through pull requests with `ci-gate` | met: integrated |
 
 The final change gets Gate 2 before integration. Remote synchronization is then confirmed as the closure postcondition, not as a further approval. Closure does not require branch deletion, optional evidence migration, sanitized copies, bundle upload, immutable releases or tag protection (M-04). Rejection of direct pushes, force-pushes and deletion is `NOT_TESTED`; closing with that limitation needs owner acceptance.
 
@@ -65,10 +67,10 @@ H2 research is **not** blocked on completing H1: early measurement and pilot des
 7. **Evidence-Driven Framework Optimization** — Targeted framework improvements justified by Website & benchmark evidence (`GF-01`, `GF-03`, `GF-04`, `GF-08` — exploratory candidates, not commitments).
 8. **Adaptive SLM/LLM Execution Research** — Explore conceptual `L0`–`L4` routing and Minimum Sufficient Intelligence (`GF-18`).
 9. **Experience-Driven Adaptation** — Cross-project Experience analysis and safe policy adaptation (`GF-04`, `GF-18`).
-10. **Cross-Domain Generalization** — Later domains after Website: **JACK**, **TAKO**, **FOB**, and **Physical AI** (`GF-16` if cross-OS demand arises).
+10. **Cross-Domain Generalization** — Later domains after Website: **JACK**, **TAKO**, **Private Project A**, and **Physical AI** (`GF-16` if cross-OS demand arises).
 11. **Scientific Publication** — Reproducible benchmark package and arXiv preprint.
 
-Horizon mapping: stages 1, 2, 4 → H1 (stage 4 is the Developer Preview ladder step; naming and policy open, see below); 3, 5, 6 → H2 (W01 is the first evidence source; W02 also supports H1 communication); 7 → H2 then H3; 8, 9 → H4; 10 → H4–H5 (GQ/FOB/Studio stay outside the critical path, OD-09); 11 → H2 for demonstrated results, H6 for a specification. Tracks: `R01`, `R02`, `R05` → H2; `R07` → H1–H3; `R03`, `R04`, `R06` → H4; `R08` → H2 to H5.
+Horizon mapping: stages 1, 2, 4 → H1 (stage 4 is the Developer Preview ladder step; naming and policy open, see below); 3, 5, 6 → H2 (W01 is the first evidence source; W02 also supports H1 communication); 7 → H2 then H3; 8, 9 → H4; 10 → H4–H5 (GQ/private-project stay outside the critical path, OD-09); 11 → H2 for demonstrated results, H6 for a specification. Tracks: `R01`, `R02`, `R05` → H2; `R07` → H1–H3; `R03`, `R04`, `R06` → H4; `R08` → H2 to H5.
 
 ### Mission index (Deep Audit `M-01`–`M-14`; authorization is recorded per mission)
 
@@ -76,7 +78,7 @@ Classes: **Committed** (owner-accepted sequence), **Proposed** (near-term, needs
 
 | Mission | H | Class | Priority · findings | Dependency / note |
 |---|---|---|---|---|
-| M-01 GOV-TRUNK-001 | H1 | Closes on Gate 2 and integration of the S9b change, once remote synchronization is confirmed (criteria above); open follow-up: restricted copies by 2026-12-27 (OD-36); push and deletion rejection NOT_TESTED | P0 · DA-D09-01..03, DA-D10-04, DA-D08-04 | trunk `main` (OD-24, OD-26); legacy branches frozen and retained (OD-30); custody per OD-29, OD-35, OD-36; before any tag |
+| M-01 GOV-TRUNK-001 | H1 | **Closed 2026-11-27** (criteria above); open follow-up: restricted copies by 2026-12-27 (OD-36); push and deletion rejection NOT_TESTED | P0 · DA-D09-01..03, DA-D10-04, DA-D08-04 | trunk `main` (OD-24, OD-26); legacy branches frozen and retained (OD-30); custody per OD-29, OD-35, OD-36; before any tag |
 | M-02 SEC-DOC-001: Security, Privacy and Information Governance | H1 | Minimum slice (classification, pilot data handling, verifier disclosure) integrated; remaining scope open, including a follow-up content review that needs its own Gate 1 | P1 · DA-D08-01(R1), -04, -05, -06 | documentation only; discloses current untracked-content behaviour; adds information classification, evidence privacy, commit identity and retention |
 | M-03 VERIFIER-UNTRACKED-001: verifier confidentiality and scope integrity | H1 | Proposed, **candidate public-release blocker**; decision-gated | P1 · DA-D08-01 | design choice not approved; deterministic scope verification must not be weakened; see security posture below |
 | M-04 RELEASE-ENG-001 | H1 | Proposed | P1 · DA-D10-01..03, DA-D09-05/06 | needs RG-1, RG-2, RG-3 and the release-policy decision |
@@ -109,13 +111,15 @@ Candidate shortest path to a Developer Preview (owner decisions, then M-01, M-02
 
 ---
 
-> **Reading guide (consolidated 2026-11-26, AI-SDLC-LITE-DOCS-CONSOLIDATION-001).** The sequence above governs priority and next steps. Everything below, starting with the line `**Status: PLAN with an owner-approved current execution sequence`, is the earlier plan (2026-11-12 to 2026-11-18), kept as a historical record and as the source of the N/S/P milestone and D1-D14 decision definitions. It is superseded in these respects: (1) Codex-first agent targeting and the CODEX-002..004 -> GQ-* dependency chain, by **OD-01** (2026-11-18: Claude Code is the only targeted agent for V1-V3) and **OD-09** (GQ/FOB/Studio are outside the immediate critical path and are not cancelled); (2) "Universal" / "agent-agnostic" product wording, by OD-01 (the package metadata description is a separate pending decision, P-9); (3) the next-step pointer near the end of this file, by the sequence above and `docs/engineering/PROJECT_STATE.md`. Decision IDs D1-D14 are unchanged; their current status is in the decision register (`docs/product/OWNER_DECISION_AMENDMENTS.md`).
+> **Redaction note (2026-11-27, OD-37).** Names of two private projects, derived milestone identifiers (now `PPA-P0` and `PPB-INTEGRATION`) and related implementation detail were replaced with neutral wording, including in text this file otherwise describes as retained verbatim. Milestone definitions, dependencies, owner gates, dates and statuses are unchanged.
 
-**Status: PLAN with an owner-approved current execution sequence (2026-11-12, mission AI-SDLC-LITE-CODEX-001B).** Approval covers this documentation reconciliation and execution priorities; it does not authorize implementation, commits, runtime runs or spending. The earlier FOB-first plan is preserved as historical context. Nothing below is released or qualified unless it cites evidence. See [ARCHITECTURE.md](ARCHITECTURE.md) for design and [QUALIFICATION_MATRIX.md](QUALIFICATION_MATRIX.md) for the test matrix.
+> **Reading guide (consolidated 2026-11-26, AI-SDLC-LITE-DOCS-CONSOLIDATION-001).** The sequence above governs priority and next steps. Everything below, starting with the line `**Status: PLAN with an owner-approved current execution sequence`, is the earlier plan (2026-11-12 to 2026-11-18), kept as a historical record and as the source of the N/S/P milestone and D1-D14 decision definitions. It is superseded in these respects: (1) Codex-first agent targeting and the CODEX-002..004 -> GQ-* dependency chain, by **OD-01** (2026-11-18: Claude Code is the only targeted agent for V1-V3) and **OD-09** (GQ/private-project are outside the immediate critical path and are not cancelled); (2) "Universal" / "agent-agnostic" product wording, by OD-01 (the package metadata description is a separate pending decision, P-9); (3) the next-step pointer near the end of this file, by the sequence above and `docs/engineering/PROJECT_STATE.md`. Decision IDs D1-D14 are unchanged; their current status is in the decision register (`docs/product/OWNER_DECISION_AMENDMENTS.md`).
 
-**Two roadmaps, one product.** The current execution sequence below governs priority. **Part A** preserves the historical **FOB-first MVP**: AI-SDLC-Lite → Godot → FOB → FOB Game Studio. **Part B** is the long-term **Universal V1.0** (the original P0–P6 phases and backlog S01–S22, preserved below and reclassified, not discarded). Later: Website pilot → independent-evaluator evaluation → Universal V1.0. Part A may not weaken Part B: the core stays project-agnostic and FOB-specific material lives only in adapters or in FOB's own repositories.
+**Status: PLAN with an owner-approved current execution sequence (2026-11-12, mission AI-SDLC-LITE-CODEX-001B).** Approval covers this documentation reconciliation and execution priorities; it does not authorize implementation, commits, runtime runs or spending. The earlier Private-Project-A-first plan is preserved as historical context. Nothing below is released or qualified unless it cites evidence. See [ARCHITECTURE.md](ARCHITECTURE.md) for design and [QUALIFICATION_MATRIX.md](QUALIFICATION_MATRIX.md) for the test matrix.
 
-**Product:** a Universal Coding Agent Skill plus a lightweight verification CLI (`ai-sdlc init | doctor | verify`). It must stay light, open-source friendly, agent-agnostic, platform-independent and project-agnostic. No mandatory browser, container, database or orchestration server. FOB and any other project are validation cases, never the architecture.
+**Two roadmaps, one product.** The current execution sequence below governs priority. **Part A** preserves the historical **Private-Project-A-first MVP**: AI-SDLC-Lite → Godot → Private Project A → Private Project B. **Part B** is the long-term **Universal V1.0** (the original P0–P6 phases and backlog S01–S22, preserved below and reclassified, not discarded). Later: Website pilot → independent-evaluator evaluation → Universal V1.0. Part A may not weaken Part B: the core stays project-agnostic and Private-Project-A-specific material lives only in adapters or in Private Project A's own repositories.
+
+**Product:** a Universal Coding Agent Skill plus a lightweight verification CLI (`ai-sdlc init | doctor | verify`). It must stay light, open-source friendly, agent-agnostic, platform-independent and project-agnostic. No mandatory browser, container, database or orchestration server. Private Project A and any other project are validation cases, never the architecture.
 
 ## Product Baseline (PB) track — added 2026-11-18
 
@@ -124,7 +128,7 @@ Candidate shortest path to a Developer Preview (owner decisions, then M-01, M-02
 **Owner-approved direction:**
 - Claude Code is the only targeted provider for V1–V3. Existing Codex and Copilot adapters are preserved and not expanded (no Antigravity adapter exists); no qualification commitment for any of the three. No universal provider SDK or abstraction.
 - Project configuration uses `.ai-sdlc-lite/`.
-- Godot/FOB/Studio are excluded from the V1 critical path (the optional adapter and the N/GQ items are neither removed nor re-ordered by this note).
+- Godot/private-project are excluded from the V1 critical path (the optional adapter and the N/GQ items are neither removed nor re-ordered by this note).
 - Linux first; other platforms remain unqualified.
 - Preview and Stable remain separate qualification targets; branch policy, tagging, publication and platform support are **not** decided here.
 
@@ -167,12 +171,12 @@ Authority: mission **AI-SDLC-LITE-CODEX-001B-ROADMAP-RECONCILIATION**. This addi
 | GQ-SAFETY | GQ-RUNTIME | Expand adversarial runtime coverage using N06 scenarios; protected paths, dirty baseline, ignored files, failure/interruption and controlled recovery; preserve baseline and external evidence | Approve safety scenarios and any owner-directed cleanup; no automatic recovery |
 | GQ-DEVELOPMENT | GQ-SAFETY | Small CREATE / EVOLVE / RECOVER experiments; begin GQ-01, GQ-04, GQ-05; regression and scope checks, Q10 gameplay/GUI evidence and human acceptance; original or licensed assets | Approve each experiment, asset scope, budget and functional acceptance procedure |
 | DOGFOOD-001 | GQ-DEVELOPMENT | Multiple unlike projects using the same core; per-project acceptance and regression evidence, interventions/time/usage recorded or UNKNOWN; findings become separately approved slices | Approve selected projects, access and runs; no blanket multi-repository authority |
-| FOB-P0 | DOGFOOD-001 and owner-owned game safety/baseline decisions | Preserve existing work and saves; owner selects canonical baseline; disposable worktree; existing save-schema protections verified through approved isolated tests; reconcile rather than replace | Separate FOB authorization, baseline/worktree selection and save-protection decision |
-| STUDIO-INTEGRATION | FOB-P0 | Map existing Studio workflow to BOV and verifier with evidence from one approved slice; preserve Studio work; reference existing runners | Separate Game Studio authorization and acceptance; no implicit game or Studio writes |
+| PPA-P0 | DOGFOOD-001 and owner-owned safety/baseline decisions | Preserve existing work and user data; owner selects canonical baseline; disposable worktree; existing data protections verified through approved isolated tests; reconcile rather than replace | Separate Private Project A authorization, baseline/worktree selection and data-protection decision |
+| PPB-INTEGRATION | PPA-P0 | Map the existing Private Project B workflow to BOV and verifier with evidence from one approved slice; preserve its work; reference existing runners | Separate Private Project B authorization and acceptance; no implicit writes to either private project |
 
 Codex is the **first targeted AI Coding Agent for qualification**, not yet qualified. Claude Code remains a long-term target under historical N07 and Part B; Copilot and Agy remain on the agent roadmap. CODEX-003 smoke alone establishes no deep qualification. GQ-RUNTIME requires evidence of every applicable Q3–Q9 gate before promotion; GQ-SAFETY expands that evidence rather than supplying missing prerequisites after promotion.
 
-**Historical mappings:** N05 remains FOB runner integration, deferred until FOB-P0 and separate approval; it is not renamed to fixture qualification. GQ-SAFETY reuses N06 scenarios. N07 remains Claude Code qualification and is no longer the first agent target. STUDIO-INTEGRATION relates to historical N08, whose original dependencies still apply if N08 is executed. N09 remains the Claude/FOB end-to-end demonstration; GQ-DEVELOPMENT uses disposable games and does not close N09. DOGFOOD-001 advances portability before FOB; the historical A.7 website-pilot dependency on N09 remains attached to that specific pilot.
+**Historical mappings:** N05 remains Private Project A runner integration, deferred until PPA-P0 and separate approval; it is not renamed to fixture qualification. GQ-SAFETY reuses N06 scenarios. N07 remains Claude Code qualification and is no longer the first agent target. PPB-INTEGRATION relates to historical N08, whose original dependencies still apply if N08 is executed. N09 remains the Claude/Private-Project-A end-to-end demonstration; GQ-DEVELOPMENT uses disposable games and does not close N09. DOGFOOD-001 advances portability before Private Project A; the historical A.7 website-pilot dependency on N09 remains attached to that specific pilot.
 
 ### Implementation and qualification vocabulary
 
@@ -188,72 +192,72 @@ Qualification of an agent is separate: the matrix requires verified deep evidenc
 
 **Execution boundaries:** every future slice needs a bounded approved contract. Technical PASS is separate from human acceptance and never authorizes push, merge, deployment, dependencies or paid inference. A disposable worktree and private HOME/XDG profile alone do not establish OS filesystem isolation. Demonstrate denied real-profile access using synthetic canaries and an approved threat model without reading real saves. Historical references to save hashing grant no access in this sequence. Hash integrity does not prove authentic custody or independent execution; capture evidence outside the project with operator-controlled custody.
 
-## Part A — Historical FOB-first MVP (milestones preserved)
+## Part A — Historical Private-Project-A-first MVP (milestones preserved)
 
-**Historical goal (current priorities above take precedence):** a Claude Code (the owner's primary agent) can do one real, bounded Godot slice on FOB using BOV, with existing FOB tests and governance, with deterministic post-execution verification, with no loss of FOB work and no touch of a real save. FOB is the *validation case and first customer*; the core and verifier are unchanged by FOB.
+**Historical goal (current priorities above take precedence):** a Claude Code (the owner's primary agent) can do one real, bounded Godot slice on Private Project A using BOV, with existing Private Project A tests and governance, with deterministic post-execution verification, with no loss of Private Project A work and no touch of a real save. Private Project A is the *validation case and first customer*; the core and verifier are unchanged by Private Project A.
 
 ### A.1 Principles
-Skill-first. CLI-assisted (today `scripts/verify_scope.py`; the `ai-sdlc` entry point is Part B). Project-agnostic core. Small adapters. Evidence-driven. Minimal dependencies. No mandatory browser or orchestration platform. **No duplicated project workflows:** FOB's `AGENTS.md`, `.ai/WORKFLOW.md`, `tests/run_*.gd`, `tests/gui_*.gd`, `.ai/ci_headless.sh` and `.ai/qualify.py` stay the authority; the Lite layer only *references* them and records their exit codes and evidence. It must not add a second test runner.
+Skill-first. CLI-assisted (today `scripts/verify_scope.py`; the `ai-sdlc` entry point is Part B). Project-agnostic core. Small adapters. Evidence-driven. Minimal dependencies. No mandatory browser or orchestration platform. **No duplicated project workflows:** Private Project A's own agent instructions, workflow and test runners stay the authority; the Lite layer only *references* them and records their exit codes and evidence. It must not add a second test runner.
 
 ### A.2 Layering (what may know about what)
 
 | Layer | Owns | Must not contain |
 |---|---|---|
-| Core (this repo: Skill, contracts, `verify_scope.py`) | BOV, approval gates, result contract, verifier | Godot, FOB, any agent name |
-| Godot adapter (this repo, new directory, e.g. `adapters/godot/`) | Generic Godot conventions: how to detect `project.godot`, headless invocation pattern, `user://` and `.godot/` handling, `.uid`/`.import` noise | FOB paths, FOB mission names |
-| FOB project declaration (**D10, decided**: `examples/projects/fob/` in this repository; nothing is changed inside FOB) | FOB's declared commands (pointing at FOB's own scripts), protected paths (from `studio.json`: approved assets, `.claude/`, `.githooks/`, `tests/harness/`, `tools/run_godot.sh`, `save_schema.gd`, the real save path), recovery note | A copy of FOB's workflow |
+| Core (this repo: Skill, contracts, `verify_scope.py`) | BOV, approval gates, result contract, verifier | Godot, Private Project A, any agent name |
+| Godot adapter (this repo, new directory, e.g. `adapters/godot/`) | Generic Godot conventions: how to detect `project.godot`, headless invocation pattern, `user://` and `.godot/` handling, `.uid`/`.import` noise | Private Project A paths, Private Project A mission names |
+| Private Project A project declaration (**D10, decided**: `examples/projects/private-project-a/` in this repository; nothing is changed inside Private Project A) | Private Project A's declared commands (pointing at its own scripts), protected paths (recorded privately), recovery note | A copy of Private Project A's workflow |
 | Agent adapter (Codex first under the current sequence; Claude Code retained) | Discovery, instruction-file and permission notes | Logic the core depends on |
 
-### A.3 Alignment with the approved FOB roadmap (unchanged by this plan)
+### A.3 Alignment with the approved Private Project A roadmap (unchanged by this plan)
 
-| FOB roadmap step (owner-owned) | AI-SDLC-Lite role | Boundary |
+| Private Project A roadmap step (owner-owned) | AI-SDLC-Lite role | Boundary |
 |---|---|---|
-| 1. P0: save schema v2 protection; recover Evolved without losing Harness V1 | Read-only support only: baseline evidence and a protected-path declaration. **No agent writes to FOB before this step's save protection is verified by FOB's own tests.** | Lite does not decide recovery |
+| 1. P0: data protection and recovery | Read-only support only: baseline evidence and a protected-path declaration. **No agent writes to Private Project A before this step's data protection is verified by Private Project A's own tests.** | Lite does not decide recovery |
 | 2. Product baseline consolidation | Records dirty state and SHAs per worktree (evidence only) | **Lite does not select or change the canonical baseline**; the owner does |
-| 3. Engineering Expedition (10–15 min vertical slice) | First realistic slices for the demonstration (N09) | Slice choice is FOB's |
-| 4. Family Demo | No Lite work required | none |
-| 5. FOB Game Studio V1 | Workflow integration (N08); later a read-only "verify report" view | Studio's own code and `AGENTS.md` stay owner-controlled; its AI remains simulated until the owner says otherwise |
+| 3. First product vertical slice | First realistic slices for the demonstration (N09) | Slice choice is Private Project A's |
+| 4. Private demonstration | No Lite work required | none |
+| 5. Private Project B V1 | Workflow integration (N08); later a read-only "verify report" view | Private Project B's own code and instructions stay owner-controlled; its behaviour changes only on the owner's decision |
 
-### A.4 Historical FOB-first slices (identifiers and original meaning preserved)
+### A.4 Historical Private-Project-A-first slices (identifiers and original meaning preserved)
 
 The rows and their original snapshot wording are retained verbatim. In particular, N03's former uncommitted status is historical: it is now committed at `historical-development-snapshot`. Use the current sequence for execution and current status, not these historical counts or priority notes.
 
-"Maps to" shows the Part B slice it reuses or reclassifies. Every FOB-touching slice runs only in a **disposable worktree or copy** designated by the owner (D13), never a primary checkout, which may hold uncommitted work.
+"Maps to" shows the Part B slice it reuses or reclassifies. Every Private-Project-A-touching slice runs only in a **disposable worktree or copy** designated by the owner (D13), never a primary checkout, which may hold uncommitted work.
 
 | ID | Slice | Depends on | Acceptance and evidence | Owner gate | Maps to |
 |---|---|---|---|---|---|
 | N01 | Review and commit HARDENING-003 and the planning documents on a branch | none | clean tree; all 93 tests OK with bytecode disabled | approve commit and PR | S01 |
-| N02 | **Baseline consolidation support (read-only evidence).** One report of branches, worktrees, HEAD SHAs, dirty paths and `baseline` output per FOB worktree, written outside every FOB repository. States facts; recommends nothing | N01, D12 | report cites commands; FOB `git status`, refs and worktree list byte-identical before and after (hashes recorded); no baseline named | owner reviews; **owner alone selects the baseline** | new; uses existing `baseline` subcommand |
+| N02 | **Baseline consolidation support (read-only evidence).** One report of branches, worktrees, HEAD SHAs, dirty paths and `baseline` output per Private Project A worktree, written outside every Private Project A repository. States facts; recommends nothing | N01, D12 | report cites commands; Private Project A `git status`, refs and worktree list byte-identical before and after (hashes recorded); no baseline named | owner reviews; **owner alone selects the baseline** | new; uses existing `baseline` subcommand |
 | N03 | **Core verifier hardening needed before any agent run** (*partly delivered, uncommitted*: symlink, submodule and mode-change detection, new-ignored-file detection, operator-supplied baseline record, hash-only evidence manifest with a four-property evidence contract, required-verification and execution-state checks, owner-controlled recovery contract, stable failure-code registry and golden-schema tests; *remaining*: submodule-aware Git review, other platforms); extend the Git execution-surface review (submodules, other platforms; the fsmonitor, hook, environment, filter and diff-driver vectors were mitigated and tested in N01B) | N01 | fixtures fail then pass; deterministic across three runs | approve contract changes | S03, S05 |
-| N04 | **Godot adapter (generic)** *(delivered, uncommitted: `adapters/godot/`)*: declaration schema, read-only stdlib validator (no execution, no writes), disposable sample, safety model, qualification gates Q1-Q10, 40 configuration-level tests. Establishes **ADAPTER_READY tooling only**. *Still to do:* the FOB project declaration under `examples/projects/fob/` (separate, owner-approved) | N03, D10 | validator reports ADAPTER_READY for the sample and NOT_READY for each invalid fixture; adapter text has no FOB, studio or agent names; core unchanged (verified by test) | approve location (D10, decided) | S10 (reclassified), new |
-| N05 | **Existing FOB test integration.** Map FOB's runners (`ci_headless.sh`, `run_*.gd`, `gui_*.gd`, `qualify.py`) into result-contract `verification` entries with exit codes and evidence references. **Run only in a disposable worktree with an isolated Godot user-data directory.** Isolation mechanism is **UNVERIFIED** (Godot's `app_userdata` location is believed to follow `XDG_DATA_HOME`; FOB's own isolation tests, e.g. E02C, must be read and confirmed first) | N02, N04, D13 | a recorded run of an existing suite; hashes of the real save path (never opened) unchanged before and after; no new test code | approve the isolation approach and the worktree | new |
-| N06 | **Safety and recovery validation on fixtures** (before any live FOB agent run): adversarial fixtures for dirty tree, wrong baseline, protected path (asset and save-schema-like files), test edit, governance edit, `.gitignore` hiding, interrupted task with documented revert | N03 | scenario → report mapping test; fixture rollback leaves the tree identical | approve fixture scope | S04, S06, S07 |
-| N07 | **Claude Code live qualification.** Step 1: Skill discovery and a smoke task in a throwaway fixture repo. Step 2: the same task in a disposable FOB worktree. Records versions, commands, exit codes, `verify` reports, token and time as measured or UNKNOWN. Deep scenarios only after smoke is recorded | N05, N06, D3 | QUALIFICATION_MATRIX rows; a planted violation is reported BLOCKED; recovery by discarding the worktree demonstrated | **authorize each run and budget; owner or a second person records the evidence** | S15, S16 (Claude only) |
-| N08 | **Game Studio workflow integration.** Map Studio's slice templates to Lite's task and result contracts; the Studio workspace pins a Lite revision by reference. Optional later: a read-only "run verify, show report" action. No change to Studio's simulated AI | N07, D6; Studio roadmap items GS-006/007 | mapping document; one Studio slice recorded with the contract | approve any Studio or game-repo change (needs its own owner approval and PR, per Studio roadmap GS-006) | new |
-| N09 | **End-to-end demonstration.** One real small FOB slice: Bound, plan approval, Claude Code implements in the disposable worktree, FOB tests run, `verify`, human acceptance, recovery shown | N07, N08, and FOB roadmap step 3 supplying the slice | full record: contract JSON, test output, report, diff, acceptance; FOB canonical baseline unmodified | owner accepts; any merge into FOB is a separate owner decision | new |
+| N04 | **Godot adapter (generic)** *(delivered, uncommitted: `adapters/godot/`)*: declaration schema, read-only stdlib validator (no execution, no writes), disposable sample, safety model, qualification gates Q1-Q10, 40 configuration-level tests. Establishes **ADAPTER_READY tooling only**. *Still to do:* the Private Project A project declaration under `examples/projects/private-project-a/` (separate, owner-approved) | N03, D10 | validator reports ADAPTER_READY for the sample and NOT_READY for each invalid fixture; adapter text has no Private Project A, studio or agent names; core unchanged (verified by test) | approve location (D10, decided) | S10 (reclassified), new |
+| N05 | **Existing Private Project A test integration.** Map Private Project A's runners into result-contract `verification` entries with exit codes and evidence references. **Run only in a disposable worktree with an isolated Godot user-data directory.** Isolation mechanism is **UNVERIFIED** (Godot's `app_userdata` location is believed to follow `XDG_DATA_HOME`; Private Project A's own isolation tests must be read and confirmed first) | N02, N04, D13 | a recorded run of an existing suite; hashes of the real user-data path (never opened) unchanged before and after; no new test code | approve the isolation approach and the worktree | new |
+| N06 | **Safety and recovery validation on fixtures** (before any live Private Project A agent run): adversarial fixtures for dirty tree, wrong baseline, protected path (asset and data-schema-like files), test edit, governance edit, `.gitignore` hiding, interrupted task with documented revert | N03 | scenario → report mapping test; fixture rollback leaves the tree identical | approve fixture scope | S04, S06, S07 |
+| N07 | **Claude Code live qualification.** Step 1: Skill discovery and a smoke task in a throwaway fixture repo. Step 2: the same task in a disposable Private Project A worktree. Records versions, commands, exit codes, `verify` reports, token and time as measured or UNKNOWN. Deep scenarios only after smoke is recorded | N05, N06, D3 | QUALIFICATION_MATRIX rows; a planted violation is reported BLOCKED; recovery by discarding the worktree demonstrated | **authorize each run and budget; owner or a second person records the evidence** | S15, S16 (Claude only) |
+| N08 | **Private Project B workflow integration.** Map Private Project B's slice templates to Lite's task and result contracts; its workspace pins a Lite revision by reference. Optional later: a read-only "run verify, show report" action. No change to Private Project B's own behaviour | N07, D6; related private roadmap items | mapping document; one Private Project B slice recorded with the contract | approve any change to either private project (needs its own owner approval and PR, per its private roadmap) | new |
+| N09 | **End-to-end demonstration.** One real small Private Project A slice: Bound, plan approval, Claude Code implements in the disposable worktree, Private Project A tests run, `verify`, human acceptance, recovery shown | N07, N08, and Private Project A roadmap step 3 supplying the slice | full record: contract JSON, test output, report, diff, acceptance; Private Project A canonical baseline unmodified | owner accepts; any merge into Private Project A is a separate owner decision | new |
 
-Notes: the order differs from the brief's list in one place: **safety and recovery validation on fixtures (N06) precedes the live Claude run (N07)** because an agent should not touch FOB before the controls are proven on a fixture; FOB-specific safety checks are repeated inside N07 and N09. Several steps can start only after the FOB-owned P0 and baseline decisions are made; Lite documents and fixtures (N03, N04, N06) do not touch FOB and can proceed first.
+Notes: the order differs from the brief's list in one place: **safety and recovery validation on fixtures (N06) precedes the live Claude run (N07)** because an agent should not touch Private Project A before the controls are proven on a fixture; Private-Project-A-specific safety checks are repeated inside N07 and N09. Several steps can start only after the Private-Project-A-owned P0 and baseline decisions are made; Lite documents and fixtures (N03, N04, N06) do not touch Private Project A and can proceed first.
 
 ### A.4a Godot qualification states and gates (N04 onward)
 
-Three states, never merged: **ADAPTER_READY** (the declaration validates; established by N04 at configuration level for the disposable sample only), **RUNTIME_QUALIFIED** (import and tests ran in a disposable, isolated workspace with recorded evidence; GQ-RUNTIME in the current sequence) and **DEVELOPMENT_QUALIFIED** (a real bounded task was completed under the framework with human acceptance; GQ-DEVELOPMENT in the current sequence, with N09 retained as the historical FOB demonstration). Gates Q1 to Q10 are defined in [adapters/godot/README.md](adapters/godot/README.md): detection (Q1), configuration validation (Q2), approved-runner compatibility (Q3), safe import (Q4), headless tests (Q5), scope enforcement (Q6), save and profile isolation (Q7), failure and interrupted-run reporting (Q8), evidence integrity (Q9), gameplay and GUI acceptance (Q10). Today: Q1 and Q2 PASS at configuration level for the sample; Q3, Q6, Q7 and Q9 are DECLARED only; Q4, Q5, Q8 and Q10 are NOT_RUN. Nothing is RUNTIME_QUALIFIED.
+Three states, never merged: **ADAPTER_READY** (the declaration validates; established by N04 at configuration level for the disposable sample only), **RUNTIME_QUALIFIED** (import and tests ran in a disposable, isolated workspace with recorded evidence; GQ-RUNTIME in the current sequence) and **DEVELOPMENT_QUALIFIED** (a real bounded task was completed under the framework with human acceptance; GQ-DEVELOPMENT in the current sequence, with N09 retained as the historical Private Project A demonstration). Gates Q1 to Q10 are defined in [adapters/godot/README.md](adapters/godot/README.md): detection (Q1), configuration validation (Q2), approved-runner compatibility (Q3), safe import (Q4), headless tests (Q5), scope enforcement (Q6), save and profile isolation (Q7), failure and interrupted-run reporting (Q8), evidence integrity (Q9), gameplay and GUI acceptance (Q10). Today: Q1 and Q2 PASS at configuration level for the sample; Q3, Q6, Q7 and Q9 are DECLARED only; Q4, Q5, Q8 and Q10 are NOT_RUN. Nothing is RUNTIME_QUALIFIED.
 
-### A.5 Acceptance gates for the FOB-first MVP
+### A.5 Acceptance gates for the Private-Project-A-first MVP
 Done only when every gate is evidenced:
 
 | Gate | Requirement | Status |
 |---|---|---|
-| M1 | **FOB preservation:** before and after each FOB-touching run, branch refs, worktree list and primary-checkout status are identical, except in the disposable worktree | NOT MET |
-| M2 | **No real save access:** real save path never opened or modified; only hash comparison, if authorized | NOT MET |
+| M1 | **Private Project A preservation:** before and after each Private-Project-A-touching run, branch refs, worktree list and primary-checkout status are identical, except in the disposable worktree | NOT MET |
+| M2 | **No real user-data access:** real user-data path never opened or modified; only hash comparison, if authorized | NOT MET |
 | M3 | **No baseline selection by Lite:** no document or tool names a canonical baseline | NOT MET (no baseline named so far) |
-| M4 | **No duplicate infrastructure:** all test execution is by FOB's existing runners; Lite adds no runner | NOT MET |
-| M5 | **Core unchanged by Godot/FOB:** diff of core files for N04 to N09 is only for generic hardening, reviewed | PARTIAL (N04 changed no core file; N05 to N09 pending) |
-| M6 | **Claude Code smoke and one FOB slice recorded** with `verify` reports and honest UNKNOWNs | NOT MET |
+| M4 | **No duplicate infrastructure:** all test execution is by Private Project A's existing runners; Lite adds no runner | NOT MET |
+| M5 | **Core unchanged by Godot/private-project:** diff of core files for N04 to N09 is only for generic hardening, reviewed | PARTIAL (N04 changed no core file; N05 to N09 pending) |
+| M6 | **Claude Code smoke and one Private Project A slice recorded** with `verify` reports and honest UNKNOWNs | NOT MET |
 | M7 | **Recovery shown:** a failed or abandoned run is reverted by discarding the disposable worktree, with identical hashes afterward | NOT MET |
 | M8 | **Statement of limits:** documentation says detection, not prevention; the agent's native sandbox governs execution | PARTIAL (`SECURITY.md` committed at the current baseline; runtime enforcement remains unqualified) |
 
 ### A.6 Deferred under the current sequence
-`ai-sdlc` CLI entry point, `init`/`doctor` and the three profiles (Part B P2); Copilot and Agy qualification (P3); Claude Code qualification remains historical N07 / Part B (Codex qualification is now CODEX-002–004); macOS and Windows (P4); other use cases (P5); multi-repository support; Game Studio chat or runtime AI execution; asset explorer or visual preview features; any FOB gameplay, art or save-schema change; a general public release; PyPI packaging; a CI matrix beyond Linux; verifier execution of project commands (D5); any container, browser, database or orchestrator.
+`ai-sdlc` CLI entry point, `init`/`doctor` and the three profiles (Part B P2); Copilot and Agy qualification (P3); Claude Code qualification remains historical N07 / Part B (Codex qualification is now CODEX-002–004); macOS and Windows (P4); other use cases (P5); multi-repository support; Private Project B features; any Private Project A product, asset or data-schema change; a general public release; PyPI packaging; a CI matrix beyond Linux; verifier execution of project commands (D5); any container, browser, database or orchestrator.
 
 ### A.7 After the MVP: website pilot, then independent-evaluator, then Universal V1.0
 
@@ -265,7 +269,7 @@ Done only when every gate is evidenced:
 
 ### A.8 Historical reclassification of the Part B backlog (S01-S22 preserved)
 
-The table preserves the earlier mapping. Current exceptions: Codex adapter/smoke/deep work is CODEX-002–004 (advancing S14/S16); generic Godot qualification is GQ-RUNTIME/GQ-SAFETY/GQ-DEVELOPMENT before FOB integration; multi-project work is DOGFOOD-001. Earlier NEAR/LATER labels do not override the current sequence.
+The table preserves the earlier mapping. Current exceptions: Codex adapter/smoke/deep work is CODEX-002–004 (advancing S14/S16); generic Godot qualification is GQ-RUNTIME/GQ-SAFETY/GQ-DEVELOPMENT before Private Project A integration; multi-project work is DOGFOOD-001. Earlier NEAR/LATER labels do not override the current sequence.
 
 | Slice | Class | Where it lands |
 |---|---|---|
@@ -288,7 +292,7 @@ The table preserves the earlier mapping. Current exceptions: Codex adapter/smoke
 | S17 smoke: Claude Code, Agy | SPLIT | Claude Code: N07; Agy LATER |
 | S18 macOS and Windows CI | LATER | P4 |
 | S19 use-case smoke fixtures | SPLIT | website: pilot; Godot: N04-N05; the rest LATER (P5) |
-| S20 deep qualification: brownfield, Godot/FOB | ABSORBED | N05-N09 (FOB as case study) |
+| S20 deep qualification: brownfield, Godot/private-project | ABSORBED | N05-N09 (Private Project A as case study) |
 | S21 security reporting route, second-reader docs validation | LATER | before any public release (G9, G10) |
 | S22 release-candidate review | LATER | P6 |
 
@@ -296,10 +300,10 @@ The table preserves the earlier mapping. Current exceptions: Codex adapter/smoke
 
 | ID | Decision | Status |
 |---|---|---|
-| D10 | **Generic Godot adapter under `adapters/godot/`; FOB project declaration under `examples/projects/fob/`.** No changes inside FOB yet. | DECIDED; generic Godot adapter directory exists uncommitted; FOB declaration remains pending |
+| D10 | **Generic Godot adapter under `adapters/godot/`; Private Project A project declaration under `examples/projects/private-project-a/`.** No changes inside Private Project A yet. | DECIDED; generic Godot adapter directory exists uncommitted; Private Project A declaration remains pending |
 | D11 | **Website pilot candidate: `website-pilot-candidate`.** Selection is pending inspection. | CANDIDATE; not yet inspected |
-| D12 | **Evidence is stored outside FOB and Game Studio, in a dedicated local evidence directory** (path kept out of public documents). Nothing is created outside this repository until an evidence slice is approved. | DECIDED; directory not yet created |
-| D13 | **A new disposable FOB worktree created from an owner-approved commit**, never a primary checkout. The commit is not yet named; **no worktree exists yet.** | DECIDED in principle; commit pending |
+| D12 | **Evidence is stored outside Private Project A and Private Project B, in a dedicated local evidence directory** (path kept out of public documents). Nothing is created outside this repository until an evidence slice is approved. | DECIDED; directory not yet created |
+| D13 | **A new disposable Private Project A worktree created from an owner-approved commit**, never a primary checkout. The commit is not yet named; **no worktree exists yet.** | DECIDED in principle; commit pending |
 | D14 | **independent-evaluator is a future read-only evaluator of an approved snapshot, with no autonomous execution, no grants and no spending.** Its identity and access terms are defined before it is scheduled. | DECIDED in principle; nothing executed |
 
 ---
@@ -362,13 +366,13 @@ The phases below are the original plan, unchanged except for the cross-reference
 
 ### P5 — Multi-use-case qualification
 - **Scope:** prove the core and adapters across unlike projects.
-- **Deliverables:** one smoke fixture per use case; deep runs for at least Python automation, one compiled-language CLI, one web project and one brownfield repo; FOB or Godot as a case study in an isolated worktree, run only with owner authorization; project-adapter examples for each.
+- **Deliverables:** one smoke fixture per use case; deep runs for at least Python automation, one compiled-language CLI, one web project and one brownfield repo; Private Project A or Godot as a case study in an isolated worktree, run only with owner authorization; project-adapter examples for each.
 - **Dependencies:** P2, P3; D7 (multi-repo model).
 - **Acceptance:** zero core changes required for a new language (adapters only); each use case has a recorded verification strategy and protected-path list; failures feed back as new slices, not silent fixes.
 - **Test evidence:** matrix rows with `verify` reports; adversarial scenarios per [QUALIFICATION_MATRIX.md](QUALIFICATION_MATRIX.md).
 - **Risks:** adapter sprawl; per-language logic leaking into the core; real-project data safety (S09).
-- **Owner gates:** authorize each project and data scope; FOB access is a separate explicit gate and no real saves are touched.
-- **Out of scope:** FOB Game Studio features, unsupported languages, performance tuning.
+- **Owner gates:** authorize each project and data scope; Private Project A access is a separate explicit gate and no real user data is touched.
+- **Out of scope:** Private Project B features, unsupported languages, performance tuning.
 
 ### P6 — Release candidate and open-source distribution
 - **Scope:** RC, then V1.0 only if every gate below is met.
@@ -422,7 +426,7 @@ Each slice is independently testable and approved separately. "Test" is the evid
 | S17 | Smoke qualification: Claude Code, Agy | S15, budget approval | matrix rows |
 | S18 | CI matrix: macOS and Windows, minimum Python | S02, S08 | green runs or documented exclusions |
 | S19 | Use-case smoke fixtures: Python, Rust or C++, web, API, data | S12 | matrix rows |
-| S20 | Deep qualification: brownfield and Godot/FOB case study | S19, project authorization | matrix rows; no save mutation |
+| S20 | Deep qualification: brownfield and Godot/private-project case study | S19, project authorization | matrix rows; no user-data mutation |
 | S21 | Verified security reporting route; docs install validation by a second reader | S01 | recorded observation |
 | S22 | Release-candidate review against G1–G10 | all | gate checklist |
 
@@ -442,7 +446,7 @@ Each slice is independently testable and approved separately. "Test" is the evid
 
 ## Out of scope for V1.0 (global)
 
-Agent orchestration, swarms or schedulers; any hosted service, database or telemetry; mandatory browser, container or Playwright; sandboxing or preventing agent actions; secret scanning; language- or project-specific logic in the core; FOB Game Studio features.
+Agent orchestration, swarms or schedulers; any hosted service, database or telemetry; mandatory browser, container or Playwright; sandboxing or preventing agent actions; secret scanning; language- or project-specific logic in the core; Private Project B features.
 
 ## Additive developer experience track — DX-001 (2026-11-13)
 
