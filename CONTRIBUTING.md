@@ -22,22 +22,21 @@ For GitHub contributions, follow the [optional task-to-merge mapping](WORKFLOW.m
 
 ## Branch & Release Governance (D04)
 
-Current state (hosted settings read on 2026-11-27; they can change): the GitHub default branch is `master`, integration happens on `develop`, and `main` does not exist yet. Hosted protection on both branches requires a pull request and the `ci-gate` check (strict); administrators are not yet bound, and secret scanning and push protection are not yet enabled.
+Current state (hosted settings read on 2026-11-27; they can change): `main` is the GitHub default branch and the single canonical trunk (OD-24, OD-26). A repository ruleset (id 28257917, active) targets `main` only and requires a pull request (zero approving reviews) and the `ci-gate` check (strict), blocks non-fast-forward updates and deletion, and has no bypass actors. Merge commits are the only enabled merge method, repository-wide. Secret scanning and push protection are enabled. The legacy branches `master` and `develop` still exist with their earlier classic protection (a pull request and `ci-gate`, strict; administrators are not bound); they are not frozen and are not yet retired. These are configuration facts verified by read-back; direct-push, force-push and deletion rejection have not been tested. Repository administrators can still change settings, so the ruleset is a control, not an impossibility.
 
 ```mermaid
 flowchart LR
-  FEAT["feature/* | fix/* | docs/* | chore/* | experiment/*"] -- "PR -> develop (ci-gate + recorded maintainer acceptance)" --> DEV["develop (Integration Baseline)"]
-  DEV -- "PR -> master (ci-gate + 3.9 dispatch)" --> MAS["master (Published Experimental Baseline)"]
-  MAS -- "Owner Tag + Pre-Release" --> REL["Tagged Wheel + SHA-256"]
+  FEAT["feature/* | fix/* | docs/* | chore/* | experiment/*"] -- "PR -> main (ci-gate, merge commit, recorded maintainer acceptance)" --> MAIN["main (canonical trunk)"]
+  MAIN -- "Owner Tag + Pre-Release (explicit authorization)" --> REL["Tagged Wheel + SHA-256"]
 ```
 
-- **Permanent branches:** `master` (published experimental baseline) and `develop` (integration baseline).
-- **Temporary branches:** `feature/*` (or `feat/*`), `fix/*`, `docs/*`, `chore/*`, `experiment/*` originate from `develop` and target `develop` (optional `hotfix/*`, `release/*` when needed).
-- **Checks & merge policy:** hosted protection requires a pull request and `ci-gate` (`strict: true`); use merge commits for integration history and retire merged branches only after verifying no stacked PR depends on them. The project's own rule is explicit maintainer acceptance (Gate 2) recorded in the pull request; GitHub's approving-review count stays at zero for the one-maintainer model, so a checklist or review click is not an authenticated approval.
-- **Release promotion:** Promote `develop` → `master` via reviewed PR; tag experimental releases only after explicit owner authorization (`RG-2`/`RG-3`).
-- **Target state (OD-24, not yet in effect):** one permanent trunk `main` created from the verified integrated tip, temporary branches and pull requests, required `ci-gate`, merge commits only, a ruleset without routine administrator bypass (an emergency change needs explicit owner authorization, a recorded reason and verified restoration), and tagged releases. `develop` and `master` are retired only after the register's criteria and an approved plan; no branch is deleted merely because it is stale.
+- **Permanent branch:** `main`. `master` and `develop` are legacy branches pending an approved retirement plan; no branch is deleted merely because it is stale.
+- **Temporary branches:** `feature/*` (or `feat/*`), `fix/*`, `docs/*`, `chore/*`, `experiment/*` originate from `main` and target `main` (optional `hotfix/*`, `release/*` when needed).
+- **Checks & merge policy:** the `main` ruleset requires a pull request and `ci-gate` (strict); use merge commits only, and retire merged branches only after verifying no stacked PR depends on them. The project's own rule is explicit maintainer acceptance (Gate 2) recorded in the pull request; GitHub's approving-review count stays at zero for the one-maintainer model, so a checklist or review click is not an authenticated approval. The ruleset also carries a GitHub-supplied setting for extra approval of unattributed changes; its behavioral effect with zero required approvals is UNKNOWN.
+- **Release promotion:** tag experimental releases from `main` only after explicit owner authorization (`RG-2`/`RG-3`); immutable releases and tag protection belong to M-04 and are not enabled.
+- **Emergency recovery (approved procedure, not yet exercised):** requires explicit owner authorization; a recorded reason and scope; the minimum necessary temporary settings change, never a standing bypass actor; restoration of the exact ruleset definition; an authenticated read-back against the record; and a recorded incident outcome. Live protections are not disabled to test it.
 - **Accepted work and closure:** accepted work is closed only when it is synchronized with the canonical remote (see [Repository-first lifecycle](WORKFLOW.md#repository-first-lifecycle-and-closure)). Publishing commits, branches, packages, tags or releases needs explicit authorization; public visibility is not blanket authorization.
-- **Commit identity and records:** use your GitHub account's noreply address for commits to this repository so personal addresses stay out of public history. Never commit credentials, personal data or absolute local paths. Restricted evidence stays outside the repository and is indexed in `docs/engineering/EVIDENCE_INDEX.csv`.
+- **Commit identity and records:** use your GitHub account's noreply address for commits to this repository so personal addresses stay out of public history. Never commit credentials, personal data or absolute local paths. Restricted evidence stays outside the repository and is indexed in `docs/engineering/EVIDENCE_INDEX.csv`; durable remote evidence custody is still pending.
 
 ## Rights and conduct
 

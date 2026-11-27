@@ -2,7 +2,7 @@
 
 **Bounded Bound → Observe → Verify (BOV) workflow, Skill, and offline verification CLI for AI coding agents.**
 
-[![CI](https://github.com/mmontielpz/ai-sdlc-lite/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/mmontielpz/ai-sdlc-lite/actions/workflows/ci.yml)
+[![CI](https://github.com/mmontielpz/ai-sdlc-lite/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/mmontielpz/ai-sdlc-lite/actions/workflows/ci.yml)
 ![Status: Experimental](https://img.shields.io/badge/status-experimental%20(2.0.0.dev1)-orange)
 ![Python: 3.14 | 3.9+](https://img.shields.io/badge/python-3.14%20%7C%203.9%2B-blue)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
@@ -109,8 +109,8 @@ Full matrix and release gates: [QUALIFICATION_MATRIX.md](QUALIFICATION_MATRIX.md
 | Delivery contract & executor | [docs/DELIVERY_CONTRACT.md](docs/DELIVERY_CONTRACT.md) |
 | Experimental Experience journal | `docs/EXPERIENCE_CONTRACT.md` |
 | Agent contracts & templates | [AGENTS.md](AGENTS.md), [TASK.md](TASK.md), [CHECKLIST.md](CHECKLIST.md), [templates/RESULT.md](templates/RESULT.md) |
-| Roadmap, vision & research | [ROADMAP.md](ROADMAP.md), [VISION.md](https://github.com/mmontielpz/ai-sdlc-lite/blob/develop/VISION.md), [RESEARCH_AGENDA.md](https://github.com/mmontielpz/ai-sdlc-lite/blob/develop/docs/research/RESEARCH_AGENDA.md), [CHANGELOG.md](CHANGELOG.md), [docs/product/README.md](docs/product/README.md) |
-| Research closeout, comparison & protocol | [RESEARCH_TODO.md](https://github.com/mmontielpz/ai-sdlc-lite/blob/develop/docs/research/RESEARCH_TODO.md) (`PARTIAL`), [COMPARISON.md](https://github.com/mmontielpz/ai-sdlc-lite/blob/develop/docs/research/COMPARISON.md) (preliminary), [BENCHMARK_PROTOCOL.md](https://github.com/mmontielpz/ai-sdlc-lite/blob/develop/docs/research/BENCHMARK_PROTOCOL.md) (`0` runs) |
+| Roadmap, vision & research | [ROADMAP.md](ROADMAP.md), [VISION.md](https://github.com/mmontielpz/ai-sdlc-lite/blob/main/VISION.md), [RESEARCH_AGENDA.md](https://github.com/mmontielpz/ai-sdlc-lite/blob/main/docs/research/RESEARCH_AGENDA.md), [CHANGELOG.md](CHANGELOG.md), [docs/product/README.md](docs/product/README.md) |
+| Research closeout, comparison & protocol | [RESEARCH_TODO.md](https://github.com/mmontielpz/ai-sdlc-lite/blob/main/docs/research/RESEARCH_TODO.md) (`PARTIAL`), [COMPARISON.md](https://github.com/mmontielpz/ai-sdlc-lite/blob/main/docs/research/COMPARISON.md) (preliminary), [BENCHMARK_PROTOCOL.md](https://github.com/mmontielpz/ai-sdlc-lite/blob/main/docs/research/BENCHMARK_PROTOCOL.md) (`0` runs) |
 
 ---
 
@@ -120,7 +120,7 @@ Full matrix and release gates: [QUALIFICATION_MATRIX.md](QUALIFICATION_MATRIX.md
 - **No automatic check execution (`T3` absent):** `verify` never executes commands named in `result.json`; humans must re-run required checks before accepting at Gate 2.
 - **Human approvals required:** Gate 1 (plan) and Gate 2 (acceptance) remain explicit human decisions.
 - **Platform & Experience limits:** Linux-only (`macOS`/`Windows` deferred); `ai-sdlc-experience-event/1` refuses dotted/leading-symbol `task_id`s and `record-verify` on `BLOCKED`/`PARTIAL` reports with empty `failure_reasons`.
-- **Repository state:** the GitHub default branch is currently `master` and integration happens on `develop`; a single `main` trunk is the approved target but does not exist yet (see [CONTRIBUTING.md](CONTRIBUTING.md#branch--release-governance-d04)). Accepted work counts as closed only once it is synchronized with the canonical remote.
+- **Repository state:** `main` is the default branch and canonical trunk, protected by a ruleset that requires a pull request and the `ci-gate` check; merge commits only (see [CONTRIBUTING.md](CONTRIBUTING.md#branch--release-governance-d04)). The legacy branches `master` and `develop` remain pending an approved retirement plan. Accepted work counts as closed only once it is synchronized with the canonical remote.
 - **No unverified claims:** No production-readiness, token-saving, or acceleration claims are established.
 
 ---
