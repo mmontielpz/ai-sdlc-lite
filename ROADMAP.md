@@ -27,7 +27,7 @@ At most two missions are active at once. W01 requires step 1 integrated, a pilot
 |---|---|---|
 | C1 | `main` is default and its ruleset is read back at closure | met at the last read-back; repeat at closure |
 | C2 | legacy `master` and `develop` frozen and retained, decision recorded, `master` install URL preserved | met (OD-30) |
-| C3 | essential evidence in the approved private repository, anchored by digest in the public index | **not met**: repository created, no evidence uploaded; sanitized derivatives proposed for held packages (OD-35) |
+| C3 | essential evidence in the approved private repository, anchored by digest in the public index | **not met**: repository created, no evidence uploaded; sanitized derivatives proposed for three held packages (OD-35) |
 | C4 | restore of all essential evidence in a clean environment (fresh clones, no original evidence folders), digests matching public anchors, legacy tip checks passing, record reviewed at Gate 2 | **not met**: a local rehearsal from staging is not a restore from custody |
 | C5 | available originals in restricted storage with verified copies, or a recorded owner exception (OD-21) | **not met**: two-location strategy proposed (OD-35); no verified copy |
 | C6 | missing records listed as `MISSING_OR_UNKNOWN` and accepted at closure | listed; acceptance pending |

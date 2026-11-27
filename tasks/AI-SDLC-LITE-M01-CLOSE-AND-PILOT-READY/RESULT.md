@@ -64,6 +64,15 @@ Descriptive comparison with the partial S7-S9a baseline (7 owner mission message
 | Active execution time, tokens, billed units, cost | UNKNOWN | not observed |
 | Scope violations | none observed | agent |
 
+## Update after the owner classification decision (supersedes the held-evidence bullet above)
+
+- **Classification:** recorded in OD-35.
+- **Essential set:** five originals need no change; three packages are held and have new sanitized derivatives (the S6 derivative was rebuilt with an added redaction). Earlier derivatives that are no longer needed are retained locally and removed from this unmerged index change.
+- **Correction:** the earlier scans did not treat one identifier inside test names as confidential; under the decision they are redacted in derivatives.
+- **Restore rehearsal:** repeated from local staging against this branch; outcome on the pull request. Not a restore from custody.
+- **Targeted confidentiality review of existing content:** completed read-only; findings kept in restricted evidence; owner decision pending.
+- **Owner mission messages:** 3. **Upload:** none.
+
 ## Outcome and lifecycle
 
 - **Technical outcome:** PARTIAL. Owner-only security actions, upload, restore from custody and restricted storage are pending.
