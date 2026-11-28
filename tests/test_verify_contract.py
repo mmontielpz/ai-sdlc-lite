@@ -118,10 +118,10 @@ class Scenarios(base_tests.Fixture):
     def test_golden_blocked_baseline_record_mismatch(self):
         self.write('src/pre.py', 'pre\n')
         record = self.meta / 'baseline.json'
-        self.assertEqual(cli('baseline', '--repo', str(self.repo), '--out', str(record)), 0)
+        self.assertEqual(cli('baseline', '--repo', str(self.repo), '--out', str(record), '--hash-untracked'), 0)
         self.edit()
         data = self.contract(modified_paths=['src/app.py', 'src/pre.py'], baseline_dirty_paths=[])
-        self.golden('blocked_baseline_record_mismatch', self.run_with(data, baseline_record=record))
+        self.golden('blocked_baseline_record_mismatch', self.run_with(data, baseline_record=record, hash_untracked=True))
 
     def test_golden_blocked_record_tampered(self):
         record = self.meta / 'baseline.json'

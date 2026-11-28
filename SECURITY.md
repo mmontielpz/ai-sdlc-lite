@@ -45,7 +45,7 @@ Four properties are kept separate; the verifier checks only the first.
 
 The verifier never resets, cleans, deletes, checks out, stashes or overwrites anything, and never discards user changes; `--out`, `baseline --out` and `seal --out` create new files and refuse to overwrite. Reports carry text-only `recovery.guidance`. Any actual recovery is performed by the owner, outside the tool.
 
-Known limits of the verifier: it does not see ignored files comprehensively. New ignored files are compared with the baseline's ignored set, but content changes to files that were already ignored, more than 20,000 ignored files, changes outside the repository, and state before work (unless an independent baseline record exists) are not covered. The repository's own `.gitignore` is limited to Python cache artifacts to keep this blind spot small. It does not re-run reported commands, so exit codes are only as honest as their author. A PASS means "no violation detected in the evidence supplied", not "no violation occurred". Human review remains required.
+Known limits of the verifier: it does not see ignored files comprehensively. New ignored files are compared with the baseline's ignored set, but content changes to files that were already ignored, more than 200,000 ignored files, changes outside the repository, and state before work (unless an independent baseline record exists) are not covered. The repository's own `.gitignore` is limited to Python cache artifacts to keep this blind spot small. It does not re-run reported commands, so exit codes are only as honest as their author. A PASS means "no violation detected in the evidence supplied", not "no violation occurred". Human review remains required.
 
 
 ## Information classification and data handling
@@ -72,12 +72,13 @@ Pilot evidence stays outside the repository, is classified, is indexed by digest
 
 ## What `baseline` and `verify` read
 
-- `ai-sdlc baseline` reads the content of every path that differs from `HEAD`, **including every untracked file that Git does not ignore**, and writes each path and a SHA-256 of its content into the baseline record. Files over 10 MiB are recorded as too large instead of hashed; for a symlink the link target is recorded.
-- Ignored files are listed **by name** (up to 20,000); the baseline does not hash their content.
-- `ai-sdlc verify` lists changed and untracked paths in its report and, with a baseline record, hashes the recorded dirty paths again.
-- There is no option to exclude an untracked file from this inspection. Ignoring a file stops content hashing but not the recording of its name.
+- By default `ai-sdlc baseline` and `ai-sdlc verify` **do not read the content of files Git does not track** (untracked or ignored). `baseline` hashes the content of tracked paths that differ from `HEAD` (over 10 MiB is recorded as too large; for a tracked symlink the link target is recorded).
+- `--hash-untracked`, on `baseline` and again on `verify`, authorizes reading non-ignored untracked files that were dirty at baseline, and untracked evidence files inside the repository. Without it such a path cannot be shown unchanged and is treated as changed.
+- Ignored files are listed **by name** (up to 200,000); their content is never compared. A changed file inside an already-ignored dependency tree is not detected.
+- File **names** of untracked and ignored files are still listed in records and reports. Git itself reads tracked files, configuration and `.gitignore` files (including untracked ones) to answer these commands.
+- Evidence files named in a result outside the repository, files passed to `seal`, and record or result files you name are read.
 
-A hash of short or guessable content can be matched by guessing, and file names can be sensitive. Treat baseline records and reports as at least as sensitive as the working tree. Before running these commands, use a workspace without secrets, personal data or unrelated private files, and review `git status --porcelain --untracked-files=all`. Whether this behaviour changes is an open decision (M-03, a candidate public-release blocker); this project does not claim the verifier is safe on arbitrary working trees.
+A hash of short or guessable content can be matched by guessing, and file names can be sensitive. Treat baseline records and reports as at least as sensitive as the working tree, and prefer a workspace without secrets, personal data or unrelated private files. This project does not claim the verifier is safe on arbitrary working trees.
 
 ## Reporting a vulnerability
 

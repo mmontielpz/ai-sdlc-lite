@@ -62,7 +62,7 @@ jobs:
               'test_first_five_minutes', 'test_godot_adapter', 'test_init', 'test_init_claude_target',
               'test_init_journal', 'test_init_task_targets', 'test_install_skill',
               'test_installer_recovery', 'test_micro_cycles', 'test_native_git', 'test_result_template',
-              'test_verify_contract', 'test_verify_scope', 'test_verify_summary',
+              'test_verify_contract', 'test_verify_foundation', 'test_verify_scope', 'test_verify_summary',
           }
 
           def walk(items):
@@ -103,6 +103,24 @@ jobs:
           if problems:
               raise SystemExit('; '.join(problems))
           PY
+      - name: Stock Ubuntu 24.04 wheel build is reproducible
+        if: matrix.python == '3.14'
+        run: |
+          docker run --rm -v "$PWD:/src:ro" \
+            ubuntu:24.04@sha256:24737cef17f4e22b1977df7d9a05e77c4e28b7da5b8911f8d8ccda136bf3573c bash -euc '
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update -qq >/dev/null
+              apt-get install -y -qq git python3-pip python3-venv python3-setuptools python3-wheel >/dev/null
+              git config --global --add safe.directory "*"
+              umask 022
+              for n in 1 2; do
+                git clone -q --no-hardlinks /src /w$n && cd /w$n
+                SOURCE_DATE_EPOCH=$(git log -1 --format=%ct) python3 -m pip wheel -q --no-build-isolation --no-deps -w /d$n .
+                cd /
+              done
+              cmp /d1/*.whl /d2/*.whl && sha256sum /d1/*.whl
+              python3 -m venv /v && /v/bin/pip install -q --no-index --no-deps /d1/*.whl && /v/bin/ai-sdlc --version
+            '
       - name: Codex declaration validator (runtime NOT_RUN)
         run: >-
           python -B adapters/agents/codex/validate_adapter.py

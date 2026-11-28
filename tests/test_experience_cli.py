@@ -33,7 +33,8 @@ BASELINE_USAGE = (
 # Baseline (develop @ 53e3788) digests of files EXP-01A must not touch. A deliberate future change to one of
 # these files must update the constant in the same reviewed change.
 UNTOUCHED = {
-    'scripts/verify_scope.py': '6562aad7ec6ebcb2e5fbc6008da11a0f9d0db8959c867cc3e3a33331d494dfbb',
+    # Updated by ENGINEERING-FOUNDATION-002 (owner-authorized): M-03, baseline limits and summary; was 6562aad7ec6e.
+    'scripts/verify_scope.py': '7a5845d030c8700135f75583c9bbb513e03d374a26460e266e81cd6d6762daf1',
     # Updated by DISTRIBUTION-058 (owner-authorized): the "Command-line tool" section; was 0d88536d85d8….
     '.agents/skills/ai-sdlc-lite/SKILL.md': '2d7c56ad6c4410db875e68f5de6e5f558e31c117692a3882cec7e15e77de99ba',
     # Added by EXP-01B (develop @ 12164a8): `init --journal` must not need an installer change.

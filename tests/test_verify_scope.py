@@ -200,7 +200,8 @@ class VerifyScopeTests(Fixture):
         path.write_text(json.dumps(self.contract(
             allowed_paths=['src/**', 'out.txt'], modified_paths=['src/app.py', 'out.txt'],
             verification=[{'command': 'c', 'exit_code': 0, 'evidence': 'out.txt'}])))
-        self.assertEqual(cli('verify', '--repo', str(self.repo), '--result', str(path)), 0)
+        self.assertEqual(cli('verify', '--repo', str(self.repo), '--result', str(path)), 2)   # evidence not read
+        self.assertEqual(cli('verify', '--repo', str(self.repo), '--result', str(path), '--hash-untracked'), 0)
 
 
 class EvidenceAndRecoveryTests(Fixture):
@@ -249,14 +250,18 @@ class EvidenceAndRecoveryTests(Fixture):
         self.assertIn('protected_path_modified', self.codes(report))
 
     # --- independent baseline record
-    def record(self, name='baseline.json'):
+    def record(self, name='baseline.json', hash_untracked=True):
+        # Most tests here exercise content-based preservation, which needs explicit authorization to read untracked
+        # files. The default (unauthorized) behaviour is covered by UntrackedContentTests.
         path = self.meta / name
-        self.assertEqual(cli('baseline', '--repo', str(self.repo), '--out', str(path)), 0)
+        extra = ['--hash-untracked'] if hash_untracked else []
+        self.assertEqual(cli('baseline', '--repo', str(self.repo), '--out', str(path), *extra), 0)
         return path
 
     def run_with(self, data, **kwargs):
         path = self.meta / 'result.json'
         path.write_text(json.dumps(data))
+        kwargs.setdefault('hash_untracked', True)
         return vs.verify(self.repo, path, **kwargs)
 
     def test_independent_record_matches_honest_contract(self):
