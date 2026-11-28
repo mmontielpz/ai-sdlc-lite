@@ -9,13 +9,19 @@ like before work unless the contract recorded it. It never executes any
 command named in the contract.
 
 Subcommands:
-  baseline --repo PATH [--out F]  capture a baseline record (SHA, dirty and ignored paths, digest); run before the task
+  baseline --repo PATH [--out F] [--hash-untracked]
+                                  capture a baseline record (SHA, dirty and ignored paths, digest); run before the task.
+                                  With --out, print a short summary instead of the record
   seal --out F FILE...            record evidence hashes in a manifest (hash integrity only, not authentication)
   codes                           print the stable failure-code registry
   verify --repo PATH --result F [--baseline-record F] [--evidence-manifest F] [--require-sealed] [--format {json,summary}]
+         [--hash-untracked]
                                   verify a result contract; exit 0 PASS, 1 PARTIAL, 2 BLOCKED
 
 The verifier NEVER modifies the repository: no reset, clean, delete, checkout or write. Recovery is owner-controlled.
+
+Untracked file contents are not read unless the operator passes --hash-untracked. Their names are listed, and an
+untracked path that was dirty at baseline cannot be shown unchanged without it.
 
 Fail closed: any missing, malformed or ambiguous critical evidence is BLOCKED.
 """
@@ -64,12 +70,13 @@ FAILURE_CODES = {
     'executable_git_config': (('BLOCKED',), 'repository configuration defines a program Git would run'),
     'verification_error': (('BLOCKED',), 'malformed or ambiguous input, or an unexpected error (fail closed)'),
 }
-IGNORED_CAP = 20000
+IGNORED_CAP = 200000
 OUTPUT_SCHEMA = 'ai-sdlc-lite-verification/1'
 STATUSES = ('PASS', 'PARTIAL', 'BLOCKED')
 RANK = {name: index for index, name in enumerate(STATUSES)}
 EXIT = {'PASS': 0, 'PARTIAL': 1, 'BLOCKED': 2}
 MAX_JSON = 1 << 20
+MAX_BASELINE = 32 << 20   # baseline records list every ignored path; the writer enforces the same limit as the reader
 MAX_EVIDENCE = 10 << 20
 
 # Changes here need an explicit allowed_sensitive_paths entry, never just allowed_paths.
@@ -211,9 +218,9 @@ def changes_since(root, base):
     return sorted(set(split_nul(tracked)) | set(split_nul(untracked)))
 
 
-def load_json(path, label):
+def load_json(path, label, limit=None):
     path = Path(path)
-    if path.is_symlink() or not path.is_file() or path.stat().st_size > MAX_JSON:
+    if path.is_symlink() or not path.is_file() or path.stat().st_size > (MAX_JSON if limit is None else limit):
         raise Blocked(f'{label} missing, not a regular file, a symlink, or too large')
     try:
         data = json.loads(path.read_text('utf-8'))
@@ -320,16 +327,32 @@ def dirty_state(root, rel, index):
     return f'index={index.get(rel) or "none"};tree={kind}'
 
 
-def make_baseline(root):
-    """Independent baseline record. Run BEFORE the task, by a human or CI, and store it outside the repository."""
+def bounded_text(data, limit, label):
+    """Serialize a record, refusing one that its own reader would reject for size."""
+    text = json.dumps(data, indent=2, sort_keys=True) + '\n'
+    size = len(text.encode('utf-8'))
+    if size > limit:
+        raise Blocked(f'{label} would be {size} bytes, over the {limit}-byte limit its reader accepts; nothing written')
+    return text
+
+
+def untracked_content(root, paths, index):
+    """Paths holding content Git does not track: present on disk and absent from the index, ignored or not."""
+    return {p for p in paths if p not in index and os.path.lexists(root / p)}
+
+
+def make_baseline(root, hash_untracked=False):
+    """Independent baseline record. Run BEFORE the task, by a human or CI, and store it outside the repository.
+    Untracked contents are hashed only with hash_untracked; otherwise those paths get no content hash."""
     code, head = git(root, 'rev-parse', 'HEAD')
     if code != 0:
         raise Blocked('cannot resolve HEAD')
     dirty = current_dirty(root)
     idx = index_state(root)
+    unread = set() if hash_untracked else untracked_content(root, dirty, idx)
     ignored, truncated = ignored_paths(root)
     record = {'schema': BASELINE_SCHEMA, 'baseline_sha': head.decode().strip(), 'baseline_dirty_paths': dirty,
-              'baseline_dirty_sha256': {p: path_digest(root, p) for p in dirty},
+              'baseline_dirty_sha256': {p: path_digest(root, p) for p in dirty if p not in unread},
               'baseline_dirty_state': {p: dirty_state(root, p, idx) for p in dirty},
               'baseline_ignored_paths': ignored, 'baseline_ignored_truncated': truncated}
     record['digest'] = canonical_digest(record)
@@ -338,7 +361,7 @@ def make_baseline(root):
 
 def load_sealed(path, schema, label):
     """Load a baseline record or evidence manifest and recompute its digest (detects accidental or hand edits only)."""
-    data = load_json(path, label)
+    data = load_json(path, label, MAX_BASELINE if schema == BASELINE_SCHEMA else None)
     if data.get('schema') != schema:
         raise Blocked(f'{label} schema must be {schema}')
     claimed = data.get('digest')
@@ -379,8 +402,9 @@ def recovery_for(reasons):
     return [RECOVERY['default']] + [RECOVERY[c] for c in sorted(codes) if c in RECOVERY]
 
 
-def hash_evidence(ref, bases):
-    """Return sha256 of a regular, non-symlink evidence file inside an allowed base."""
+def hash_evidence(ref, bases, root=None, readable=None):
+    """Return sha256 of a regular, non-symlink evidence file inside an allowed base. When `readable` is given, a file
+    inside the repository `root` is read only if it is in that set (tracked paths)."""
     if not isinstance(ref, str) or not ref or '\0' in ref:
         raise Blocked('evidence reference must be a non-empty string')
     for base in bases:
@@ -392,13 +416,17 @@ def hash_evidence(ref, bases):
         resolved = candidate.resolve()
         if base != resolved and base not in resolved.parents:
             continue
+        if readable is not None and root in resolved.parents and resolved.relative_to(root).as_posix() not in readable:
+            raise Blocked(f'evidence file is untracked inside the repository and was not read: {ref}; keep evidence '
+                          'outside the repository or pass --hash-untracked')
         if resolved.stat().st_size > MAX_EVIDENCE:
             raise Blocked(f'evidence file too large: {ref}')
         return hashlib.sha256(resolved.read_bytes()).hexdigest()
     raise Blocked(f'evidence file missing or outside the repository/result directory: {ref}')
 
 
-def verify(repo, result_path, out_path=None, baseline_record=None, evidence_manifest=None, require_sealed=False):
+def verify(repo, result_path, out_path=None, baseline_record=None, evidence_manifest=None, require_sealed=False,
+           hash_untracked=False):
     reasons = []
 
     def add(severity, code, detail):
@@ -485,7 +513,13 @@ def verify(repo, result_path, out_path=None, baseline_record=None, evidence_mani
             add('PARTIAL', 'ignored_listing_truncated', 'the recorded ignored-file list was truncated')
         baseline_dirty, baseline_ignored = rec_dirty, rec_ignored
         hashes = record.get('baseline_dirty_sha256') if isinstance(record.get('baseline_dirty_sha256'), dict) else {}
-        changed_dirty = {p for p in rec_dirty if hashes.get(p) != path_digest(root, p)}
+        # A path is compared by content only if the record holds its hash and it may be read now. Anything else
+        # cannot be shown unchanged, so it is treated as changed without being opened.
+        uninspected = {p for p in untracked_content(root, rec_dirty, index_state(root))
+                       if not hash_untracked or p not in hashes}
+        changed_dirty = {p for p in rec_dirty if p in uninspected or hashes.get(p) != path_digest(root, p)}
+        if uninspected:
+            report['untracked_content_not_inspected'] = sorted(uninspected)
         # A dirty path is "preserved" only if content, index entry and working-tree kind all equal the record. A record
         # without baseline_dirty_state (older tools) preserves nothing; a malformed or inconsistent one is BLOCKED.
         if 'baseline_dirty_state' in record:
@@ -533,7 +567,9 @@ def verify(repo, result_path, out_path=None, baseline_record=None, evidence_mani
             if not in_sensitive(path):
                 add('BLOCKED', f'{kind}_path_modified_unapproved', path)
         elif not in_allowed(path):
-            add('BLOCKED', 'out_of_scope_modification', path)
+            note = ' (untracked content not inspected, so it cannot be shown unchanged)' \
+                if path in report.get('untracked_content_not_inspected', ()) else ''
+            add('BLOCKED', 'out_of_scope_modification', path + note)
     for path in sorted(special_changes(root, base) - excluded):
         if not in_sensitive(path):
             add('BLOCKED', 'special_file_change', f'{path}: symlink, submodule or file-mode change needs allowed_sensitive_paths')
@@ -567,9 +603,11 @@ def verify(repo, result_path, out_path=None, baseline_record=None, evidence_mani
     report['evidence'] = []
     seen_commands = set()
 
+    readable = None if hash_untracked else set(index_state(root))
+
     def record_evidence(ref, label, pin=None):
         try:
-            digest = hash_evidence(ref, bases)
+            digest = hash_evidence(ref, bases, root, readable)
         except Blocked as error:
             add('BLOCKED', 'missing_evidence', f'{label}: {error}')
             return
@@ -781,12 +819,31 @@ def format_summary(report):
     return '\n'.join(lines)
 
 
+def baseline_summary(record, out, size):
+    """Short human- and agent-readable account of a written record. The full record is only in the file."""
+    unread = [p for p in record['baseline_dirty_paths'] if p not in record['baseline_dirty_sha256']]
+    lines = [f'baseline record written: {safe_display_text(str(out))} ({size} bytes)',
+             f'baseline_sha: {record["baseline_sha"]}',
+             f'dirty paths: {len(record["baseline_dirty_paths"])} (untracked contents not read: {len(unread)})',
+             f'ignored paths listed: {len(record["baseline_ignored_paths"])} (names only; contents are never compared)',
+             f'digest: {record["digest"]}']
+    if unread:
+        lines.append('note: verify cannot show those untracked paths unchanged; to compare them, take the baseline '
+                     'and verify with --hash-untracked')
+    if record['baseline_ignored_truncated']:
+        lines.append(f'WARNING: more than {IGNORED_CAP} ignored paths; the list is truncated and verify will be PARTIAL')
+    return '\n'.join(lines)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     sub = parser.add_subparsers(dest='command', required=True)
     base = sub.add_parser('baseline', help='capture a baseline record (run before the task)')
     base.add_argument('--repo', required=True)
-    base.add_argument('--out', help='write the record to a NEW file outside the repository (never overwrites)')
+    base.add_argument('--out', help='write the record to a NEW file outside the repository (never overwrites) and '
+                                    'print a short summary instead of the record')
+    base.add_argument('--hash-untracked', action='store_true',
+                      help='authorize reading untracked file contents to hash pre-existing dirty paths')
     seal = sub.add_parser('seal', help='record evidence hashes in a manifest (hash integrity only)')
     seal.add_argument('--out', required=True, help='NEW manifest file (never overwrites)')
     seal.add_argument('files', nargs='+', help='evidence files; recorded exactly as spelled here')
@@ -798,6 +855,8 @@ def main(argv=None):
     check.add_argument('--evidence-manifest', help='sealed manifest from the seal subcommand')
     check.add_argument('--require-sealed', action='store_true',
                        help='PARTIAL unless every evidence file matches the sealed manifest (hash integrity only)')
+    check.add_argument('--hash-untracked', action='store_true',
+                       help='authorize reading untracked file contents (dirty-path comparison and in-repository evidence)')
     check.add_argument('--format', choices=('json', 'summary'), default='json',
                        help='output format: json (default) or human-readable summary')
     sub.add_parser('codes', help='print the stable failure-code registry (JSON)')
@@ -810,13 +869,16 @@ def main(argv=None):
             return 0
         if args.command == 'baseline':
             root = repo_root(args.repo)
-            text = json.dumps(make_baseline(root), indent=2, sort_keys=True)
-            if args.out:
-                out = Path(args.out).expanduser().resolve()
-                if root in out.parents:
-                    raise Blocked('refusing to write the baseline record inside the repository being recorded')
-                write_new(out, text + '\n')
-            print(text)
+            out = Path(args.out).expanduser().resolve() if args.out else None
+            if out is not None and root in out.parents:
+                raise Blocked('refusing to write the baseline record inside the repository being recorded')
+            record = make_baseline(root, args.hash_untracked)
+            text = bounded_text(record, MAX_BASELINE, 'baseline record')
+            if out is None:
+                sys.stdout.write(text)
+            else:
+                write_new(out, text)
+                print(baseline_summary(record, out, len(text.encode('utf-8'))))
             return 0
         if args.command == 'seal':
             entries = {}
@@ -827,12 +889,12 @@ def main(argv=None):
                 entries[ref] = hashlib.sha256(path.read_bytes()).hexdigest()
             manifest = {'schema': MANIFEST_SCHEMA, 'entries': entries}
             manifest['digest'] = canonical_digest(manifest)
-            text = json.dumps(manifest, indent=2, sort_keys=True)
-            write_new(Path(args.out).expanduser(), text + '\n')
-            print(text)
+            text = bounded_text(manifest, MAX_JSON, 'evidence manifest')
+            write_new(Path(args.out).expanduser(), text)
+            sys.stdout.write(text)
             return 0
         report = verify(args.repo, args.result, args.out, args.baseline_record,
-                        args.evidence_manifest, args.require_sealed)
+                        args.evidence_manifest, args.require_sealed, args.hash_untracked)
     except Blocked as error:
         report = blocked_report(error)
     except Exception as error:  # fail closed on anything unexpected

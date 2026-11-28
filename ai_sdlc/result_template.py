@@ -115,7 +115,8 @@ def main(argv=None):
     try:
         root, template, omitted = _build(args.repo, args.baseline_record)
         out = _validate_out_path(root, args.out)
-        text = json.dumps(template, indent=2, sort_keys=True) + '\n'
+        text = _vs.bounded_text(template, _vs.MAX_JSON,
+                                'result template (use --baseline-record to keep the ignored list out of it)')
         _vs.write_new(out, text)
     except _vs.Blocked as error:
         sys.stderr.write(f'ai-sdlc result-template: BLOCKED: {error}\n')

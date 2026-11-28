@@ -68,7 +68,7 @@ Safe lifecycle management: use `--upgrade` to replace an intact older bundle, or
 
 ```bash
 # 1. Record pre-task baseline outside the repository
-ai-sdlc baseline --repo /path/to/repo --out /safe/place/baseline.json
+ai-sdlc baseline --repo /path/to/repo --out /safe/place/baseline.json   # untracked contents are not read
 
 # 2. Agent implements approved plan and writes test output to /safe/place/out.txt
 # 3. Generate and populate fail-closed result contract

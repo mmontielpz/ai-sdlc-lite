@@ -6,12 +6,25 @@ This guide walks from installation to your first verified `PASS` and `BLOCKED` r
 
 The `ai-sdlc` command is installed separately from the Skill. Everything below is offline and uses only Python 3.9+ and Git; nothing is downloaded and no dependency is installed.
 
-**Build the wheel once, from a reviewed checkout of `ai-sdlc-lite`** (needs `setuptools` already available to that Python):
+**Ubuntu 24.04 prerequisites** (the system packages; installing them needs network access once):
 
 ```bash
-python3 -m pip wheel --no-build-isolation --no-deps -w dist .
+sudo apt-get install git python3-pip python3-venv python3-setuptools python3-wheel
+```
+
+With `setuptools` older than 70.1 (Ubuntu 24.04 ships 68.1.2) the build also needs the `wheel` package; without it the build stops with `invalid command 'bdist_wheel'`.
+
+**Build the wheel once, from a clean checkout of the reviewed commit:**
+
+```bash
+umask 022                                   # before cloning: file modes are stored in the wheel
+git clone https://github.com/mmontielpz/ai-sdlc-lite.git && cd ai-sdlc-lite
+git checkout --detach <reviewed-commit>
+SOURCE_DATE_EPOCH=$(git log -1 --format=%ct) python3 -m pip wheel --no-build-isolation --no-deps -w dist .
 sha256sum dist/*.whl        # record or compare the digest before distributing the file
 ```
+
+The same commit, build tool versions, `umask` and `SOURCE_DATE_EPOCH` give the same bytes. A different toolchain can give a different digest. A leftover `build/` directory can change the contents, so build from a fresh clone.
 
 **Install it, in a Python 3.9+ virtual environment, wherever you work** (no checkout is needed from here on):
 
@@ -76,7 +89,7 @@ Daily workflow: `Task -> Gate 1 -> Implementation -> External Evidence -> Verify
 Store `baseline.json`, `result.json`, and test output (`out.txt`) outside the repository so they do not pollute workspace diffs:
 
 ```bash
-ai-sdlc baseline --repo /path/to/repo --out /safe/place/baseline.json
+ai-sdlc baseline --repo /path/to/repo --out /safe/place/baseline.json   # prints a short summary
 ai-sdlc result-template --repo /path/to/repo --out /safe/place/result.json --baseline-record /safe/place/baseline.json
 ai-sdlc verify --repo /path/to/repo --result /safe/place/result.json --baseline-record /safe/place/baseline.json
 ai-sdlc verify --repo /path/to/repo --result /safe/place/result.json --baseline-record /safe/place/baseline.json --format summary
@@ -85,6 +98,8 @@ ai-sdlc verify --repo /path/to/repo --result /safe/place/result.json --baseline-
 `result-template` populates repository-derived fields (`schema`, `baseline_sha`, `baseline_dirty_paths`, `modified_paths`, and `baseline_ignored_paths` when no `--baseline-record` is given; with a record the verifier reads the ignored list from the record, so the template stays small and prints a short summary of the ignored directories instead) and sets fail-closed defaults (`verification: []`, `claimed_status: "BLOCKED"`, `execution_state: "in_progress"`). Before running `verify`, the developer or agent must fill in `task_id`, `allowed_paths`, `modified_paths` (if further changes occurred), observed `verification` entries (`command`, `exit_code`, `evidence`), `claimed_status`, and `execution_state: "complete"`.
 
 By default `verify` prints machine-readable JSON (`--format json`). Add `--format summary` for a concise human-readable terminal view (for example, `Status: PASS (computed: PASS, claimed: PASS)` with modified paths, evidence completeness, failure codes, and guidance) while preserving the exact same exit codes (`0`/`1`/`2`). The summary separates `Scope verification`, `Agent-reported checks` and `Independently executed checks` (`none` when the report states that independent execution is not verified, as in any completed `verify` run, since `verify` never runs commands; `unknown` when the report carries no trust information, for example when verification stopped early), so a `PASS` means no violation was detected in the supplied contract and evidence, not that the recorded checks ran or passed. Re-run the required checks yourself before accepting a result. The JSON output is unchanged.
+
+**Untracked files are not read by default.** `baseline` and `verify` list their names only, so an untracked file that already existed cannot be shown unchanged: outside `allowed_paths` it is `BLOCKED`, inside it the result stays `PARTIAL`. To compare such files by content, pass `--hash-untracked` to both `baseline` and `verify`; that authorizes reading them. Evidence files inside the repository that Git does not track are also refused without that flag.
 
 If the repository is already dirty, capture `ai-sdlc baseline` before the task and pass it with `--baseline-record`. Pre-existing dirty files that stay exactly as recorded (content, index entry, executable bit, symlink target) keep the result at `PARTIAL` instead of `BLOCKED`; any change to them, an older baseline record without `baseline_dirty_state`, or no record at all is treated as before (`BLOCKED` unless the path is allowed). Re-take the baseline with the current tool if you want this behavior.
 
