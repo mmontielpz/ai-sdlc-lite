@@ -10,6 +10,8 @@ This is the single active strategic roadmap. Horizons `H1`–`H6` (OD-15) give d
 
 ### Sequence through W01 (OD-28, recorded 2026-11-27)
 
+**Amendment (OD-38, 2026-11-28).** W01 is **on hold**; its first slice is recorded as PARTIAL and not accepted. W02 is prioritized and no longer waits for W01. Completion of W01 is no longer a specific prerequisite for the experimental release. This replaces the ordering in steps 4 to 6 below, which are preserved as the earlier record. Release gates (including `G7` in full), qualification criteria, research and evidence requirements are unchanged, and nothing here authorizes implementation, publication or release.
+
 This sequence records order only and authorizes nothing; each step needs its own approval. OD-28 places W01 before the experimental public release, which amends the order of stages 4 and 5 in the stage sequence below; that text is preserved.
 
 1. S9a (decisions, evidence anchors, roadmap alignment): Gate 1, implementation, Gate 2, integration, then synchronization confirmed as the closure postcondition.
@@ -48,7 +50,7 @@ The final change gets Gate 2 before integration. Remote synchronization is then 
 | H5 | Autonomous Engineering: bounded autonomy classes with preserved accountability (`A3`–`A5` are research candidates, OD-16) | escaped-defect and intervention data plus an explicit owner decision | SP-03, SP-04 |
 | H6 | Open Industry Standard (ambition): independently implementable specification, conformance and community | independent implementation and external adoption evidence | SP-06, SP-02 |
 
-H2 research is **not** blocked on completing H1: early measurement and pilot design may proceed before any public release (framework overhead, `M1`–`M5`, efficiency observations as early as practical), each needing its own execution authorization. W01 remains the first accepted real-world pilot, and W01 comes before W02 unless the owner changes it. A single pilot supports no causal claim.
+H2 research is **not** blocked on completing H1: early measurement and pilot design may proceed before any public release (framework overhead, `M1`–`M5`, efficiency observations as early as practical), each needing its own execution authorization. W01 was selected as the first real-world pilot; it is on hold without acceptance, and W02 is prioritized (OD-38). A single pilot supports no causal claim.
 
 ### Existing stage sequence (accepted 2026-11-21; unchanged) with horizon mapping
 
@@ -80,14 +82,14 @@ Classes: **Committed** (owner-accepted sequence), **Proposed** (near-term, needs
 |---|---|---|---|---|
 | M-01 GOV-TRUNK-001 | H1 | **Closed 2026-11-27** (criteria above); open follow-up: restricted copies by 2026-12-27 (OD-36); push and deletion rejection NOT_TESTED | P0 · DA-D09-01..03, DA-D10-04, DA-D08-04 | trunk `main` (OD-24, OD-26); legacy branches frozen and retained (OD-30); custody per OD-29, OD-35, OD-36; before any tag |
 | M-02 SEC-DOC-001: Security, Privacy and Information Governance | H1 | Minimum slice (classification, pilot data handling, verifier disclosure) integrated; remaining scope open, including a follow-up content review that needs its own Gate 1 | P1 · DA-D08-01(R1), -04, -05, -06 | documentation only; discloses current untracked-content behaviour; adds information classification, evidence privacy, commit identity and retention |
-| M-03 VERIFIER-UNTRACKED-001: verifier confidentiality and scope integrity | H1 | Proposed, **candidate public-release blocker**; decision-gated | P1 · DA-D08-01 | design choice not approved; deterministic scope verification must not be weakened; see security posture below |
+| M-03 VERIFIER-UNTRACKED-001: verifier confidentiality and scope integrity | H1 | Correction approved (OD-40), pending integration; **candidate public-release blocker** until accepted | P1 · DA-D08-01 | design choice not approved; deterministic scope verification must not be weakened; see security posture below |
 | M-04 RELEASE-ENG-001 | H1 | Proposed | P1 · DA-D10-01..03, DA-D09-05/06 | needs RG-1, RG-2, RG-3 and the release-policy decision |
 | M-05 OSS-HYGIENE-001 | H1 | Proposed | P2 · DA-D11-01/02 | owner contacts and files |
 | M-06 PLATFORM-PREFLIGHT-001 (resumes WSL2-001, suspended) | H1 | Deferred (OD-31); suspended work and evidence preserved | P1 · DA-D06-01 | WSL2 claim only if observed; needs the hygiene decision first |
 | M-07 AGENT-QUAL-001 | H1 | Proposed | P1 · DA-D04-01/02, DA-D07-03 | live budget and authorization pending (RG-6); one exact Claude Code version |
 | M-08 DOCS-IA-001 | H1 | Proposed | P1 · DA-D01-01/02, DA-D12-01..03 | owns the single `README.md` rewrite (README is not changed by the alignment mission) |
-| M-09 W01 | H2 | **Committed** sequence (OD-07, OD-11); M064-A preparation contract integrated | P1 · DA-D03-03, DA-D13-02 | static personal website; execution pending accepted M064-A, preflight and separate authorizations |
-| M-10 SITE-W02 | H2 | Proposed | P2 · DA-D12, DA-D14-01 | after W01 unless the owner changes it |
+| M-09 W01 | H2 | **On hold** (OD-38); first slice PARTIAL, not accepted | P1 · DA-D03-03, DA-D13-02 | static personal website; resumption needs separate authorizations |
+| M-10 SITE-W02 | H2 | **Prioritized** (OD-38); implementation needs its own authorization | P2 · DA-D12, DA-D14-01 | no longer waits for W01 (OD-38); `website/`, Astro and Starlight candidate (OD-41) |
 | M-11 INDEP-QUAL-001 | H1 | Proposed | P1 · DA-D13-02, DA-D05-01 | independent person (RG-8) for `G3`/`G10` |
 | M-12 BENCH-RESEARCH-001 | H2 | Completed: accepted 2026-11-27 with limitations (EB-07 and part of EB-03 unresolved; no benchmark run) | P2 | focused non-blocking complement before M-13 pre-registration (OD-33); network access needs authorization |
 | M-13 BENCH-001 | H2 (arms later H3/H4) | Research | P3 · DA-D13-01 | needs pre-registration and execution authorization |
