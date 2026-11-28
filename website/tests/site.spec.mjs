@@ -1,7 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import { basePath } from '../src/lib/links.mjs';
-import { nav } from '../src/lib/links.mjs';
+import { basePath, nav } from '../src/lib/links.mjs';
 
 const tags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'];
 
@@ -46,7 +45,7 @@ test('fits the viewport and keeps navigation usable', async ({ page }) => {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBe(0);
   const menu = page.getByRole('navigation', { name: 'Main' });
-  for (const label of [...nav.map((item) => item.label), 'GitHub']) {
+  for (const { label } of nav) {
     const link = menu.getByRole('link', { name: label, exact: true });
     await expect(link).toBeVisible();
     const box = await link.boundingBox();
@@ -72,6 +71,11 @@ test('theme can be chosen by the reader', async ({ page }) => {
   await page.goto('./');
   await page.locator('starlight-theme-select select').first().selectOption('light');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+});
+
+test('shows the diagram variant that suits the width', async ({ page }) => {
+  await page.goto('./');
+  await expect(page.getByRole('img', { name: /^Diagram\./ })).toHaveCount(1);
 });
 
 test('unknown addresses show the 404 page', async ({ page }) => {

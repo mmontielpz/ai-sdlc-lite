@@ -6,8 +6,7 @@ export const doc = (path) => `${repoUrl}/blob/main/${path}`;
 
 // Dedicated pages are not implemented yet, so navigation goes to canonical documents.
 export const nav = [
-  { label: 'Quickstart', href: doc('docs/QUICKSTART.md') },
-  { label: 'Methodology', href: doc('WORKFLOW.md') },
-  { label: 'Research', href: doc('docs/research/RESEARCH_AGENDA.md') },
+  { label: 'Docs', href: doc('README.md#documentation-map') },
   { label: 'Roadmap', href: doc('docs/PUBLIC_ROADMAP.md') },
+  { label: 'GitHub', href: repoUrl },
 ];

@@ -17,7 +17,9 @@ npx playwright install chromium    # once, before the browser checks
 
 ## Content rules
 
-- Version, problem statement, principles, autonomy levels, roadmap status and qualification rows are read from the canonical documents at build time (`src/lib/canonical.mjs`). If their structure changes, the build fails.
+- The homepage is deliberately short. Detail stays in the canonical documents it links to; do not copy it back.
+- The version is read from `pyproject.toml` at build time (`src/lib/canonical.mjs`). Other homepage wording is written by hand: when the project's status or principles change, review it.
+- The example output is an excerpt of a real run of `examples/first-five-minutes`. The check confirms its codes and files still exist, not the exact wording.
 - Pages that do not exist yet are linked to the canonical document on GitHub. Add no empty pages.
 - State only what the repository records. `tests/static.test.mjs` requires the limitation statements and rejects a list of unsupported claims; it cannot judge new wording, so review it.
 - No analytics, external fonts or third-party requests.

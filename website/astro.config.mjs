@@ -13,8 +13,8 @@ export default defineConfig({
       description:
         'An experimental open methodology and lightweight reference framework for governed, verifiable agentic software engineering.',
       logo: {
-        dark: './brand/bound/wordmark-on-dark.svg',
-        light: './brand/bound/wordmark-on-light.svg',
+        dark: './brand/strata/wordmark-on-dark.svg',
+        light: './brand/strata/wordmark-on-light.svg',
         replacesTitle: true,
       },
       favicon: '/favicon.svg',

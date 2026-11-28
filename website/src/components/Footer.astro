@@ -1,20 +1,32 @@
 ---
-import { doc, repoUrl } from '../lib/links.mjs';
+import ThemeSelect from 'virtual:starlight/components/ThemeSelect';
+import { doc } from '../lib/links.mjs';
 import { version } from '../lib/canonical.mjs';
+const links = [
+  ['Methodology', 'WORKFLOW.md'],
+  ['Research', 'docs/research/RESEARCH_AGENDA.md'],
+  ['Qualification', 'QUALIFICATION_MATRIX.md'],
+  ['Security', 'SECURITY.md'],
+  ['Contributing', 'CONTRIBUTING.md'],
+  ['MIT License', 'LICENSE'],
+];
 ---
 <div class="site-footer">
-  <p>AI-SDLC Lite {version()} is experimental. No release has been published.</p>
   <ul>
-    <li><a href={doc('LICENSE')}>MIT License</a></li>
-    <li><a href={doc('SECURITY.md')}>Security</a></li>
-    <li><a href={doc('CONTRIBUTING.md')}>Contributing</a></li>
-    <li><a href={repoUrl}>Source</a></li>
+    {links.map(([label, path]) => <li><a href={doc(path)}>{label}</a></li>)}
   </ul>
+  <div class="base">
+    <p>Experimental {version()}. No release published. No benchmark has been run.</p>
+    <ThemeSelect />
+  </div>
 </div>
 
 <style>
-  .site-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.75rem 2rem; margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--sl-color-hairline); color: var(--sl-color-gray-3); font-size: var(--sl-text-sm); }
+  .site-footer { padding-block: 2.5rem 1rem; border-top: 1px solid var(--sl-color-hairline); color: var(--sl-color-gray-3); font-size: var(--sl-text-sm); }
   p, ul { margin: 0; }
-  ul { display: flex; flex-wrap: wrap; gap: 1.25rem; padding: 0; list-style: none; }
-  a { display: inline-block; padding-block: 0.2rem; color: var(--sl-color-gray-2); }
+  ul { display: flex; flex-wrap: wrap; gap: 0.5rem 1.75rem; padding: 0; list-style: none; }
+  li { margin: 0; }
+  a { display: inline-block; padding-block: 0.2rem; color: var(--sl-color-gray-2); text-decoration: none; }
+  a:hover { color: var(--sl-color-white); text-decoration: underline; text-underline-offset: 0.3em; }
+  .base { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem 2rem; margin-top: 2rem; }
 </style>

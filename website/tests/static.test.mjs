@@ -48,7 +48,7 @@ test('stylesheet asset references carry the base path', () => {
 
 test('repository links point to existing files and headings', () => {
   const links = pages.flatMap((p) => attrs(p.html)).filter((a) => a.value.startsWith(`${repoUrl}/blob/main/`));
-  assert.ok(links.length > 10);
+  assert.ok(links.length >= 8);
   for (const { value } of links) {
     const [path, anchor] = value.slice(`${repoUrl}/blob/main/`.length).split('#');
     assert.ok(existsSync(join(repo, path)), `missing repository file ${path}`);
@@ -77,14 +77,23 @@ test('version and status come from the repository', () => {
 
 test('required limitations are stated', () => {
   for (const statement of [
-    'no benchmark has been run',
+    'No benchmark has been run',
     'does not sandbox or confine an agent',
-    'Neither exists today',
-    'is not implemented',
-    'Independence of design is not verified support',
-    'Production readiness, autonomous operation and industry adoption are not claimed',
     'Today, work is human-supervised',
+    'Verified agent support is narrower',
   ]) assert.ok(text.includes(statement), `missing: ${statement}`);
+  // The detail behind these summaries lives in the canonical documents the page links to.
+  for (const path of ['QUALIFICATION_MATRIX.md', 'docs/PUBLIC_ROADMAP.md']) assert.ok(home.includes(`${repoUrl}/blob/main/${path}`), path);
+});
+
+test('the example output uses codes and files that exist in the repository', () => {
+  const verifier = readFileSync(join(repo, 'scripts/verify_scope.py'), 'utf8');
+  for (const code of ['out_of_scope_modification', 'false_pass']) {
+    assert.ok(text.includes(code) && verifier.includes(code), code);
+  }
+  for (const path of ['src/greeter.py', 'result.blocked.json']) {
+    assert.ok(text.includes(path) && existsSync(join(repo, 'examples/first-five-minutes', path)), path);
+  }
 });
 
 test('unsupported claims are absent', () => {
@@ -100,24 +109,16 @@ test('CI runs the website checks for every repository file the site links to', (
   const trigger = new RegExp(ci.match(/grep -qE '(\^\(website[^']+)'/)[1]);
   const linked = pages.flatMap((p) => attrs(p.html)).filter((a) => a.value.startsWith(`${repoUrl}/blob/main/`))
     .map((a) => a.value.slice(`${repoUrl}/blob/main/`.length).split('#')[0]);
-  for (const path of [...linked, 'README.md', 'VISION.md', 'pyproject.toml', 'website/package.json']) assert.match(path, trigger);
-});
-
-test('qualification rows match the README', () => {
-  const readme = readFileSync(join(repo, 'README.md'), 'utf8');
-  const section = readme.split('## Supported Agents & Observed Qualification')[1].split('\n## ')[0];
-  const targets = section.split('\n').filter((l) => l.startsWith('| **')).map((l) => l.split('|')[1].replace(/\*\*|`/g, '').trim());
-  assert.ok(targets.length >= 3);
-  for (const target of targets) assert.ok(text.includes(target), `missing qualification row ${target}`);
+  for (const path of [...linked, 'README.md', 'pyproject.toml', 'website/package.json']) assert.match(path, trigger);
 });
 
 test('brand files are complete and self-contained; the favicon is the provisional concept', () => {
-  for (const concept of ['bound', 'bov', 'ascend']) {
+  for (const concept of ['strata', 'threshold', 'trace']) {
     for (const name of ['favicon', ...['symbol', 'wordmark'].flatMap((k) => ['on-dark', 'on-light', 'mono'].map((t) => `${k}-${t}`))]) {
       const svg = readFileSync(`brand/${concept}/${name}.svg`, 'utf8');
       assert.match(svg, /^<svg [^>]*viewBox=/);
       assert.doesNotMatch(svg, /<text|<image|<script|href=|url\(/, `${concept}/${name}`);
     }
   }
-  assert.equal(readFileSync('public/favicon.svg', 'utf8'), readFileSync('brand/bound/favicon.svg', 'utf8'));
+  assert.equal(readFileSync('public/favicon.svg', 'utf8'), readFileSync('brand/strata/favicon.svg', 'utf8'));
 });

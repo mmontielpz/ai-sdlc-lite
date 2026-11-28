@@ -1,32 +1,22 @@
 ---
 import SiteTitle from 'virtual:starlight/components/SiteTitle';
-import ThemeSelect from 'virtual:starlight/components/ThemeSelect';
-import { nav, repoUrl } from '../lib/links.mjs';
+import { nav } from '../lib/links.mjs';
 ---
 <div class="site-header">
   <SiteTitle />
   <nav aria-label="Main">
     <ul>
       {nav.map((item) => <li><a href={item.href}>{item.label}</a></li>)}
-      <li><a href={repoUrl}>GitHub</a></li>
     </ul>
   </nav>
-  <div class="theme"><ThemeSelect /></div>
 </div>
 
 <style>
-  .site-header { display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: 'title nav theme'; align-items: center; gap: 0.5rem 1.5rem; height: 100%; }
-  .site-header > :global(.site-title) { grid-area: title; height: 2rem; }
-  .site-header > :global(.site-title img) { width: auto; height: 1.75rem; }
-  nav { grid-area: nav; justify-self: end; }
-  .theme { grid-area: theme; }
-  ul { display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; margin: 0; padding: 0; list-style: none; }
+  .site-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; max-width: var(--sl-content-width); height: 100%; margin-inline: auto; }
+  .site-header > :global(.site-title) { height: 1.75rem; }
+  .site-header > :global(.site-title img) { width: auto; height: 1.5rem; }
+  ul { display: flex; gap: clamp(1rem, 3vw, 2.25rem); margin: 0; padding: 0; list-style: none; }
   li { line-height: 1.4; }
-  nav a { display: inline-block; padding: 0.3rem 0; color: var(--sl-color-gray-2); font-size: var(--sl-text-sm); font-weight: 500; text-decoration: none; }
-  nav a:hover { color: var(--sl-color-text-accent); text-decoration: underline; text-underline-offset: 0.3em; }
-  @media (max-width: 49.99rem) {
-    .site-header { grid-template-columns: 1fr auto; grid-template-areas: 'title theme' 'nav nav'; align-content: center; }
-    nav { justify-self: start; }
-    ul { gap: 0 1rem; }
-  }
+  nav a { display: inline-block; padding: 0.3rem 0; color: var(--sl-color-gray-3); font-size: var(--sl-text-sm); font-weight: 500; text-decoration: none; }
+  nav a:hover { color: var(--sl-color-white); }
 </style>

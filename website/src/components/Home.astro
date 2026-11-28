@@ -1,162 +1,72 @@
 ---
+import BoundsDiagram from './BoundsDiagram.astro';
 import { doc, repoUrl } from '../lib/links.mjs';
-import { autonomy, bullets, msi, problem, qualification, version } from '../lib/canonical.mjs';
+import { version } from '../lib/canonical.mjs';
 
-const roadmap = 'docs/PUBLIC_ROADMAP.md';
-const status = qualification();
 const lifecycle = [
-  { phase: 'Bound', question: 'What may change, and how will it be checked?', steps: [
-    { name: 'Task', detail: 'Scope, plan, checks and a baseline recorded before work.' },
-    { name: 'Gate 1', detail: 'A human approves the plan.', gate: true },
-  ] },
-  { phase: 'Observe', question: 'What actually happened?', steps: [
-    { name: 'Implementation', detail: 'The agent edits within the approved scope.' },
-    { name: 'Evidence', detail: 'Check output is saved outside the repository.' },
-  ] },
-  { phase: 'Verify', question: 'Is the result acceptable?', steps: [
-    { name: 'ai-sdlc verify', detail: 'Compares Git state and evidence digests with the contract.' },
-    { name: 'Gate 2', detail: 'A human re-runs the checks, reviews the diff and decides.', gate: true },
-  ] },
+  ['Bound', 'Agree scope and checks before work starts.'],
+  ['Observe', 'Record what changed and what the checks returned.'],
+  ['Verify', 'Compare the evidence with the agreement. Then decide.'],
 ];
-const layers = [
-  { name: 'Methodology', state: 'Documented', text: 'Bound, Observe, Verify with two human gates, written to be tool-agnostic. You can follow it without the tool.', link: { label: 'Read the workflow', href: doc('WORKFLOW.md') } },
-  { name: 'Reference implementation', state: 'Experimental', text: 'An offline Python command-line tool, result contracts and an installable agent Skill that apply the methodology.', link: { label: 'Read the architecture', href: doc('ARCHITECTURE.md') } },
-  { name: 'Research and validation', state: 'No benchmark run', text: 'Hypotheses about efficiency, evidence and autonomy, stated so that experiments can reject them.', link: { label: 'Read the research agenda', href: doc('docs/research/RESEARCH_AGENDA.md') } },
-  { name: 'Long-term vision', state: 'Ambition', text: 'Enable extraordinary levels of bounded autonomy in software engineering, and contribute toward an open industry standard. Neither exists today.', link: { label: 'Read the vision', href: doc('VISION.md') } },
+const principles = [
+  ['Minimum sufficient intelligence', 'The simplest mix of code, models, agents and people that does the job.'],
+  ['Evidence over assertion', '“It passed” is a claim until someone checks it.'],
+  ['Progressive autonomy', 'Delegate more as evidence accumulates. Today, work is human-supervised.'],
+  ['Provider independence', 'Provider-neutral contracts. Verified agent support is narrower.'],
+];
+// Excerpt of `ai-sdlc verify` on examples/first-five-minutes; "…" marks omitted lines.
+const output = [
+  ['$ ai-sdlc verify --repo repo \\', 'command'],
+  ['--result result.blocked.json \\', 'option'],
+  ['--baseline-record baseline.json \\', 'option'],
+  ['--format summary', 'option'],
+  ['Status: BLOCKED (computed: BLOCKED, claimed: PASS)', 'status'],
+  ['…', 'muted'],
+  ['- [BLOCKED] out_of_scope_modification: src/greeter.py', 'reason'],
+  ['- [BLOCKED] false_pass: contract claims PASS but verification computed BLOCKED', 'reason'],
+  ['…', 'muted'],
 ];
 ---
 <div class="home not-content">
   <section class="hero" aria-labelledby="_top">
     <p class="status"><span>Experimental</span> {version()} · no release published</p>
     <h1 id="_top">Engineer with agents. <em>Delegate with confidence.</em></h1>
-    <p class="lead">AI-SDLC Lite is an open methodology and lightweight reference framework for efficient, governed and verifiable agentic software engineering.</p>
-    <p class="sub">Confidence comes from agreed bounds, observed evidence and human acceptance, not from trusting the agent. Efficiency is a research goal: no benchmark has been run.</p>
+    <p class="lead">An open methodology and lightweight reference framework for efficient, governed and verifiable agentic software engineering.</p>
     <p class="actions">
-      <a class="button primary" href={doc('docs/QUICKSTART.md')}>Quickstart</a>
-      <a class="button" href={repoUrl}>View on GitHub</a>
+      <a class="button primary" href={doc('docs/QUICKSTART.md')}>Get started</a>
+      <a class="button" href={repoUrl}>GitHub</a>
     </p>
   </section>
 
-  <section aria-labelledby="problem">
-    <h2 id="problem">The problem</h2>
-    <p class="statement">{problem()}</p>
-  </section>
+  <BoundsDiagram />
 
   <section aria-labelledby="lifecycle">
-    <h2 id="lifecycle">Bound, Observe, Verify</h2>
-    <p class="intro">One task at a time, with two decisions that stay human.</p>
+    <h2 id="lifecycle">One task. Two human gates.</h2>
     <ol class="lifecycle">
-      {lifecycle.map((group, index) => (
-        <li class="phase">
-          <h3><span class="number">{index + 1}</span> {group.phase}</h3>
-          <p class="question">{group.question}</p>
-          <ol>
-            {group.steps.map((step) => (
-              <li class:list={['step', { gate: step.gate }]}><strong>{step.name}</strong><span>{step.detail}</span></li>
-            ))}
-          </ol>
-        </li>
+      {lifecycle.map(([name, text]) => (
+        <li><h3>{name}</h3><p>{text}</p></li>
       ))}
     </ol>
-    <p class="note">Verification happens after the work. It never runs your commands and does not sandbox or confine an agent. See <a href={doc('SECURITY.md')}>what is and is not enforced</a>.</p>
   </section>
 
-  <section aria-labelledby="principles">
+  <section class="split" aria-labelledby="principles">
     <h2 id="principles">Principles</h2>
-    <div class="columns two">
-      <article>
-        <h3>Minimum Sufficient Intelligence</h3>
-        <p>{msi()}</p>
-        <p class="note">A design principle. Automatic routing between model tiers is a research question and is not implemented.</p>
-      </article>
-      <article>
-        <h3>Provider independence</h3>
-        <p>The core contracts are provider-neutral, so the method does not depend on one vendor.</p>
-        <p class="note">Qualification is provider-specific. Independence of design is not verified support; see the evidence below.</p>
-      </article>
-    </div>
-  </section>
-
-  <section aria-labelledby="autonomy">
-    <h2 id="autonomy">Progressive Autonomy</h2>
-    <p class="intro">Delegate more only as evidence accumulates. Today, work is human-supervised.</p>
-    <ol class="ladder">
-      {autonomy().map((level) => (
-        <li class:list={{ implemented: level.status.startsWith('Implemented') }}>
-          <span class="level">{level.id}</span>
-          <span>{level.meaning}{level.condition && <small>Condition: {level.condition}.</small>}</span>
-          <span class="tag">{level.status}</span>
-        </li>
-      ))}
-    </ol>
-  </section>
-
-  <section aria-labelledby="layers">
-    <h2 id="layers">Method, implementation, research, vision</h2>
-    <p class="intro">Four different things, with four different levels of evidence.</p>
-    <div class="columns four">
-      {layers.map((layer) => (
-        <article>
-          <p class="tag">{layer.state}</p>
-          <h3>{layer.name}</h3>
-          <p>{layer.text}</p>
-          <p><a href={layer.link.href}>{layer.link.label}</a></p>
-        </article>
-      ))}
-    </div>
-  </section>
-
-  <section aria-labelledby="status">
-    <h2 id="status">Current status</h2>
-    <div class="columns two">
-      <article>
-        <h3>Available today</h3>
-        <ul>{bullets(roadmap, 'Available today').map((item) => <li>{item}</li>)}</ul>
-      </article>
-      <article>
-        <h3>Not established</h3>
-        <ul>{bullets(roadmap, 'What is not established').map((item) => <li>{item}</li>)}</ul>
-      </article>
-    </div>
-    <h3 id="evidence">Agent and platform evidence</h3>
-    <p class="note">{status.asOf}. The <a href={doc('QUALIFICATION_MATRIX.md')}>qualification matrix</a> is the authority.</p>
-    <dl class="evidence">
-      {status.rows.map((row) => (
-        <div>
-          <dt>{row.target}<span class="tag">{row.status}</span></dt>
-          <dd>{row.evidence}</dd>
-        </div>
+    <dl>
+      {principles.map(([name, text]) => (
+        <div><dt>{name}</dt><dd>{text}</dd></div>
       ))}
     </dl>
   </section>
 
-  <section aria-labelledby="start">
-    <h2 id="start">Start here</h2>
-    <div class="columns three">
-      <article>
-        <h3>Documentation</h3>
-        <ul>
-          <li><a href={doc('docs/QUICKSTART.md')}>Quickstart: a first verified result</a></li>
-          <li><a href={doc('WORKFLOW.md')}>Workflow</a></li>
-          <li><a href={doc('RESULT_CONTRACT.md')}>Result contract</a></li>
-        </ul>
-      </article>
-      <article>
-        <h3>Roadmap and research</h3>
-        <ul>
-          <li><a href={doc(roadmap)}>Public roadmap</a></li>
-          <li><a href={doc('docs/research/RESEARCH_AGENDA.md')}>Research agenda</a></li>
-          <li><a href={doc('docs/research/BENCHMARK_PROTOCOL.md')}>Benchmark protocol (not yet run)</a></li>
-        </ul>
-      </article>
-      <article>
-        <h3>Contribute</h3>
-        <ul>
-          <li><a href={doc('CONTRIBUTING.md')}>How to propose a change</a></li>
-          <li><a href={`${repoUrl}/issues`}>Report a confusing step</a></li>
-          <li><a href={doc('SECURITY.md#reporting-a-vulnerability')}>Report a vulnerability privately</a></li>
-        </ul>
-      </article>
+  <section class="split" aria-labelledby="example">
+    <div>
+      <h2 id="example">A claim is not proof.</h2>
+      <p>The report says <code>PASS</code>. A file changed outside its scope.</p>
+      <p><a href={doc('docs/QUICKSTART.md#4-run-the-bounded-example')}>Run this example</a></p>
     </div>
+    <figure class="terminal">
+      <pre><code>{output.map(([text, kind]) => <span class:list={['line', kind]}>{text}</span>)}</code></pre>
+      <figcaption>Excerpt of real output from the repository’s bounded example.</figcaption>
+    </figure>
   </section>
 </div>
