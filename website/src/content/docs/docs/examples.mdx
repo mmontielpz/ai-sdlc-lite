@@ -1,0 +1,60 @@
+---
+title: Examples
+description: What the repository can show for each scenario, labelled by kind of evidence.
+---
+
+import CodeBlock from '../../../components/CodeBlock.astro';
+import Outcome from '../../../components/Outcome.astro';
+import { codeBlock, read } from '../../../lib/canonical.mjs';
+import { doc } from '../../../lib/links.mjs';
+
+| Label | Meaning |
+| --- | --- |
+| Executable example | Code in the repository that you can run |
+| Documented workflow | Written guidance, with no repository example that demonstrates it end to end |
+
+## Bug fixing
+
+**Executable example.** `normalize_name` must lowercase a name and trim surrounding whitespace. The original version did not trim.
+
+<CodeBlock code={read('examples/small-fix/normalize.py').trimEnd()} title="examples/small-fix/normalize.py" />
+
+Run the repaired version from a checkout. Five tests pass:
+
+<CodeBlock code={codeBlock('examples/small-fix/README.md', 'Verify the repaired implementation')} />
+
+The example's [replay script](https://github.com/mmontielpz/ai-sdlc-lite/blob/main/examples/small-fix/README.md#reproduce-the-original-defective-baseline-separately) recreates the defective baseline in a temporary directory: three tests pass, two fail.
+
+The recorded run left human acceptance pending, and it was not checked with `ai-sdlc verify`.
+
+## Feature implementation
+
+**Documented workflow.**
+
+1. Describe one observable outcome and the checks that show it.
+2. Approve the plan at Gate 1.
+3. Implement in small steps inside the approved paths.
+4. Run the checks, verify, and decide at Gate 2.
+
+Source: <a href={doc('WORKFLOW.md#deliver-one-useful-increment')}>deliver one useful increment</a>.
+
+## Brownfield engineering
+
+**Documented workflow, not qualified.** No brownfield use case has a recorded qualification run.
+
+1. Inspect read-only within named paths; exclude secrets and personal data.
+2. Keep the project's own instructions and stricter checks.
+3. Record a baseline, including existing uncommitted work. An unchanged pre-existing change caps the result at `PARTIAL`.
+4. Stop if the work needs more scope than was approved.
+
+Source: <a href={doc('WORKFLOW.md#read-only-reconnaissance')}>read-only reconnaissance</a> and <a href={doc('RESULT_CONTRACT.md')}>result contract</a>.
+
+## Verification
+
+**Executable example.** One permitted change, verified twice: with a correct result file, and with one whose declared scope does not cover the change.
+
+<div class="not-content">
+  <Outcome />
+</div>
+
+Follow the steps in <a href={doc('examples/first-five-minutes/README.md')}>the bounded example</a>. It needs the installed CLI.

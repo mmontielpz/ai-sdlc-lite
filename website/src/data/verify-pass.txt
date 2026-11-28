@@ -1,0 +1,12 @@
+Status: PASS (computed: PASS, claimed: PASS)
+Scope verification: PASS - no violation detected in the supplied contract and evidence
+Agent-reported checks: 1 evidence file(s) supplied by the agent; exit codes and outputs are unverified claims, not re-run or observed by the verifier
+Independently executed checks: none - the verifier never runs or observes commands
+Note: PASS does not show that the recorded checks ran or passed; re-run them yourself before acceptance.
+Task: FIRST-FIVE-MIN-001
+Modified paths (1):
+  - src/greeter.py
+Evidence: 1 file(s) (hash integrity: none)
+  - out.txt [unchecked]
+Failure reasons: none
+Guidance: none

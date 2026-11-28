@@ -1,0 +1,47 @@
+---
+title: Installation
+description: Build the CLI from source, install it offline and connect an agent.
+---
+
+import CodeBlock from '../../../components/CodeBlock.astro';
+import InstallSelector from '../../../components/InstallSelector.astro';
+import { codeBlock } from '../../../lib/canonical.mjs';
+import { doc } from '../../../lib/links.mjs';
+
+There is one installation method: build a Python wheel from a checkout you have reviewed. No package, plugin, extension or binary is published.
+
+Tested on Ubuntu 24.04. The commands on this page are read from the <a href={doc('docs/QUICKSTART.md')}>canonical quickstart</a>.
+
+## Prerequisites
+
+<CodeBlock code={codeBlock('docs/QUICKSTART.md', '1. Install', 0)} />
+
+With `setuptools` older than 70.1, which includes Ubuntu 24.04, the build also needs the `wheel` package.
+
+## Build the wheel
+
+Replace `<reviewed-commit>` with the commit you reviewed. Build from a fresh clone.
+
+<CodeBlock code={codeBlock('docs/QUICKSTART.md', '1. Install', 1)} />
+
+## Install
+
+Works offline in any Python 3.9+ virtual environment. Replace `/path/to` with the wheel's directory.
+
+<CodeBlock code={codeBlock('docs/QUICKSTART.md', '1. Install', 2)} />
+
+## Connect an agent
+
+Replace `/path/to/repo` with your repository.
+
+<InstallSelector />
+
+## Upgrade or remove the Skill
+
+<CodeBlock code={codeBlock('docs/QUICKSTART.md', '2. Initialize a Target Repository', 1)} />
+
+## Diagnose
+
+<CodeBlock code={codeBlock('docs/QUICKSTART.md', '3. Diagnose Environment', 0)} />
+
+`doctor` and `status` are read-only. They do not establish that your agent discovers the Skill or restricts what it can do.

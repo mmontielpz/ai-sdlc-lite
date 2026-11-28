@@ -1,0 +1,59 @@
+---
+// Excerpts of real `verify --format summary` output for examples/first-five-minutes (see src/data/).
+// The static check reruns the example and requires the same output.
+import passed from '../data/verify-pass.txt?raw';
+import blocked from '../data/verify-blocked.txt?raw';
+
+const excerpt = (output, prefixes) => {
+  const lines = output.split('\n');
+  return prefixes.map((prefix) => {
+    if (prefix === '…') return ['…', 'muted'];
+    const line = lines.find((l) => l.trim().startsWith(prefix));
+    if (!line) throw new Error(`transcript line not found: ${prefix}`);
+    return [line.trim(), prefix === 'Status:' ? 'status' : prefix.startsWith('- ') ? 'reason' : 'plain'];
+  });
+};
+const command = (name) => [
+  ['$ ai-sdlc verify --repo repo \\', 'plain'], [`--result result.${name}.json \\`, 'option'],
+  ['--baseline-record baseline.json \\', 'option'], ['--format summary', 'option'],
+];
+const panels = [
+  { id: 'blocked', label: 'Blocked', lead: 'The report says PASS. A file changed outside its scope.',
+    lines: [...command('blocked'), ...excerpt(blocked, ['Status:', '…', '- [BLOCKED] out_of_scope_modification', '- [BLOCKED] false_pass', '…'])] },
+  { id: 'pass', label: 'Pass', lead: 'The change stayed in scope. A person still re-runs the checks.',
+    lines: [...command('pass'), ...excerpt(passed, ['Status:', 'Scope verification:', '…', 'Independently executed checks:', 'Note:', '…'])] },
+];
+---
+<fieldset class="outcome">
+  <legend>Verification outcome</legend>
+  {panels.map((panel, i) => (
+    <Fragment><input type="radio" name="outcome" id={`outcome-${panel.id}`} class={panel.id} checked={i === 0} /><label for={`outcome-${panel.id}`}>{panel.label}</label></Fragment>
+  ))}
+  <div class="panels">
+    {panels.map((panel) => (
+      <div class={`panel panel-${panel.id}`}>
+        <p class="claim">{panel.lead}</p>
+        <pre><code>{panel.lines.map(([text, kind]) => <span class:list={['line', kind]}>{text}</span>)}</code></pre>
+      </div>
+    ))}
+  </div>
+</fieldset>
+
+<style>
+  .outcome { min-width: 0; margin: 0; padding: 0; border: 0; }
+  legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  input { position: absolute; opacity: 0; }
+  label { display: inline-block; margin-right: 1.5rem; padding-block: 0.35rem; border-bottom: 2px solid transparent; color: var(--sl-color-gray-3); font-weight: 600; cursor: pointer; }
+  input:checked + label { border-bottom-color: var(--site-accent); color: var(--sl-color-white); }
+  input:focus-visible + label { outline: 2px solid var(--sl-color-text-accent); outline-offset: 3px; }
+  .panel { display: none; }
+  .blocked:checked ~ .panels .panel-blocked, .pass:checked ~ .panels .panel-pass { display: block; }
+  .claim { margin: 1rem 0; color: var(--sl-color-gray-3); }
+  pre { margin: 0; padding: clamp(1.25rem, 3vw, 1.75rem); border-radius: 10px; background: var(--site-surface); color: var(--sl-color-gray-2); font-size: clamp(0.75rem, 1.6vw, 0.875rem); line-height: 1.75; white-space: pre-wrap; }
+  code { font-family: var(--sl-font-mono); font-size: 1em; }
+  .line { display: block; padding-left: 2ch; text-indent: -2ch; }
+  .option { padding-left: 6ch; }
+  .reason { padding-left: 4ch; }
+  .status { margin-top: 1.25em; color: var(--sl-color-white); font-weight: 700; }
+  .muted { color: var(--sl-color-gray-3); }
+</style>

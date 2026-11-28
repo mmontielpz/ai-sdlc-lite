@@ -1,0 +1,42 @@
+/* Entrance of the bracket mark: the bounds close in, then the check is drawn. */
+.logo .chk { stroke-dasharray: 1; }
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-has-sidebar]) .logo .bl { animation: bound-left 600ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  :root:not([data-has-sidebar]) .logo .br { animation: bound-right 600ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  :root:not([data-has-sidebar]) .logo .chk { animation: draw 500ms 500ms ease-out both; }
+
+  /* Section reveal */
+  [data-animate='reveal'][data-motion='ready'] { opacity: 0; transform: translateY(1rem); }
+  [data-animate='reveal'][data-motion='play'] { animation: rise 600ms ease-out both; }
+
+  /* Lifecycle sequence, about 3.6 seconds: Bound, then Observe, then Verify. */
+  [data-motion='ready'] :is(.gate, .step, .start, .end, .stray, .cross, .report) { opacity: 0; }
+  [data-motion='ready'] .path { stroke-dashoffset: 1; }
+  [data-motion='play'] .start { animation: appear 200ms both; }
+  [data-motion='play'] .gate-1 { animation: open 500ms 200ms ease-in-out both; }
+  [data-motion='play'] .path { animation: draw 2000ms 700ms linear both; }
+  [data-motion='play'] .step-1 { animation: appear 250ms 1000ms both; }
+  [data-motion='play'] .step-2 { animation: appear 250ms 1550ms both; }
+  [data-motion='play'] .step-3 { animation: appear 250ms 2350ms both; }
+  [data-motion='play'] .gate-2 { animation: open 500ms 2200ms ease-in-out both; }
+  [data-motion='play'] .end { animation: appear 250ms 2700ms both; }
+  [data-motion='play'] .stray { animation: appear 400ms 2900ms both; }
+  [data-motion='play'] :is(.cross, .report) { animation: appear 300ms 3300ms both; }
+  [data-motion='ready'] .phase::before { transform: scale(0); }
+  [data-motion='play'] .phase::before { animation: mark 300ms both; }
+  [data-motion='play'] .phase-1::before { animation-delay: 200ms; }
+  [data-motion='play'] .phase-2::before { animation-delay: 1000ms; }
+  [data-motion='play'] .phase-3::before { animation-delay: 2350ms; }
+
+  /* Change of verification outcome */
+  .outcome input:checked ~ .panels pre { animation: appear 300ms ease-out both; }
+}
+@media print { [data-motion] * , [data-motion] { opacity: 1 !important; transform: none !important; } }
+
+@keyframes appear { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rise { from { opacity: 0; transform: translateY(1rem); } to { opacity: 1; transform: none; } }
+@keyframes draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes open { from { opacity: 1; transform: translate(var(--dx), var(--dy)); } to { opacity: 1; transform: none; } }
+@keyframes mark { from { transform: scale(0); } to { transform: scale(1); } }
+@keyframes bound-left { from { opacity: 0; transform: translateX(-5px); } to { opacity: 1; transform: none; } }
+@keyframes bound-right { from { opacity: 0; transform: translateX(5px); } to { opacity: 1; transform: none; } }

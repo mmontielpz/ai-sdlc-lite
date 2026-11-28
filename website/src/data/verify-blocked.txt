@@ -1,0 +1,16 @@
+Status: BLOCKED (computed: BLOCKED, claimed: PASS)
+Scope verification: BLOCKED - violation or missing/ambiguous evidence; see failure reasons
+Agent-reported checks: 1 evidence file(s) supplied by the agent; exit codes and outputs are unverified claims, not re-run or observed by the verifier
+Independently executed checks: none - the verifier never runs or observes commands
+Task: FIRST-FIVE-MIN-002
+Modified paths (1):
+  - src/greeter.py
+Evidence: 1 file(s) (hash integrity: none)
+  - out.txt [unchecked]
+Failure reasons (3):
+  - [BLOCKED] declared_mismatch: undeclared changes: ['src/greeter.py']; declared but unchanged: ['docs/missing.md']
+  - [BLOCKED] out_of_scope_modification: src/greeter.py
+  - [BLOCKED] false_pass: contract claims PASS but verification computed BLOCKED
+Guidance:
+  - Owner-controlled recovery: this tool never resets, cleans, deletes, checks out or overwrites anything. Review `git status` and `git diff <baseline_sha>`, then decide to keep, revert or archive the work yourself, preserving any changes you want. Re-verify with a new contract afterwards.
+  - Out-of-scope changes: the owner reviews each path and decides whether to keep or revert it.

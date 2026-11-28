@@ -1,0 +1,30 @@
+---
+// All motion is opt-in: without this script, or with reduced motion, the page shows its final state.
+// Each sequence runs once, when first seen. Nothing loops.
+---
+<script>
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const targets = [...document.querySelectorAll<HTMLElement>('[data-animate]')];
+  if (!reduce.matches && 'IntersectionObserver' in window) {
+    for (const element of targets) {
+      element.dataset.motion = 'ready';
+      const sequence = element.dataset.animate === 'sequence';
+      new IntersectionObserver((entries, observer) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        element.dataset.motion = 'play';
+        observer.disconnect();
+      }, sequence ? { threshold: 0.2 } : { rootMargin: '0px 0px -10% 0px' }).observe(element);
+    }
+    for (const button of document.querySelectorAll<HTMLButtonElement>('[data-replay]')) {
+      button.hidden = false;
+      button.addEventListener('click', () => {
+        const element = button.closest<HTMLElement>('[data-animate]');
+        if (!element) return;
+        element.dataset.motion = 'ready';
+        void element.offsetWidth; // restart the animations
+        element.dataset.motion = 'play';
+      });
+    }
+    reduce.addEventListener('change', () => targets.forEach((element) => delete element.dataset.motion));
+  }
+</script>

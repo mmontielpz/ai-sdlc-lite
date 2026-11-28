@@ -1,0 +1,46 @@
+---
+title: Getting started
+description: Run one bounded task from plan to human acceptance.
+---
+
+import CodeBlock from '../../../components/CodeBlock.astro';
+import { codeBlock } from '../../../lib/canonical.mjs';
+import { doc, page } from '../../../lib/links.mjs';
+
+AI-SDLC Lite handles one bounded task at a time, with two decisions that stay human. It is experimental.
+
+## You need
+
+- Linux, Python 3.9 or later, and Git. macOS and Windows are not tested.
+- The [CLI installed](/ai-sdlc-lite/docs/installation/) and, optionally, the Skill in your repository.
+- A coding agent. See the evidence level for each on the installation page.
+
+## 1. Bound
+
+State the objective, scope, exclusions and acceptance checks. Ask the agent to inspect without editing and propose a plan. The workflow suggests this request:
+
+> Read the applicable repository instructions and the named task contract. Inspect without editing, preserve existing changes, and report the baseline, proposed plan, exact checks, risks, and stop conditions. Stop before implementation unless this revision and plan already have explicit approval.
+
+**Gate 1:** you approve the plan.
+
+## 2. Observe
+
+The agent edits only the approved scope. Keep the baseline, the result file and check output outside the repository.
+
+## 3. Verify
+
+<CodeBlock code={codeBlock('docs/QUICKSTART.md', '5. Deterministic Verification', 0)} />
+
+Run `baseline` before the work. Fill in the result file with what you observed before running `verify`.
+
+| Outcome | Meaning |
+| --- | --- |
+| `PASS` | No violation was detected in the supplied contract and evidence. |
+| `PARTIAL` | Something could not be established, such as a dirty baseline. |
+| `BLOCKED` | A violation, or missing or inconsistent evidence. |
+
+`verify` never runs your commands. A `PASS` does not show that the recorded checks ran.
+
+**Gate 2:** you re-run the checks, read the diff, and accept or reject.
+
+Source: <a href={doc('docs/QUICKSTART.md')}>canonical quickstart</a> and <a href={doc('WORKFLOW.md')}>workflow</a>.
