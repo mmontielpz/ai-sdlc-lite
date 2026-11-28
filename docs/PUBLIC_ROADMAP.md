@@ -12,7 +12,6 @@ AI-SDLC Lite is an open methodology and a lightweight reference framework for go
 
 ## Now
 
-- Strengthening the engineering foundation: verifier confidentiality, dependency-heavy projects, reproducible builds and repository governance.
 - The official project website.
 
 ## Before an experimental public release

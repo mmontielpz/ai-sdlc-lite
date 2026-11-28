@@ -1,0 +1,20 @@
+---
+import { doc, repoUrl } from '../lib/links.mjs';
+import { version } from '../lib/canonical.mjs';
+---
+<div class="site-footer">
+  <p>AI-SDLC Lite {version()} is experimental. No release has been published.</p>
+  <ul>
+    <li><a href={doc('LICENSE')}>MIT License</a></li>
+    <li><a href={doc('SECURITY.md')}>Security</a></li>
+    <li><a href={doc('CONTRIBUTING.md')}>Contributing</a></li>
+    <li><a href={repoUrl}>Source</a></li>
+  </ul>
+</div>
+
+<style>
+  .site-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.75rem 2rem; margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--sl-color-hairline); color: var(--sl-color-gray-3); font-size: var(--sl-text-sm); }
+  p, ul { margin: 0; }
+  ul { display: flex; flex-wrap: wrap; gap: 1.25rem; padding: 0; list-style: none; }
+  a { display: inline-block; padding-block: 0.2rem; color: var(--sl-color-gray-2); }
+</style>

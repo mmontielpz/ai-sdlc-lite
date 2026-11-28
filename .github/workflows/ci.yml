@@ -149,17 +149,41 @@ jobs:
   website:
     name: website
     runs-on: ubuntu-24.04
-    timeout-minutes: 2
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - name: Refuse website changes that nothing validates
+          fetch-depth: 0
+      # The job always runs, so the required gate always gets a result. Node work happens only when the site or a
+      # file it reads or links to changed. An unknown base runs everything; a failing diff fails the job.
+      - name: Detect website-relevant changes
+        id: changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
-          if [[ -n "$(git ls-files website)" ]]; then
-            echo "website/ has tracked files but no validation job. Replace this step with the website checks."
-            exit 1
+          set -euo pipefail
+          relevant=true
+          if [[ -n "$BASE_SHA" && "$BASE_SHA" != 0000000000000000000000000000000000000000 ]]; then
+            changed=$(git diff --name-only --no-renames "$BASE_SHA" HEAD)
+            if ! grep -qE '^(website/|docs/|[^/]+\.md$|LICENSE$|pyproject\.toml$|\.github/workflows/ci\.yml$)' <<<"$changed"; then
+              relevant=false
+            fi
           fi
+          echo "relevant=$relevant" | tee -a "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.changes.outputs.relevant == 'true'
+        with:
+          node-version-file: website/.nvmrc
+          package-manager-cache: false
+      - name: Locked install
+        if: steps.changes.outputs.relevant == 'true'
+        working-directory: website
+        run: npm ci --no-audit --no-fund && npx playwright install --with-deps chromium
+      - name: Build, links, claims, HTML, accessibility and responsive checks
+        if: steps.changes.outputs.relevant == 'true'
+        working-directory: website
+        run: npm run check
 
   ci-gate:
     name: ci-gate

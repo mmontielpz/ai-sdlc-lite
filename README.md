@@ -90,7 +90,7 @@ _As of `329c4a0` (2026-11-21). Authority for qualification status: `QUALIFICATIO
 | Target | Status | Evidence |
 |---|---|---|
 | **Claude Code (`2.1.329`, Linux)** | **Experimental Smoke PASS** (operator-orchestrated) | Native Skill discovery under `.claude/skills/ai-sdlc-lite/`, BOV, Experience capture, negative control (`BLOCKED`), `--uninstall`. Independent human clean-room (`G3`/`G10`) **PENDING**; deep **NOT RUN**. |
-| **Linux (`ubuntu-24.04`, Python 3.14 / 3.9+)** | **Automated Suite PASS** (`Q1`) | `743` deterministic tests across `30` modules (`BuiltWheelTests` included). |
+| **Linux (`ubuntu-24.04`, Python 3.14 / 3.9+)** | **Automated Suite PASS** (`Q1`) | Deterministic suite run by [CI](https://github.com/mmontielpz/ai-sdlc-lite/actions/workflows/ci.yml) on pull requests and `main` (`BuiltWheelTests` included). |
 | **macOS & Windows** | **Deferred / NOT TESTED** | Unqualified; Linux-only for current experimental phase. |
 | **Codex, Copilot CLI, Antigravity** | **Not in V1–V3 scope** | Historical adapters/examples preserved ([codex-live](examples/codex-live/format_elapsed.py), [codex test](examples/codex-live/test_format_elapsed.py), [copilot-live](examples/copilot-live/clamp_int.py), [copilot test](examples/copilot-live/test_clamp_int.py)); "not verified". |
 
