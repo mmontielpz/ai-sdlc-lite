@@ -4,15 +4,15 @@ Replace-in-place pointer file, 50 lines at most. It holds pointers only: no deci
 
 ## State
 
-- **As of:** 2026-11-27 (confidentiality remediation submitted for Gate 2). M-01 closed 2026-11-27. Branch and HEAD: run `ai-sdlc status`; they are not copied here.
+- **As of:** 2026-11-28 (engineering foundation submitted for Gate 2). M-01 closed 2026-11-27. Branch and HEAD: run `ai-sdlc status`; they are not copied here.
 - **Pinned baselines:** product version `2.0.0.dev1` (EXPERIMENTAL, OD-10). Canonical trunk `main`. Frozen legacy tips: `develop` `d1cdf851bac17d84147e7509a63cb0bbe6581cef`, `master` `7f925cd0c45b6501d743d09ebd8c9569edced40e`. The current tip is read from Git, not recorded here. No tag is authorized.
 - **Last verified base:** `f2b28672af8b398e11fc9d66033f5aaae4c050ca` (M-01 closure integrated, post-merge CI passed, synchronization confirmed).
-- **Active mission:** confidentiality remediation (OD-37), with W01 preparation beside it. Evidence and restricted provenance are held outside the repository (path withheld, D12).
-- **Gates:** remediation Gate 1 approved; its Gate 2 is requested on its pull request. Independent-person qualification (G3/G10) remains NOT_MET. Lifecycle and closure semantics: `WORKFLOW.md`.
+- **Active mission:** ENGINEERING-FOUNDATION-002 (OD-38 to OD-41). W01 is on hold, PARTIAL and not accepted. Evidence and restricted provenance are held outside the repository (path withheld, D12).
+- **Gates:** mission Gate 1 approved; Gate 2 is requested on its pull requests. Independent-person qualification (G3/G10) remains NOT_MET. Lifecycle and closure semantics: `WORKFLOW.md`.
 - **Authorization boundary:** further evidence uploads, legacy branch changes, tags, releases and live provider execution are not authorized. Public visibility is not publication authorization.
-- **Blockers:** W01 installation waits for this remediation to be merged; live runs wait for RG-6. Open: offline and remote restricted copies due 2026-12-27 (OD-36). Direct-push, force-push and deletion rejection are NOT_TESTED. Public-release blockers stay in force: `ROADMAP.md`. WSL2-001 remains suspended and deferred (OD-31).
-- **Pending decisions** (register IDs only): RG-1, RG-2 (permanent versioning and tagging policy; OD-10 preserves `2.0.0.dev1` and authorizes no tag or release), RG-3, RG-4, RG-5, RG-6, RG-8, D1, D3, D8, P-6, P-8, P-9. W01 scope revision: see `tasks/AI-SDLC-LITE-M064A/TASK.md`.
-- **Next action:** Gate 2 on the remediation, merge and synchronization; then W01 preflight. W01 live runs and W02 are not started.
+- **Blockers:** Live runs are not authorized. Open: offline and remote restricted copies due 2026-12-27 (OD-36). Direct-push, force-push and deletion rejection are NOT_TESTED. Public-release blockers stay in force: `ROADMAP.md`. WSL2-001 remains suspended and deferred (OD-31).
+- **Pending decisions** (register IDs only): RG-1, RG-2 (permanent versioning and tagging policy; OD-10 preserves `2.0.0.dev1` and authorizes no tag or release), RG-3, RG-4, RG-5, RG-6, RG-8, D1, D3, D8, P-6, P-8, P-9.
+- **Next action:** Gate 2 on the foundation pull requests, merge and synchronization; then the W02 brand and homepage mission. W02 implementation is not started.
 
 ## References
 

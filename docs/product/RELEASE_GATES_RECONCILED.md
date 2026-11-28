@@ -69,7 +69,7 @@ Qualification status stays in `QUALIFICATION_MATRIX.md`. "Ready" in this checkli
 | Developer experience and presentation | README, contribution path, branding and release notes accepted | M-05, M-08 |
 | Methodology and harness engineering | BOV and harness boundaries documented and tied to checks | G1, G2 |
 | Agent and platform | dated rows; exclusions stated; independent run | G3, G5, G6; M-07, M-11 |
-| Product validation | `W01` and further use cases recorded | G7 |
+| Product validation | use cases recorded as `G7` requires, including one brownfield; no particular pilot is required (OD-38) | G7 |
 | Benchmarking and official website | results or an explicit "not run"; `W02` published when authorized | M-13, M-10 |
 | Publication | release policy resolved and owner authorization | RG-1 to RG-3 |
 
