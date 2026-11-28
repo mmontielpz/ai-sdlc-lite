@@ -1,0 +1,32 @@
+---
+title: Roadmap
+description: "What AI-SDLC Lite offers today, what comes before a release and what is not established."
+---
+
+import { bullets, paragraph } from '../../../lib/canonical.mjs';
+import { doc } from '../../../lib/links.mjs';
+export const source = 'docs/PUBLIC_ROADMAP.md';
+
+This page sets no dates and authorizes nothing.
+
+## Available today
+
+<ul>{bullets(source, 'Available today').map((item) => <li>{item}</li>)}</ul>
+
+## Now
+
+<ul>{bullets(source, 'Now').map((item) => <li>{item}</li>)}</ul>
+
+## Before an experimental public release
+
+{paragraph(source, 'Before an experimental public release')}
+
+## Research directions
+
+{paragraph(source, 'Research directions')}
+
+## What is not established
+
+<ul>{bullets(source, 'What is not established').map((item) => <li>{item}</li>)}</ul>
+
+Source: <a href={doc(source)}>public roadmap</a>.

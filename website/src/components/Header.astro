@@ -1,0 +1,33 @@
+---
+import Search from 'virtual:starlight/components/Search';
+import { lockup } from '../lib/brand.mjs';
+import { basePath, nav } from '../lib/links.mjs';
+---
+<div class="site-header">
+  <a class="home-link logo" href={`${basePath}/`} set:html={lockup} />
+  <div class="end">
+    <nav aria-label="Site">
+      <ul>
+        {nav.map((item) => <li class:list={{ wide: item.wide }}><a href={item.href}>{item.label}</a></li>)}
+      </ul>
+    </nav>
+    <div class="search"><Search /></div>
+  </div>
+</div>
+
+<style>
+  .site-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; max-width: var(--sl-content-width); height: 100%; margin-inline: auto; }
+  :global(:root[data-has-sidebar]) .site-header { max-width: none; }
+  .home-link { display: block; flex: none; }
+  .home-link :global(svg) { display: block; width: auto; height: 1.5rem; }
+  .end { display: flex; align-items: center; gap: clamp(0.875rem, 2.5vw, 2rem); min-width: 0; }
+  ul { display: flex; gap: clamp(0.875rem, 2.5vw, 2rem); margin: 0; padding: 0; list-style: none; }
+  li { line-height: 1.4; }
+  nav a { display: inline-block; padding: 0.3rem 0; color: var(--sl-color-gray-3); font-size: var(--sl-text-sm); font-weight: 500; text-decoration: none; }
+  nav a:hover { color: var(--sl-color-white); }
+  .search { display: flex; }
+  /* An icon at every width; the button keeps its "Search" name and Ctrl+K shortcut. */
+  .search :global(button[data-open-modal] > :is(span, kbd)) { display: none; }
+  .search :global(button[data-open-modal]) { width: auto; height: 2rem; padding: 0.25rem; border: 0; background: transparent; }
+  @media (max-width: 29.99rem) { .wide { display: none; } }
+</style>

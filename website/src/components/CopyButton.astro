@@ -1,0 +1,34 @@
+---
+// Hidden until the script confirms the clipboard is available. `command` marks repository commands for the static check.
+interface Props { value: string; label: string; command?: boolean }
+const { value, label, command = false } = Astro.props;
+---
+<span class="copy">
+  <button type="button" data-copy data-code={command ? value : undefined} data-value={command ? undefined : value} aria-label={label} hidden>Copy</button>
+  <span class="sr-only" role="status"></span>
+</span>
+
+<script>
+  if (navigator.clipboard) {
+    for (const button of document.querySelectorAll<HTMLButtonElement>('button[data-copy]')) {
+      button.hidden = false;
+      button.addEventListener('click', async () => {
+        const status = button.nextElementSibling as HTMLElement;
+        try {
+          await navigator.clipboard.writeText(button.dataset.code ?? button.dataset.value ?? '');
+          button.textContent = status.textContent = 'Copied';
+        } catch {
+          button.textContent = status.textContent = 'Copy failed';
+        }
+        window.setTimeout(() => { button.textContent = 'Copy'; status.textContent = ''; }, 1600);
+      });
+    }
+  }
+</script>
+
+<style>
+  .copy { flex: none; }
+  button { min-width: 4.5rem; padding: 0.3rem 0.75rem; border: 1px solid var(--site-line); border-radius: 4px; background: transparent; color: var(--sl-color-white); font-family: var(--sl-font-mono); font-size: 0.75rem; cursor: pointer; }
+  button[hidden] { display: none; }
+  button:hover { border-color: var(--sl-color-white); }
+</style>

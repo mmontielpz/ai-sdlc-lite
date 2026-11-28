@@ -1,0 +1,40 @@
+---
+title: Methodology
+description: "Bound, Observe, Verify: two human gates and the principles behind AI-SDLC Lite."
+---
+
+import { autonomy } from '../../../lib/canonical.mjs';
+import { doc } from '../../../lib/links.mjs';
+
+The method works without the tool. It is written to be independent of any agent or vendor.
+
+## Bound, Observe, Verify
+
+| Phase | Question | You keep |
+| --- | --- | --- |
+| Bound | What may change, and how will it be checked? | Task, plan, checks, baseline |
+| Observe | What actually happened? | Changes, check output, failures |
+| Verify | Is the result acceptable? | Verification report, diff, decision |
+
+## Two human gates
+
+- **Gate 1** approves the task, scope and plan before any edit.
+- **Gate 2** accepts the verified result and authorizes integration.
+
+A technical `PASS` is never acceptance, and acceptance does not authorize a release.
+
+## Principles
+
+- **Minimum sufficient intelligence.** Use the simplest mix of deterministic code, models, agents and people that meets the outcome. Automatic routing between model tiers is a research question and is not implemented.
+- **Evidence over assertion.** “It passed” is a claim until someone checks it.
+- **Progressive autonomy.** Delegate more only as evidence accumulates. Today, work is human-supervised.
+- **Provider independence.** The core contracts are provider-neutral. That is a design property, not verified support for an agent.
+
+## Autonomy levels
+
+<table>
+  <thead><tr><th>Level</th><th>Meaning</th><th>Status</th></tr></thead>
+  <tbody>{autonomy().map((a) => <tr><td>{a.id}</td><td>{a.meaning}</td><td>{a.status}</td></tr>)}</tbody>
+</table>
+
+Sources: <a href={doc('WORKFLOW.md')}>workflow</a> and <a href={doc('VISION.md')}>vision</a>.

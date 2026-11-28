@@ -1,0 +1,104 @@
+---
+// The central visual: an agent's observed path inside approved bounds, between the two human gates.
+// A path that leaves the bounds is reported by verification afterwards; nothing here stops it.
+// The markup is the final state. Motion.astro replays it once as a sequence: bounds, Gate 1, work, Gate 2, report.
+const label =
+  'Diagram. A task passes Gate 1, where a human approves the plan, into the approved bounds. The agent edits and runs checks inside them, ' +
+  'and the result is verified before Gate 2, where a human accepts it. A dashed alternative shows a change outside the bounds, which verification reports as BLOCKED.';
+
+const layouts = [
+  {
+    name: 'wide', box: '0 0 1088 400', area: [120, 40, 848, 280],
+    frame: 'M120 218V40H968V68 M968 112V320H120V262',
+    corners: 'M120 64V40H144 M944 40H968V64 M968 296V320H944 M144 320H120V296',
+    gates: [
+      ['M108 218H132', 0, 22, 1], ['M108 262H132', 0, -22, 1], ['M956 68H980', 0, 22, 2], ['M956 112H980', 0, -22, 2],
+    ],
+    path: 'M12 240H312V190H548V140H760V90H1064',
+    stray: 'M312 215H440V366',
+    cross: 'M432 358l16 16 M448 358l-16 16',
+    start: [6, 234], end: [1052, 78],
+    steps: [[230, 240, 'edit'], [430, 190, 'test'], [860, 90, 'verify']],
+    texts: [
+      { x: 144, y: 76, value: 'approved bounds', kind: 'muted' },
+      { x: 120, y: 356, value: 'Gate 1', kind: 'strong' }, { x: 120, y: 382, value: 'approve the plan', kind: 'muted' },
+      { x: 968, y: 356, value: 'Gate 2', kind: 'strong', anchor: 'end' }, { x: 968, y: 382, value: 'accept the result', kind: 'muted', anchor: 'end' },
+      { x: 468, y: 356, value: 'out of bounds', kind: 'muted' }, { x: 468, y: 382, value: 'BLOCKED', kind: 'strong' },
+    ],
+  },
+  {
+    name: 'tall', box: '0 0 340 520', area: [20, 64, 300, 380],
+    frame: 'M66 64H20V444H238 M282 444H320V64H110',
+    corners: 'M20 88V64H44 M296 64H320V88 M320 420V444H296 M44 444H20V420',
+    gates: [
+      ['M66 52V76', 22, 0, 1], ['M110 52V76', -22, 0, 1], ['M238 432V456', 22, 0, 2], ['M282 432V456', -22, 0, 2],
+    ],
+    path: 'M88 12V168H170V268H224V356H260V504',
+    stray: 'M170 220H100V318H8',
+    cross: 'M2 310l16 16 M18 310l-16 16',
+    start: [82, 6], end: [248, 492],
+    steps: [[88, 130, 'edit'], [224, 312, 'test'], [260, 396, 'verify', 'before']],
+    texts: [
+      { x: 124, y: 44, value: 'Gate 1 · approve', kind: 'strong' },
+      { x: 304, y: 100, value: 'approved bounds', kind: 'muted', anchor: 'end' },
+      { x: 36, y: 348, value: 'out of bounds', kind: 'muted' }, { x: 36, y: 372, value: 'BLOCKED', kind: 'strong' },
+      { x: 224, y: 486, value: 'Gate 2 · accept', kind: 'strong', anchor: 'end' },
+    ],
+  },
+];
+---
+<figure class="bounds">
+  {layouts.map((v) => (
+    <svg class={v.name} viewBox={v.box} role="img" aria-label={label}>
+      <defs>
+        <pattern id={`dots-${v.name}`} width="24" height="24" patternUnits="userSpaceOnUse">
+          <rect class="dot" x="11" y="11" width="2" height="2" />
+        </pattern>
+      </defs>
+      <rect x={v.area[0]} y={v.area[1]} width={v.area[2]} height={v.area[3]} fill={`url(#dots-${v.name})`} />
+      <path class="frame" d={v.frame} />
+      <path class="corner" d={v.corners} />
+      {v.gates.map(([d, dx, dy, gate]) => <path class={`gate gate-${gate}`} d={d} style={`--dx:${dx}px;--dy:${dy}px`} />)}
+      <path class="stray" d={v.stray} />
+      <path class="cross" d={v.cross} />
+      <path class="path" pathLength="1" d={v.path} />
+      <rect class="start" x={v.start[0]} y={v.start[1]} width="12" height="12" />
+      <rect class="end" x={v.end[0]} y={v.end[1]} width="24" height="24" />
+      {v.steps.map(([x, y, name, side], i) => (
+        <g class={`step step-${i + 1}`}>
+          <rect class="node" x={x - 6} y={y - 6} width="12" height="12" />
+          <text class="muted" x={v.name === 'wide' ? x : x + (side ? -16 : 16)} y={v.name === 'wide' ? y - 18 : y + 5} text-anchor={v.name === 'wide' ? 'middle' : side ? 'end' : 'start'}>{name}</text>
+        </g>
+      ))}
+      {v.texts.map((t) => <text class:list={[t.kind, { report: /out of bounds|BLOCKED/.test(t.value) }]} x={t.x} y={t.y} text-anchor={t.anchor ?? 'start'}>{t.value}</text>)}
+    </svg>
+  ))}
+  <figcaption>Solid: a change inside the bounds. Dashed: one outside them, reported after the work. Verification does not sandbox or confine an agent.</figcaption>
+</figure>
+
+<style>
+  .bounds { margin: 0; }
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .wide { display: none; }
+  .tall { max-width: 26rem; margin-inline: auto; }
+  path { fill: none; }
+  .dot { fill: var(--site-dot); }
+  .frame { stroke: var(--site-line); stroke-width: 1.5; }
+  .corner { stroke: var(--sl-color-white); stroke-width: 2.5; }
+  .gate { stroke: var(--sl-color-white); stroke-width: 2.5; }
+  .path { stroke: var(--site-accent); stroke-width: 2.5; stroke-dasharray: 1; }
+  .stray { stroke: var(--sl-color-gray-3); stroke-width: 1.5; stroke-dasharray: 5 6; }
+  .cross { stroke: var(--sl-color-white); stroke-width: 2.5; }
+  .start { fill: var(--sl-color-bg); stroke: var(--site-accent); stroke-width: 2.5; }
+  .node { fill: var(--sl-color-bg); stroke: var(--site-accent); stroke-width: 2; }
+  .end { fill: var(--site-accent); }
+  text { font-family: var(--sl-font-mono); font-size: 15px; }
+  .muted { fill: var(--sl-color-gray-3); }
+  .strong { fill: var(--sl-color-white); font-weight: 600; }
+  figcaption { margin-top: 2rem; color: var(--sl-color-gray-3); font-size: var(--sl-text-sm); }
+  @media (min-width: 48rem) {
+    .wide { display: block; }
+    .tall { display: none; }
+  }
+  @media (min-width: 48rem) and (max-width: 71.99rem) { text { font-size: 20px; } }
+</style>

@@ -1,0 +1,24 @@
+---
+// A copyable block. Without JavaScript the text is still there to select; the button appears only when it works.
+import CopyButton from './CopyButton.astro';
+
+interface Props { code: string; title?: string }
+const { code, title } = Astro.props;
+// Words stay whole when a line wraps, unless one is wider than the block.
+const parts = code.split(/(\s+)/);
+---
+<div class="codeblock not-content">
+  <div class="bar">
+    <span>{title ?? 'Shell'}</span>
+    <CopyButton value={code} label={`Copy ${title ?? 'commands'}`} command />
+  </div>
+  <pre><code>{parts.map((part) => (/\S/.test(part) ? <span class="word">{part}</span> : part))}</code></pre>
+</div>
+
+<style>
+  .codeblock { min-width: 0; margin-block: 0.75rem; border-radius: 8px; background: var(--site-surface); }
+  .bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 2.5rem; padding: 0.25rem 0.5rem 0 1.25rem; color: var(--sl-color-gray-3); font-family: var(--sl-font-mono); font-size: 0.75rem; overflow-wrap: anywhere; }
+  pre { margin: 0; padding: 0.5rem 1.25rem 1.25rem; border: 0; background: transparent; color: var(--sl-color-gray-2); font-size: 0.8125rem; line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .word { display: inline-block; max-width: 100%; }
+  code { padding: 0; background: transparent; font-family: var(--sl-font-mono); font-size: 1em; }
+</style>

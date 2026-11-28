@@ -1,0 +1,39 @@
+---
+title: Framework
+description: "The experimental AI-SDLC Lite reference framework: offline CLI, agent Skill and result contracts."
+---
+
+import { doc } from '../../../lib/links.mjs';
+
+The reference framework applies the methodology using only the Python standard library and Git. No daemon, database or network call is required. It is experimental.
+
+## Command-line tool
+
+| Command | Purpose |
+| --- | --- |
+| `init` | Preview, install, check, upgrade or remove the agent Skill |
+| `doctor`, `status` | Read-only environment and repository information |
+| `baseline` | Record repository state before a task |
+| `result-template` | Create a result file that starts as not passing |
+| `verify` | Compare Git state and evidence with the contract |
+| `seal` | Record hashes of evidence files |
+| `delivery` | Plan and run a bounded local commit |
+| `adapter` | Validate adapter declarations |
+| `experience` | Experimental local outcome journal |
+
+## Agent Skill
+
+Markdown instructions installed into `.claude/skills/` or `.agents/skills/`. The Skill guides an agent; it enforces nothing.
+
+## Limits
+
+- Verification detects problems after execution. It does not sandbox or confine an agent.
+- `verify` never executes the commands recorded in a result.
+- Contents of files that were already ignored are not compared.
+- Evidence so far is on Linux. See the <a href={doc('QUALIFICATION_MATRIX.md')}>qualification matrix</a>.
+
+## Reference
+
+- <a href={doc('ARCHITECTURE.md')}>Architecture and trust boundaries</a>
+- <a href={doc('RESULT_CONTRACT.md')}>Result contract</a>
+- <a href={doc('SECURITY.md')}>What is and is not enforced</a>

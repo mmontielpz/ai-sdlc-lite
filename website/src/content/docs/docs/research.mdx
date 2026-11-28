@@ -1,0 +1,24 @@
+---
+title: Research
+description: "Open research questions behind AI-SDLC Lite. No benchmark has been run."
+---
+
+import { researchTracks } from '../../../lib/canonical.mjs';
+import { doc } from '../../../lib/links.mjs';
+
+Efficiency and autonomy are research goals, not results. **No benchmark has been run.**
+
+## Tracks
+
+<table>
+  <thead><tr><th>Track</th><th>Topic</th></tr></thead>
+  <tbody>{researchTracks().map((t) => <tr><td>{t.id}</td><td>{t.title}</td></tr>)}</tbody>
+</table>
+
+None of these is an implemented runtime capability.
+
+## Sources
+
+- <a href={doc('docs/research/RESEARCH_AGENDA.md')}>Research agenda</a>
+- <a href={doc('docs/research/BENCHMARK_PROTOCOL.md')}>Benchmark protocol (not yet run)</a>
+- <a href={doc('docs/research/COMPARISON.md')}>Preliminary comparison</a>

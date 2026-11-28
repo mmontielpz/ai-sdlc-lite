@@ -1,0 +1,41 @@
+---
+import { TabItem, Tabs } from '@astrojs/starlight/components';
+import CodeBlock from './CodeBlock.astro';
+import { codeBlock, pick } from '../lib/canonical.mjs';
+import { doc } from '../lib/links.mjs';
+
+// Commands are lines of docs/QUICKSTART.md, read at build time.
+const preview = codeBlock('docs/QUICKSTART.md', '2. Initialize a Target Repository', 0);
+const claude = pick(codeBlock('docs/QUICKSTART.md', '2. Initialize a Target Repository', 1),
+  'ai-sdlc init --repo /path/to/repo --target claude-code --apply', 'ai-sdlc init --repo /path/to/repo --target claude-code --check');
+const others = [
+  { label: 'Codex', evidence: 'Limited, historical observation of an explicit Skill invocation. Automatic discovery is unverified.' },
+  { label: 'Copilot CLI', evidence: 'Limited, historical observation of adding a project Skill. No recorded smoke run.' },
+  { label: 'Other agents', evidence: 'No tested integration. The Skill is plain Markdown that an agent can be asked to read.' },
+];
+---
+<div class="install">
+  <Tabs>
+    <TabItem label="Claude Code">
+      <p class="level"><strong>Documented.</strong> Experimental smoke run on Linux with version 2.1.329, operator-orchestrated; independent qualification is pending.</p>
+      <CodeBlock code={claude} />
+    </TabItem>
+    {others.map((agent) => (
+      <TabItem label={agent.label}>
+        <p class="level"><strong>Not verified.</strong> {agent.evidence}</p>
+        <CodeBlock code={preview} />
+        <p class="level">This previews the default <code>.agents/skills/</code> target and writes nothing. No support is scheduled.</p>
+      </TabItem>
+    ))}
+  </Tabs>
+  <p class="level">There is no plugin or editor extension. Evidence: <a href={doc('QUALIFICATION_MATRIX.md')}>qualification matrix</a>.</p>
+</div>
+
+<style>
+  .install { min-width: 0; }
+  .level { margin-block: 0.75rem; color: var(--sl-color-gray-3); font-size: var(--sl-text-sm); }
+  .level strong { color: var(--sl-color-white); }
+  a { color: var(--sl-color-text-accent); }
+  /* Every environment stays visible on narrow screens. */
+  .install :global([role='tablist']) { flex-wrap: wrap; row-gap: 0.25rem; }
+</style>

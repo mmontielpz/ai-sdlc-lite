@@ -1,0 +1,34 @@
+---
+import Pagination from 'virtual:starlight/components/Pagination';
+import ThemeSelect from 'virtual:starlight/components/ThemeSelect';
+import { basePath, doc, repoUrl } from '../lib/links.mjs';
+import { version } from '../lib/canonical.mjs';
+const links = [
+  ['GitHub', repoUrl],
+  ['Brand assets', `${basePath}/brand/`],
+  ['Qualification', doc('QUALIFICATION_MATRIX.md')],
+  ['Security', doc('SECURITY.md')],
+  ['MIT License', doc('LICENSE')],
+];
+const { hasSidebar } = Astro.locals.starlightRoute;
+---
+{hasSidebar && <Pagination />}
+<div class="site-footer not-content">
+  <ul>
+    {links.map(([label, href]) => <li><a href={href}>{label}</a></li>)}
+  </ul>
+  <div class="base">
+    <p>Experimental {version()}. No release published. Not independently qualified. No benchmark has been run.</p>
+    <ThemeSelect />
+  </div>
+</div>
+
+<style>
+  .site-footer { margin-top: 3rem; padding-block: 2rem 1rem; border-top: 1px solid var(--sl-color-hairline); color: var(--sl-color-gray-3); font-size: var(--sl-text-sm); }
+  p, ul { margin: 0; }
+  ul { display: flex; flex-wrap: wrap; gap: 0.5rem 1.75rem; padding: 0; list-style: none; }
+  li { margin: 0; }
+  a { display: inline-block; padding-block: 0.2rem; color: var(--sl-color-gray-2); text-decoration: none; }
+  a:hover { color: var(--sl-color-white); text-decoration: underline; text-underline-offset: 0.3em; }
+  .base { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem 2rem; margin-top: 1.5rem; }
+</style>

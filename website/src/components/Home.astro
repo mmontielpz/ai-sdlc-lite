@@ -1,0 +1,99 @@
+---
+import BoundsDiagram from './BoundsDiagram.astro';
+import InstallSelector from './InstallSelector.astro';
+import Motion from './Motion.astro';
+import Outcome from './Outcome.astro';
+import CodeBlock from './CodeBlock.astro';
+import { symbol } from '../lib/brand.mjs';
+import { docsPages, page, repoUrl } from '../lib/links.mjs';
+import { codeBlock, pick, version } from '../lib/canonical.mjs';
+import { scenarios } from '../lib/scenarios.mjs';
+
+const install = (n) => codeBlock('docs/QUICKSTART.md', '1. Install', n);
+const build = pick(install(1), 'umask 022', 'git clone', 'git checkout', 'SOURCE_DATE_EPOCH');
+const lifecycle = [
+  ['Bound', 'Agree scope and checks before work starts.'],
+  ['Observe', 'Record what changed and what the checks returned.'],
+  ['Verify', 'Compare the evidence with the agreement. Then decide.'],
+];
+---
+<div class="home not-content">
+  <section class="hero" aria-labelledby="_top">
+    <div>
+      <p class="status"><span>Experimental</span> {version()} · no release published</p>
+      <h1 id="_top">Engineer with agents. <em>Delegate with confidence.</em></h1>
+      <p class="lead">An open methodology and lightweight reference framework for efficient, governed and verifiable agentic software engineering.</p>
+      <p class="actions">
+        <a class="button primary" href={page('getting-started')}>Get started</a>
+        <a class="button" href={repoUrl}>GitHub</a>
+      </p>
+    </div>
+    <div class="mark logo" aria-hidden="true" set:html={symbol.replace('role="img" aria-label="AI-SDLC Lite"', 'focusable="false"')} />
+  </section>
+
+  <section aria-labelledby="lifecycle" data-animate="sequence">
+    <h2 id="lifecycle">One task. Two human gates.</h2>
+    <BoundsDiagram />
+    <ol class="lifecycle">
+      {lifecycle.map(([name, text], i) => (
+        <li class={`phase phase-${i + 1}`}><h3>{name}</h3><p>{text}</p></li>
+      ))}
+    </ol>
+    <p class="note">Today, work is human-supervised. <button type="button" data-replay hidden>Replay</button></p>
+  </section>
+
+  <section class="split" aria-labelledby="start" data-animate="reveal">
+    <div>
+      <h2 id="start">Get started</h2>
+      <p>Linux, Python 3.9+ and Git. Built from source; nothing is published to a package index.</p>
+      <p><a href={page('installation')}>Full installation guide</a></p>
+    </div>
+    <ol class="steps">
+      <li>
+        <h3>Build the wheel</h3>
+        <CodeBlock code={build} />
+        <p class="note">Replace <code>&lt;reviewed-commit&gt;</code> with the commit you reviewed.</p>
+      </li>
+      <li>
+        <h3>Install it</h3>
+        <CodeBlock code={install(2)} />
+      </li>
+      <li>
+        <h3>Connect your agent</h3>
+        <InstallSelector />
+      </li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="use-cases" data-animate="reveal">
+    <h2 id="use-cases">Use cases, with their evidence</h2>
+    <ul class="scenarios">
+      {scenarios.map((s) => (
+        <li>
+          <p class="kind">{s.kind}</p>
+          <h3><a href={`${page('examples')}#${s.id}`}>{s.name}</a></h3>
+          <p>{s.summary}</p>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section class="split" aria-labelledby="proof" data-animate="reveal">
+    <div>
+      <h2 id="proof">A claim is not proof.</h2>
+      <p>Excerpts of real output from the repository’s bounded example.</p>
+      <p><a href={`${page('examples')}#verification`}>Run this example</a></p>
+    </div>
+    <Outcome />
+  </section>
+
+  <section aria-labelledby="documentation" data-animate="reveal">
+    <h2 id="documentation">Documentation</h2>
+    <ul class="docs">
+      {docsPages.map((d) => (
+        <li><a href={page(d.slug)}><strong>{d.label}</strong><span>{d.summary}</span></a></li>
+      ))}
+    </ul>
+  </section>
+</div>
+<Motion />

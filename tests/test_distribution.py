@@ -107,6 +107,7 @@ class BuiltWheelTests(unittest.TestCase):
             wheel = next((tmp / 'dist').glob('*.whl'))
             site = tmp / 'site'
             with zipfile.ZipFile(wheel) as archive:
+                self.assertEqual([n for n in archive.namelist() if 'website' in n or 'node_modules' in n], [])
                 archive.extractall(site)
             shutil.rmtree(source)  # nothing of the checkout may remain reachable
             repo = tmp / 'project'
