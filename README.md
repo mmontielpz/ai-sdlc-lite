@@ -2,6 +2,8 @@
 
 **Bounded Bound → Observe → Verify (BOV) workflow, Skill, and offline verification CLI for AI coding agents.**
 
+**[Official website](https://mmontielpz.github.io/ai-sdlc-lite/)** · [Documentation](https://mmontielpz.github.io/ai-sdlc-lite/docs/getting-started/)
+
 [![CI](https://github.com/mmontielpz/ai-sdlc-lite/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/mmontielpz/ai-sdlc-lite/actions/workflows/ci.yml)
 ![Status: Experimental](https://img.shields.io/badge/status-experimental%20(2.0.0.dev1)-orange)
 ![Python: 3.14 | 3.9+](https://img.shields.io/badge/python-3.14%20%7C%203.9%2B-blue)

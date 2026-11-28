@@ -1,6 +1,6 @@
 # Website
 
-The official AI-SDLC Lite website: Astro with Starlight, static output. **Not deployed.** It is independent of the Python package.
+The official AI-SDLC Lite website: Astro with Starlight, static output, published at <https://mmontielpz.github.io/ai-sdlc-lite/>. It is independent of the Python package.
 
 ## Run it
 
@@ -39,9 +39,6 @@ HTML validity uses the `html-validate:standard` preset (conformance, not style).
 
 ## Publishing
 
-Configured for a GitHub Pages project site under `/ai-sdlc-lite/`. **Not published.** `.github/workflows/pages.yml` runs only when started manually on `main`: it installs from the lockfile, runs `npm run check` and deploys that build. Publishing needs the owner to:
-
-1. In the repository's Pages settings, choose **GitHub Actions** as the source.
-2. Run the **Publish website** workflow on `main`.
+Published as a GitHub Pages project site under `/ai-sdlc-lite/`, first deployed 2026-11-28. Pages uses **GitHub Actions** as its source. `.github/workflows/pages.yml` runs only when started manually on `main`: it installs from the lockfile, runs `npm run check` and deploys that build. **Merging does not publish**; each publication needs the owner's authorization. After one, check the live site against the revision that was deployed.
 
 To withdraw the site, unpublish it in the Pages settings. A project site's `robots.txt` is not read by crawlers, which only look at the domain root. Publishing the website is not a framework release or qualification.

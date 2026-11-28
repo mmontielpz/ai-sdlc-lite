@@ -89,7 +89,7 @@ Classes: **Committed** (owner-accepted sequence), **Proposed** (near-term, needs
 | M-07 AGENT-QUAL-001 | H1 | Proposed | P1 · DA-D04-01/02, DA-D07-03 | live budget and authorization pending (RG-6); one exact Claude Code version |
 | M-08 DOCS-IA-001 | H1 | Proposed | P1 · DA-D01-01/02, DA-D12-01..03 | owns the single `README.md` rewrite (README is not changed by the alignment mission) |
 | M-09 W01 | H2 | **On hold** (OD-38); first slice PARTIAL, not accepted | P1 · DA-D03-03, DA-D13-02 | static personal website; resumption needs separate authorizations |
-| M-10 SITE-W02 | H2 | **Prioritized** (OD-38); implementation needs its own authorization | P2 · DA-D12, DA-D14-01 | no longer waits for W01 (OD-38); `website/`, Astro and Starlight candidate (OD-41) |
+| M-10 SITE-W02 | H2 | **Published** 2026-11-28 (OD-42, PR #45); deployment validated; closes when this record is integrated | P2 · DA-D12, DA-D14-01 | no longer waits for W01 (OD-38); `website/`, Astro and Starlight (OD-41); no release or qualification claim |
 | M-11 INDEP-QUAL-001 | H1 | Proposed | P1 · DA-D13-02, DA-D05-01 | independent person (RG-8) for `G3`/`G10` |
 | M-12 BENCH-RESEARCH-001 | H2 | Completed: accepted 2026-11-27 with limitations (EB-07 and part of EB-03 unresolved; no benchmark run) | P2 | focused non-blocking complement before M-13 pre-registration (OD-33); network access needs authorization |
 | M-13 BENCH-001 | H2 (arms later H3/H4) | Research | P3 · DA-D13-01 | needs pre-registration and execution authorization |
