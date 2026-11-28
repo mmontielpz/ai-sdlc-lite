@@ -1,0 +1,117 @@
+---
+// Every file shown here is served from public/brand/. PNG files are rendered by scripts/brand-png.mjs.
+import CopyButton from './CopyButton.astro';
+import { colors } from '../lib/brand.mjs';
+import { basePath, doc } from '../lib/links.mjs';
+
+const file = (name) => `${basePath}/brand/${name}`;
+const download = (name) => ({ href: file(name), download: `ai-sdlc-lite-${name}` });
+const variants = [
+  { id: 'on-dark', name: 'For dark backgrounds', plate: '#0B1017' },
+  { id: 'on-light', name: 'For light backgrounds', plate: '#F8FAFC' },
+  { id: 'black', name: 'One color, black', plate: '#FFFFFF' },
+  { id: 'white', name: 'One color, white', plate: '#000000' },
+];
+const marks = [
+  { id: 'symbol', title: 'Primary symbol', size: '512 px', height: 96 },
+  { id: 'wordmark', title: 'Horizontal wordmark', size: '256 px high', height: 40 },
+];
+---
+<div class="assets not-content">
+  {marks.map((mark) => (
+    <section aria-labelledby={mark.id}>
+      <h2 id={mark.id}>{mark.title}</h2>
+      <ul class="grid">
+        {variants.map((v) => (
+          <li>
+            <div class="plate" style={`background:${v.plate}`}>
+              <img src={file(`${mark.id}-${v.id}.svg`)} alt={`${mark.title}, ${v.name.toLowerCase()}`} height={mark.height} style={`height:${mark.height}px`} />
+            </div>
+            <p>{v.name}</p>
+            <p class="links">
+              <a {...download(`${mark.id}-${v.id}.svg`)}>SVG<span class="sr-only"> of the {mark.title.toLowerCase()}, {v.name.toLowerCase()}</span></a>
+              <a {...download(`${mark.id}-${v.id}.png`)}>PNG<span class="sr-only"> of the {mark.title.toLowerCase()}, {v.name.toLowerCase()}</span></a>
+              <small>PNG {mark.size}, transparent</small>
+            </p>
+          </li>
+        ))}
+      </ul>
+    </section>
+  ))}
+
+  <section aria-labelledby="favicon">
+    <h2 id="favicon">Favicon</h2>
+    <div class="favicons">
+      {[16, 32, 180].map((size) => (
+        <figure>
+          <img src={file(`favicon-${size}.png`)} alt={`Favicon at ${size} pixels`} width={Math.min(size, 90)} height={Math.min(size, 90)} />
+          <figcaption><a {...download(`favicon-${size}.png`)}>PNG {size} px</a></figcaption>
+        </figure>
+      ))}
+      <p><a {...download('favicon.svg')}>SVG favicon</a>, which follows the browser’s color scheme.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="colors">
+    <h2 id="colors">Colors</h2>
+    <ul class="colors">
+      {colors.map((c) => (
+        <li>
+          <span class="swatch" style={`background:${c.hex}`}></span>
+          <span class="name"><strong>{c.name}</strong><small>{c.use}</small></span>
+          <code>{c.hex}</code>
+          <CopyButton value={c.hex} label={`Copy ${c.name} ${c.hex}`} />
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section aria-labelledby="typography">
+    <h2 id="typography">Typography</h2>
+    <p><a href="https://github.com/rsms/inter">Inter</a> for text and headings; the wordmark lettering is outlined from it.</p>
+    <p><a href="https://github.com/JetBrains/JetBrainsMono">JetBrains Mono</a> for code and technical labels.</p>
+    <p>Both typefaces are distributed by their authors under the SIL Open Font License 1.1.</p>
+  </section>
+
+  <section aria-labelledby="usage">
+    <h2 id="usage">Usage</h2>
+    <ul class="usage">
+      <li>Use the files as provided: do not redraw, stretch, rotate, recolor or add effects.</li>
+      <li>Pick the variant that contrasts with the background; use one color where color is unavailable.</li>
+      <li>Keep clear space around the mark of at least a quarter of its height.</li>
+      <li>Use the symbol no smaller than 16 pixels, and the favicon files at favicon sizes.</li>
+      <li>Do not use the mark to suggest endorsement, certification or a release.</li>
+    </ul>
+    <p>This page sets no separate brand license or trademark terms. See the <a href={doc('LICENSE')}>repository license</a>.</p>
+  </section>
+</div>
+
+<style>
+  .assets section { margin-top: 4rem; }
+  .assets section:first-child { margin-top: 1rem; }
+  h2 { margin: 0 0 1.5rem; color: var(--sl-color-white); font-size: 1.5rem; letter-spacing: -0.02em; }
+  ul { margin: 0; padding: 0; list-style: none; }
+  p { margin: 0.5rem 0 0; color: var(--sl-color-gray-3); }
+  a { color: var(--sl-color-text-accent); text-underline-offset: 0.25em; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); gap: 2rem 1.5rem; }
+  .plate { display: grid; place-items: center; height: 9rem; padding: 1rem; border: 1px solid var(--sl-color-hairline); border-radius: 8px; }
+  .plate img { max-width: 100%; width: auto; object-fit: contain; }
+  .links { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 1.25rem; margin-top: 0.25rem; }
+  .links a, .favicons a { display: inline-block; padding-block: 0.25rem; }
+  small { color: var(--sl-color-gray-3); font-size: var(--sl-text-sm); }
+  .favicons { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1.5rem 2.5rem; }
+  figure { margin: 0; }
+  figcaption { margin-top: 0.5rem; }
+  .colors li { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr) auto auto; align-items: center; gap: 1rem; margin: 0; padding-block: 0.75rem; border-top: 1px solid var(--sl-color-hairline); }
+  .swatch { width: 2.5rem; height: 2.5rem; border: 1px solid var(--site-line); border-radius: 6px; }
+  .name strong { display: block; color: var(--sl-color-white); }
+  .name small { display: block; }
+  code { font-family: var(--sl-font-mono); font-size: 0.875rem; }
+  .usage { padding-left: 1.1rem; list-style: square; color: var(--sl-color-gray-2); }
+  @media (max-width: 29.99rem) {
+    .colors li { grid-template-columns: 2.5rem minmax(0, 1fr) auto; }
+    .colors .swatch { grid-row: span 2; }
+    .colors code { grid-column: 2; grid-row: 2; }
+    .colors li :global(.copy) { grid-column: 3; grid-row: 1 / span 2; }
+  }
+</style>

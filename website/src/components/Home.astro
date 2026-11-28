@@ -1,11 +1,10 @@
 ---
-import symbol from '../../brand/brackets/symbol-on-dark.svg?raw';
 import BoundsDiagram from './BoundsDiagram.astro';
 import InstallSelector from './InstallSelector.astro';
 import Motion from './Motion.astro';
 import Outcome from './Outcome.astro';
 import CodeBlock from './CodeBlock.astro';
-import { recolor } from '../lib/brand.mjs';
+import { symbol } from '../lib/brand.mjs';
 import { docsPages, page, repoUrl } from '../lib/links.mjs';
 import { codeBlock, pick, version } from '../lib/canonical.mjs';
 import { scenarios } from '../lib/scenarios.mjs';
@@ -29,7 +28,7 @@ const lifecycle = [
         <a class="button" href={repoUrl}>GitHub</a>
       </p>
     </div>
-    <div class="mark logo" aria-hidden="true" set:html={recolor(symbol).replace('role="img" aria-label="AI-SDLC Lite"', 'focusable="false"')} />
+    <div class="mark logo" aria-hidden="true" set:html={symbol.replace('role="img" aria-label="AI-SDLC Lite"', 'focusable="false"')} />
   </section>
 
   <section aria-labelledby="lifecycle" data-animate="sequence">

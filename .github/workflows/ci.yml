@@ -166,7 +166,7 @@ jobs:
           relevant=true
           if [[ -n "$BASE_SHA" && "$BASE_SHA" != 0000000000000000000000000000000000000000 ]]; then
             changed=$(git diff --name-only --no-renames "$BASE_SHA" HEAD)
-            if ! grep -qE '^(website/|docs/|examples/|scripts/verify_scope\.py$|[^/]+\.md$|LICENSE$|pyproject\.toml$|\.github/workflows/ci\.yml$)' <<<"$changed"; then
+            if ! grep -qE '^(website/|docs/|examples/|scripts/verify_scope\.py$|[^/]+\.md$|LICENSE$|pyproject\.toml$|\.github/workflows/(ci|pages)\.yml$)' <<<"$changed"; then
               relevant=false
             fi
           fi

@@ -1,11 +1,10 @@
 ---
 import Search from 'virtual:starlight/components/Search';
-import lockup from '../../brand/brackets/wordmark-on-dark.svg?raw';
-import { recolor } from '../lib/brand.mjs';
+import { lockup } from '../lib/brand.mjs';
 import { basePath, nav } from '../lib/links.mjs';
 ---
 <div class="site-header">
-  <a class="home-link logo" href={`${basePath}/`} set:html={recolor(lockup)} />
+  <a class="home-link logo" href={`${basePath}/`} set:html={lockup} />
   <div class="end">
     <nav aria-label="Site">
       <ul>

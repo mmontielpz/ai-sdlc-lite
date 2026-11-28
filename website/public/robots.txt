@@ -1,0 +1,4 @@
+# Crawlers read robots.txt only at a domain root; on a GitHub project site this file is informational.
+User-agent: *
+Allow: /
+Sitemap: https://mmontielpz.github.io/ai-sdlc-lite/sitemap-index.xml

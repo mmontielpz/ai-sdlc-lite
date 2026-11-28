@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { basePath, docsPages, nav } from '../src/lib/links.mjs';
 
 const tags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'];
-const routes = ['./', ...docsPages.map((d) => `./docs/${d.slug}/`)];
+const routes = ['./', ...docsPages.map((d) => `./docs/${d.slug}/`), './brand/'];
 const overflow = (page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
 function watch(page) {
@@ -182,6 +182,29 @@ test('motion runs once, ends, replays and does not block the page', async ({ pag
   await expect.poll(running, { timeout: 6000 }).toBe(0);
   expect(await hiddenParts(page)).toBe(0);
   expect(await page.evaluate(() => Math.max(0, ...window.longTasks))).toBeLessThan(200);
+});
+
+test('brand page: every download is served and colours copy', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('./', { waitUntil: 'networkidle' });
+  await page.getByRole('link', { name: 'Brand assets' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Brand assets');
+  const links = await page.locator('a[download]').evaluateAll((all) => all.map((a) => [a.getAttribute('href'), a.getAttribute('download')]));
+  expect(links.length).toBe(20);
+  expect(new Set(links.map(([, name]) => name)).size).toBe(20);
+  for (const [href] of links) {
+    const response = await page.request.get(href);
+    expect(response.status(), href).toBe(200);
+    expect(response.headers()['content-type'], href).toContain(href.endsWith('.png') ? 'image/png' : 'image/svg+xml');
+  }
+  expect(await page.locator('.assets img').evaluateAll((all) => all.filter((i) => !i.complete || !i.naturalWidth).length)).toBe(0);
+  const download = page.waitForEvent('download');
+  await page.locator('a[download="ai-sdlc-lite-symbol-on-dark.svg"]').click();
+  expect((await download).suggestedFilename()).toBe('ai-sdlc-lite-symbol-on-dark.svg');
+  const copy = page.getByRole('button', { name: 'Copy Teal #14B8A6' });
+  await copy.focus();
+  await page.keyboard.press('Enter');
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('#14B8A6');
 });
 
 test('unknown addresses show the 404 page', async ({ page }) => {

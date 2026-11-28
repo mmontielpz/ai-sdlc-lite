@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path';
 import test from 'node:test';
 import { basePath, docsPages, repoUrl, siteOrigin } from '../src/lib/links.mjs';
 import { exampleOutput } from '../scripts/example-output.mjs';
+import { colors as brandColors } from '../src/lib/brand.mjs';
 
 const dist = resolve('dist');
 const repo = resolve('..');
@@ -136,16 +137,72 @@ test('CI runs the website checks for every repository file the site links to', (
   const trigger = new RegExp(ci.match(/grep -qE '(\^\(website[^']+)'/)[1]);
   const linked = pages.flatMap((p) => attrs(p.html)).filter((a) => a.value.startsWith(`${repoUrl}/blob/main/`))
     .map((a) => a.value.slice(`${repoUrl}/blob/main/`.length).split('#')[0]);
-  for (const path of [...linked, 'README.md', 'pyproject.toml', 'website/package.json', 'examples/small-fix/normalize.py', 'scripts/verify_scope.py']) assert.match(path, trigger);
+  for (const path of [...linked, 'README.md', 'pyproject.toml', 'website/package.json', 'examples/small-fix/normalize.py', 'scripts/verify_scope.py', '.github/workflows/pages.yml']) assert.match(path, trigger);
 });
 
-test('brand files are complete and self-contained; the favicon is the provisional concept', () => {
-  for (const concept of ['brackets', 'strata']) {
-    for (const name of ['favicon', ...['symbol', 'wordmark'].flatMap((k) => ['on-dark', 'on-light', 'mono'].map((t) => `${k}-${t}`))]) {
-      const svg = readFileSync(`brand/${concept}/${name}.svg`, 'utf8');
-      assert.match(svg, /^<svg [^>]*viewBox=/);
-      assert.doesNotMatch(svg, /<text|<image|<script|href=|url\(/, `${concept}/${name}`);
+const pngSize = (path) => { const b = readFileSync(path); assert.equal(b.toString('latin1', 1, 4), 'PNG', path); return [b.readUInt32BE(16), b.readUInt32BE(20)]; };
+const variants = ['on-dark', 'on-light', 'black', 'white'];
+
+test('brand downloads are complete, self-contained and the only published brand', () => {
+  for (const variant of variants) {
+    for (const kind of ['symbol', 'wordmark']) {
+      const svg = readFileSync(`public/brand/${kind}-${variant}.svg`, 'utf8');
+      const [, width] = svg.match(/^<svg [^>]*viewBox="0 0 (\d+) 32"/);
+      assert.doesNotMatch(svg, /<text|<image|<script|href=|url\(|currentColor/, `${kind}-${variant}`);
+      assert.deepEqual(pngSize(`public/brand/${kind}-${variant}.png`), kind === 'symbol' ? [512, 512] : [width * 8, 256]);
     }
   }
-  assert.equal(readFileSync('public/favicon.svg', 'utf8'), readFileSync('brand/brackets/favicon.svg', 'utf8'));
+  for (const size of [16, 32, 180]) assert.deepEqual(pngSize(`public/brand/favicon-${size}.png`), [size, size]);
+  assert.ok(existsSync(join(dist, 'brand/favicon.svg')));
+  assert.ok(home.includes(`href="${basePath}/brand/"`), 'footer link to brand assets');
+  assert.ok(!files.some((f) => /strata/i.test(f)));
+});
+
+test('brand colours shown are the colours in use', () => {
+  const used = [readFileSync('src/styles/theme.css', 'utf8'), ...['symbol-on-light', 'wordmark-on-light'].map((n) => readFileSync(`public/brand/${n}.svg`, 'utf8'))].join(' ').toUpperCase();
+  for (const { hex } of JSON.parse(JSON.stringify(brandColors))) assert.ok(used.includes(hex), hex);
+});
+
+const routeOf = (file) => `${basePath}/${file.slice(dist.length + 1).replace(/index\.html$/, '')}`;
+const meta = (html, key) => [...html.matchAll(new RegExp(`<meta (?:property|name)="${key}" content="([^"]*)"`, 'g'))].map((m) => decode(m[1]));
+const published = pages.filter((p) => !p.file.endsWith('404.html'));
+
+test('every page has its own title and description, a canonical URL and a social preview', () => {
+  const seen = { title: new Set(), description: new Set() };
+  for (const { file, html } of published) {
+    const titles = [...html.matchAll(/<title>([^<]*)<\/title>/g)];
+    assert.equal(titles.length, 1, file);
+    const [description, ...extra] = meta(html, 'description');
+    assert.ok(description?.length >= 25 && description.length <= 200 && !extra.length, `${file}: description "${description}"`);
+    for (const [kind, value] of [['title', titles[0][1]], ['description', description]]) {
+      assert.ok(!seen[kind].has(value), `${file}: repeated ${kind}`);
+      seen[kind].add(value);
+    }
+    const url = `${siteOrigin}${routeOf(file)}`;
+    assert.deepEqual([...html.matchAll(/<link rel="canonical" href="([^"]*)"/g)].map((m) => m[1]), [url], file);
+    assert.deepEqual(meta(html, 'og:url'), [url], file);
+    assert.equal(meta(html, 'og:title').length, 1, file);
+    assert.deepEqual(meta(html, 'og:image'), [`${siteOrigin}${basePath}/social-card.png`], file);
+    assert.deepEqual(meta(html, 'twitter:card'), ['summary_large_image'], file);
+    assert.doesNotMatch(html, /name="robots" content="noindex/, file);
+  }
+  assert.deepEqual(pngSize(join(dist, 'social-card.png')), [1200, 630]);
+});
+
+test('sitemap lists exactly the published pages, robots.txt points to it and the 404 page is not indexed', () => {
+  const index = readFileSync(join(dist, 'sitemap-index.xml'), 'utf8');
+  const parts = [...index.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].slice(`${siteOrigin}${basePath}/`.length));
+  const listed = parts.flatMap((p) => [...readFileSync(join(dist, p), 'utf8').matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]));
+  assert.deepEqual(listed.sort(), published.map((p) => `${siteOrigin}${routeOf(p.file)}`).sort());
+  assert.ok(readFileSync(join(dist, 'robots.txt'), 'utf8').includes(`Sitemap: ${siteOrigin}${basePath}/sitemap-index.xml`));
+  assert.match(pages.find((p) => p.file.endsWith('404.html')).html, /name="robots" content="noindex"/);
+});
+
+test('publication is manual, from main only, with pinned actions and minimal permissions', () => {
+  const workflow = readFileSync(join(repo, '.github/workflows/pages.yml'), 'utf8');
+  assert.match(workflow, /^on:\n  workflow_dispatch:\n\n/m);
+  assert.doesNotMatch(workflow, /\b(push|pull_request|schedule|workflow_run|release):|contents: write|secrets\./);
+  for (const [, ref] of workflow.matchAll(/uses: (\S+)/g)) assert.match(ref, /@[0-9a-f]{40}$/);
+  assert.match(workflow, /if: github\.ref == 'refs\/heads\/main'/);
+  assert.deepEqual([...workflow.matchAll(/^ +([a-z-]+): (read|write)$/gm)].map((m) => `${m[1]}:${m[2]}`), ['contents:read', 'pages:write', 'id-token:write']);
 });
