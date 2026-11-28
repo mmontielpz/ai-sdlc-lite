@@ -40,7 +40,7 @@ flowchart LR
 
 ## Quickstart (Offline Wheel Install)
 
-Build the wheel once from a reviewed checkout (requires `setuptools`), then install offline in any Python 3.9+ virtual environment:
+Build the wheel once from a reviewed checkout (requires `setuptools`, plus `wheel` if it is older than 70.1, as on Ubuntu 24.04; see the [quickstart](docs/QUICKSTART.md#1-install)), then install offline in any Python 3.9+ virtual environment:
 
 ```bash
 python3 -m pip wheel --no-build-isolation --no-deps -w dist .
