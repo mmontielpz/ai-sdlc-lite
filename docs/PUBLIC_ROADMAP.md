@@ -9,10 +9,7 @@ AI-SDLC Lite is an open methodology and a lightweight reference framework for go
 - The Bound, Observe, Verify workflow, with two human gates.
 - An offline command-line tool that checks, after the work, whether changes stayed within the stated scope.
 - An installable Skill for coding agents, and a deterministic test suite run in CI.
-
-## Now
-
-- The official project website.
+- The [official website](https://mmontielpz.github.io/ai-sdlc-lite/) with documentation and brand assets. Publishing it is not a framework release or qualification.
 
 ## Before an experimental public release
 
