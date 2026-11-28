@@ -98,7 +98,7 @@ The six earlier pillars are preserved verbatim as the former organization; they 
 
 ## 4. Long-Term Product Evolution (Conceptual; earlier flow, preserved)
 
-Note: OD-28 places the first website pilot (`W01`) before the experimental public release. The earlier flow below is preserved; the current sequence is in `ROADMAP.md`.
+Note: OD-28 places the first website pilot (`W01`) before the experimental public release. The earlier flow below is preserved; OD-38 (2026-11-28) puts W01 on hold and removes its completion as a prerequisite. The current sequence is in `ROADMAP.md`.
 
 ```mermaid
 flowchart LR

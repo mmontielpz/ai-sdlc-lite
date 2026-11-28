@@ -6,11 +6,6 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      python_39:
-        description: 'Run Python 3.9 compatibility matrix (manual/release qualification)'
-        type: boolean
-        default: true
 
 permissions:
   contents: read
@@ -27,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ${{ (github.event_name == 'workflow_dispatch' && inputs.python_39) && fromJSON('["3.14", "3.9"]') || fromJSON('["3.14"]') }}
+        python: ['3.14', '3.9']   # 3.9 stays while pyproject.toml claims it
     env:
       PYTHONDONTWRITEBYTECODE: '1'
     steps:
@@ -133,15 +128,31 @@ jobs:
           git diff --cached --exit-code
           test -z "$(git ls-files --others --exclude-standard)"
 
+  website:
+    name: website
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Refuse website changes that nothing validates
+        run: |
+          if [[ -n "$(git ls-files website)" ]]; then
+            echo "website/ has tracked files but no validation job. Replace this step with the website checks."
+            exit 1
+          fi
+
   ci-gate:
     name: ci-gate
     if: always()
-    needs: [deterministic]
+    needs: [deterministic, website]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     permissions: {}
     env:
       TESTS: ${{ needs.deterministic.result }}
+      WEBSITE: ${{ needs.website.result }}
     steps:
       - name: Single stable required check
-        run: test "$TESTS" = success
+        run: test "$TESTS" = success && test "$WEBSITE" = success
